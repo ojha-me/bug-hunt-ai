@@ -22,6 +22,7 @@ class CodeConsumer(AsyncWebsocketConsumer):
         """Called when WebSocket connection is initiated"""
 
         await self.accept()
+        self.chat_session = await sync_to_async(client.chats.create)(model=MODEL)
         await self.send(text_data=json.dumps({
             'type': 'system_message',
             'payload': {'message': 'Connected to BugHunt AI! Ready to help.'}
@@ -33,27 +34,23 @@ class CodeConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data=None, bytes_data=None):
         """Called when WebSocket message is received"""
-        
         try:
             data =  json.loads(text_data)
             message_type =  data['type']
-            print(message_type,"message_type")
             message = data['payload']['message']
 
             if message_type == 'user_chat':
-                print("looking at response")
 
-                response = await sync_to_async(client.models.generate_content)(
-                    model=MODEL,
-                    contents=message
+                response = await sync_to_async(self.chat_session.send_message)(
+                    message
                 )
 
                 if response:
                     await self.send(text_data=json.dumps({
                         'type': 'ai_chat',
                         'payload': {'message': response.text}
-                    })) 
+                    }))
         except Exception as e:
             print(f"Error parsing message: {e}")
 
-    
+

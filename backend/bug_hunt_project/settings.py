@@ -35,13 +35,17 @@ ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [
     "daphne",
-    "api",
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'users',
+    'challenges',
+    'ai_core',
+    'execution',
+    'billing',
 ]
 
 MIDDLEWARE = [
@@ -130,6 +134,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 ASGI_APPLICATION = 'bug_hunt_project.asgi.application'
 
+AUTH_USER_MODEL = 'users.CustomUser'
 
 
 # Load Gemini API key from environment variable

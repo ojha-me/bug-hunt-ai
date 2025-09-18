@@ -1,136 +1,66 @@
-import { useState, useEffect, useRef } from "react";
-import Editor from "@monaco-editor/react";
+import { useState } from "react";
+import ChatContainer from "./components/ChatContainer";
+import Sidebar, { type Conversation } from "./components/Sidebar";
 
-interface ChatMessage {
-  sender: "user" | "ai" | "system";
-  text: string;
-}
+const dummyConversations: Conversation[] = [
+  {
+    id: "1",
+    title: "JavaScript Basics",
+    lastMessage: "Try fixing the off-by-one error in the loop.",
+    updatedAt: "2025-09-18T10:30:00Z",
+  },
+  {
+    id: "2",
+    title: "Python Loops",
+    lastMessage: "Remember to increment the counter.",
+    updatedAt: "2025-09-17T18:45:00Z",
+  },
+  {
+    id: "3",
+    title: "React State",
+    lastMessage: "Did you understand why useEffect runs twice?",
+    updatedAt: "2025-09-16T14:20:00Z",
+  },
+  {
+    id: "4",
+    title: "Django Models",
+    lastMessage: "Check your ForeignKey relationship.",
+    updatedAt: "2025-09-15T09:50:00Z",
+  },
+];
 
+ const dummyUser = {
+  name: "Jane Doe",
+  email: "jane.doe@example.com",
+  skillLevel: "Intermediate",
+};
 function App() {
-  const [userInput, setUserInput] = useState("");
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const socketRef = useRef<WebSocket | null>(null);
+  const [selectedConversationId, setSelectedConversationId] = useState(
+    dummyConversations[0].id
+  );
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  useEffect(() => {
-    const ws = new WebSocket("ws://localhost:8000/ws/code/");
-    socketRef.current = ws;
-
-    ws.onopen = () => {
-      console.log("WebSocket connection established.");
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        const message: ChatMessage = {
-          sender: data.type === 'ai_chat' ? 'ai' : 'system',
-          text: data.payload.message,
-        };
-        setChatMessages((prev) => [...prev, message]);
-      } catch (error) {
-        console.error("Failed to parse incoming message:", error);
-      }
-    };
-
-    ws.onclose = () => {
-      console.log("WebSocket connection closed.");
-    };
-
-    ws.onerror = (error) => {
-      console.error("WebSocket error:", error);
-    };
-
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.close();
-      }
-    };
-  }, []); 
-
-  const handleSendMessage = () => {
-    if (userInput.trim() && socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      const message = {
-        type: "user_chat",
-        payload: { message: userInput },
-      };
-      socketRef.current.send(JSON.stringify(message));
-
-      // Add user's message to the chat display
-      setChatMessages((prev) => [...prev, { sender: "user", text: userInput }]);
-      setUserInput(""); // Clear the input field
-    }
-  };
-
-  const chatContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
-  }, [chatMessages]);
-
+  const handleToggleSidebar = () => setIsSidebarCollapsed((prev) => !prev);
+  
   return (
-    <div className="bg-gray-900 text-white h-screen flex flex-col p-4 gap-4">
-      <header className="text-center">
-        <h1 className="text-3xl font-bold text-cyan-400">BugHunt AI</h1>
-        <p className="text-gray-400">Your AI-powered pair programmer</p>
-      </header>
+    <div className="flex h-screen">
+    <Sidebar
+      user={dummyUser}
+      conversations={dummyConversations}
+      onSelectConversation={setSelectedConversationId}
+      onCreateConversation={() => console.log("Create new conversation")}
+      isCollapsed={isSidebarCollapsed}
+      onToggleCollapse={handleToggleSidebar}
+    />
 
-      <main className="flex-grow flex gap-4 overflow-hidden">
-        <div className="w-1/2 bg-gray-800 rounded-lg overflow-hidden">
-          <Editor
-            height="100%"
-            theme="vs-dark"
-            defaultLanguage="python"
-            defaultValue="# Let's find some bugs!"
-          />
-        </div>
-
-        <div className="w-1/2 flex flex-col bg-gray-800 rounded-lg p-4">
-          {/* Message Display Area */}
-          <div ref={chatContainerRef} className="flex-grow mb-4 overflow-y-auto">
-            {chatMessages.map((msg, index) => (
-              <div
-                key={index}
-                className={`mb-3 p-3 rounded-lg text-sm ${
-                  msg.sender === "user"
-                    ? "bg-blue-600 ml-auto"
-                    : msg.sender === "ai"
-                    ? "bg-gray-700"
-                    : "bg-gray-600 text-center text-xs"
-                }`}
-                style={{ maxWidth: "90%" }}
-              >
-                {msg.text}
-              </div>
-            ))}
-          </div>
-
-          {/* Input Area */}
-          <div className="flex">
-            <input
-              type="text"
-              className="flex-grow bg-gray-700 rounded-l-md p-2 focus:outline-none"
-              value={userInput}
-              onChange={(e) => setUserInput(e.target.value)}
-              placeholder="Ask the AI for a hint or to fix your code..."
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleSendMessage();
-                }
-              }}
-            />
-            <button
-              className="bg-cyan-500 text-white p-2 rounded-r-md hover:bg-cyan-600 disabled:bg-gray-500"
-              onClick={handleSendMessage}
-              disabled={!userInput.trim()}
-            >
-              Send
-            </button>
-          </div>
-        </div>
-      </main>
+    <div
+      className={`flex-1 transition-all duration-300 ${
+        isSidebarCollapsed ? "ml-16" : "ml-0"
+      }`}
+    >
+      <ChatContainer selectedConversationId={selectedConversationId} />
     </div>
+  </div>
   );
 }
 

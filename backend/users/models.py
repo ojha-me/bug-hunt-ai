@@ -29,3 +29,13 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
+
+
+class RefreshToken(models.Model):
+    jti = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="refresh_tokens")
+    revoked = models.BooleanField(default=False)
+    expires_at = models.DateTimeField()
+
+    def __str__(self):
+        return f"{self.user.email} - {self.jti}"

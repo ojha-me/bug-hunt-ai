@@ -9,6 +9,7 @@ export interface ConversationResponse {
   id: number;
   title: string;
   created_at: string;
+  last_active_at: string;
 }
 export interface CreateConversationSchema {
   title: string;

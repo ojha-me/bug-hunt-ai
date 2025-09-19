@@ -12,7 +12,7 @@ backend:
 
 # ASGI server (if using uvicorn)
 asgi:
-	cd backend && uvicorn bug_hunt_project.asgi:application --reload
+	cd backend && source .venv/bin/activate && uvicorn bug_hunt_project.asgi:application --reload
 
 # Frontend
 frontend:

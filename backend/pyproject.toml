@@ -11,5 +11,6 @@ dependencies = [
     "google-genai>=1.36.0",
     "ninja-schema>=0.14.3",
     "pydantic-to-typescript2>=1.0.6",
+    "pyjwt>=2.10.1",
     "python-dotenv>=1.1.1",
 ]

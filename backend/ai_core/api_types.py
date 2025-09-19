@@ -9,4 +9,4 @@ class ConversationResponse(Schema):
     id: int
     title: str
     created_at: datetime
-        
+    last_active_at: datetime

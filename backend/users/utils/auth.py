@@ -1,8 +1,8 @@
 from django.shortcuts import get_object_or_404
-from httpx import stream
 import jwt
 from uuid import UUID, uuid4
-from datetime import datetime, timezone, timedelta
+from django.utils import timezone
+from datetime import datetime, timedelta
 from django.conf import settings
 from typing import Literal
 from django.http import HttpRequest
@@ -17,15 +17,14 @@ JWT_ROTATE_REFRESH_TOKENS = True
 
 
 def create_jwt(user_id: UUID, type: Literal["access", "refresh"], jti: str = None,) -> str:
-    now = datetime.now(tz=timezone.utc)
-    
+    now = timezone.now()
     if type == "access":
         token_expire_delta = JWT_ACCESS_LIFETIME
     elif type == "refresh":
         token_expire_delta = JWT_REFRESH_LIFETIME
     
     payload = {
-        "user_id": user_id,
+        "user_id": str(user_id),
         "type": type,
         "iat": int(now.timestamp()),
         "exp": int((now + token_expire_delta).timestamp()),

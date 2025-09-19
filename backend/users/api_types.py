@@ -5,6 +5,7 @@ class CreateUserSchema(Schema):
     email: str
     first_name: str
     last_name: str
+    password: str
     skill_level: SkillLevelChoices
 
 

@@ -1,12 +1,16 @@
-from ninja import Router
+from ninja import Router, Schema
 from users.utils.auth import create_jwt, decode_jwt
 import jwt
-from api_types import TokenPair
+from users.api_types import CreateUserSchema, CreateUserResponse, UserResponseAttributes
 from django.contrib.auth import authenticate
 from django.http import JsonResponse
 from uuid import uuid4
-from datetime import timedelta, timezone
-from users.models import RefreshToken
+from datetime import timedelta
+from django.utils import timezone
+from users.models import CustomUser, RefreshToken
+from django.db import IntegrityError
+from typing import Dict, Any
+
 
 router = Router()
 
@@ -84,3 +88,29 @@ def logout(request, params: LogoutParams):
         token_obj.revoked = True
         token_obj.save()
     return None
+
+
+@router.post("/create-user", response={200: CreateUserResponse, 400: Dict[str, str]})
+def create_user(request, params: CreateUserSchema):
+    try:
+        user = CustomUser.objects.create_user(
+            email=params.email,
+            first_name=params.first_name,
+            last_name=params.last_name,
+            password=params.password,  
+            skill_level=params.skill_level
+        )
+        return CreateUserResponse(
+            id=str(user.id),
+            attributes=UserResponseAttributes(
+                email=user.email,
+                first_name=user.first_name,
+                last_name=user.last_name,
+                skill_level=user.skill_level,
+                date_joined=user.date_joined.isoformat(),
+                is_active=user.is_active,
+                is_staff=user.is_staff
+            )
+        )
+    except IntegrityError:
+        return JsonResponse({"error": "User with this email already exists"}, status=400)

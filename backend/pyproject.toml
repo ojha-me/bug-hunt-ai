@@ -13,4 +13,5 @@ dependencies = [
     "pydantic-to-typescript2>=1.0.6",
     "pyjwt>=2.10.1",
     "python-dotenv>=1.1.1",
+    "whitenoise>=6.11.0",
 ]

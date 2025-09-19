@@ -2,11 +2,12 @@ from django.shortcuts import get_object_or_404
 import jwt
 from uuid import UUID, uuid4
 from django.utils import timezone
-from datetime import datetime, timedelta
+from datetime import timedelta
 from django.conf import settings
 from typing import Literal
 from django.http import HttpRequest
 from users.models import CustomUser
+from ninja.security import HttpBearer
 from typing import Optional
 
 JWT_ALGORITHM = "HS256"
@@ -44,7 +45,7 @@ def decode_jwt(token: str) -> dict:
     )
 
 
-class JWTAuth:
+class JWTAuth(HttpBearer):
     def authenticate(self, request: HttpRequest, token: str) -> Optional[CustomUser]:
         try:
             payload = decode_jwt(token)
@@ -53,16 +54,16 @@ class JWTAuth:
         except jwt.InvalidTokenError:
             return None
 
-        if payload['type'] != 'access':
+        if payload.get('type') != 'access':
             return None
         
-        user_id =  payload["user_id"]
+        user_id = payload.get("user_id")
         if not user_id:
             return None
         
-        user =  get_object_or_404(CustomUser, id=user_id)
-        request.user = user
-        
-        return user
-    
-            
+        try:
+            user = CustomUser.objects.get(id=user_id)
+            request.user = user
+            return user
+        except CustomUser.DoesNotExist:
+            return None

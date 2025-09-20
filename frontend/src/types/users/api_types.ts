@@ -27,4 +27,18 @@ export interface CreateUserSchema {
   password: string;
   skill_level: SkillLevelChoices;
 }
+export interface LoginParams {
+  email: string;
+  password: string;
+}
+export interface LogoutParams {
+  refresh_token: string;
+}
+export interface RefreshTokenParams {
+  refresh_token: string;
+}
 export interface Schema {}
+export interface TokenPair {
+  access_token: string;
+  refresh_token: string;
+}

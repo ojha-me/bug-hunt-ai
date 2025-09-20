@@ -23,6 +23,16 @@ class CreateUserResponse(Schema):
     attributes: UserResponseAttributes
 
 
+class TokenResponse(Schema):
+    access_token: str
+
+class LoginParams(Schema):
+    email: str
+    password: str
+
+class LogoutParams(Schema):
+    refresh_token: str
+
 
     
 

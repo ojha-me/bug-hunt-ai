@@ -1,31 +1,32 @@
 import {
     Anchor,
     Button,
-    Checkbox,
     Group,
     Paper,
     PasswordInput,
+    Select,
     Stack,
     Text,
     TextInput,
   } from '@mantine/core';
-  import type { PaperProps } from '@mantine/core';
+  import type { MantineTheme, PaperProps } from '@mantine/core';
   import { useForm } from '@mantine/form';
   import { upperFirst, useToggle } from '@mantine/hooks';
-  import { createUser } from '../api/user';
-  import type { CreateUserSchema } from '../types/users/api_types';
+  import { createUser, loginUser } from '../api/user';
+  import type { CreateUserSchema, LoginParams } from '../types/users/api_types';
   import { useMutation } from '@tanstack/react-query';
   import { notifications } from '@mantine/notifications';
   
+  
   export function AuthenticationForm(props: PaperProps) {
     const [type, toggle] = useToggle(['login', 'register']);
-    const form = useForm({
+    const form = useForm<CreateUserSchema>({
       initialValues: {
         email: '',
         first_name: '',
         last_name: '',
         password: '',
-        terms: true,
+        skill_level: 'beginner',
       },
   
       validate: {
@@ -34,12 +35,32 @@ import {
       },
     });
 
-    const mutation = useMutation({
+    const createMutation = useMutation({
       mutationFn: createUser,
       onSuccess: () => {
         notifications.show({
           title: 'Success!',
           message: 'Your account has been created. You can now log in.',
+          color: 'green',
+        });
+        toggle('login'); 
+        form.reset(); 
+      },
+      onError: (error) => {
+        notifications.show({
+          title: 'Error',
+          message: error.message || 'An unexpected error occurred. Please try again.',
+          color: 'red',
+        });
+      },
+    });
+
+    const loginMutation = useMutation({
+      mutationFn: loginUser,
+      onSuccess: () => {
+        notifications.show({
+          title: 'Success!',
+          message: 'You have successfully logged in.',
           color: 'green',
         });
         toggle('login'); 
@@ -61,12 +82,15 @@ import {
           last_name: values.last_name,
           email: values.email,
           password: values.password,
-          skill_level: 'beginner',
+          skill_level: values.skill_level,
         };
-        mutation.mutate(userData);
+        createMutation.mutate(userData);
       } else {
-        // Here you would handle the login logic, likely with another mutation
-        console.log('Logging in with:', values);
+        const loginData: LoginParams = {
+          email: values.email,
+          password: values.password,
+        };
+        loginMutation.mutate(loginData);
         notifications.show({
           title: 'Login Submitted',
           message: 'Login functionality is not yet implemented.',
@@ -75,9 +99,13 @@ import {
     };
   
     return (
-      <Paper radius="md" p="lg" withBorder {...props}>
-        <Text size="lg" fw={500}>
-          Welcome to Mantine, {type} with
+      <Paper radius="md" p="lg" {...props} className='max-w-[420px] mx-auto flex flex-col items-cente' styles={(theme: MantineTheme) => ({
+        root: {
+          border: `2px solid ${theme.colors.dark[4]}`
+        }
+      })}>
+        <Text size="lg" fw={500} className='text-center'>
+          Welcome to BugHunt Ai
         </Text>
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Stack>
@@ -87,15 +115,12 @@ import {
                 label="First Name"
                 placeholder="Your first name"
                 value={form.values.first_name}
-                onChange={(event) => form.setFieldValue('first_name', event.currentTarget.value)}
-                radius="md"
+                {...form.getInputProps('first_name')}
               />
               <TextInput
                 label="Last Name"
                 placeholder="Your last name"
-                value={form.values.last_name}
-                onChange={(event) => form.setFieldValue('last_name', event.currentTarget.value)}
-                radius="md"
+                {...form.getInputProps('last_name')}
               />
               </>
             )}
@@ -103,30 +128,25 @@ import {
             <TextInput
               required
               label="Email"
-              placeholder="hello@mantine.dev"
-              value={form.values.email}
-              onChange={(event) => form.setFieldValue('email', event.currentTarget.value)}
-              error={form.errors.email && 'Invalid email'}
-              radius="md"
+              placeholder="hello@example.com"
+              {...form.getInputProps('email')}
             />
-  
+            {
+              type === 'register' && (
+                <Select
+              label="Skill Level"
+              data={[{value: 'beginner', label: 'Beginner'}, {value: 'intermediate', label: 'Intermediate'}, {value: 'advanced', label: 'Advanced'}]}
+              {...form.getInputProps('skill_level')}
+            />
+              )
+            }
             <PasswordInput
               required
               label="Password"
               placeholder="Your password"
-              value={form.values.password}
-              onChange={(event) => form.setFieldValue('password', event.currentTarget.value)}
-              error={form.errors.password && 'Password should include at least 6 characters'}
-              radius="md"
+              {...form.getInputProps('password')}
             />
   
-            {type === 'register' && (
-              <Checkbox
-                label="I accept terms and conditions"
-                checked={form.values.terms}
-                onChange={(event) => form.setFieldValue('terms', event.currentTarget.checked)}
-              />
-            )}
           </Stack>
   
           <Group justify="space-between" mt="xl">

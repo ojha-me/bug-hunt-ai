@@ -5,29 +5,30 @@ import {
     Paper,
     PasswordInput,
     Select,
-    Stack,
     Text,
+    Stack,
     TextInput,
-  } from '@mantine/core';
-  import type { MantineTheme, PaperProps } from '@mantine/core';
-  import { useForm } from '@mantine/form';
-  import { upperFirst, useToggle } from '@mantine/hooks';
-  import { createUser, loginUser } from '../api/user';
-  import type { CreateUserSchema, LoginParams } from '../types/users/api_types';
-  import { useMutation } from '@tanstack/react-query';
-  import { notifications } from '@mantine/notifications';
-  
+} from '@mantine/core';
+import type { PaperProps, MantineTheme } from '@mantine/core';
+import { useForm } from '@mantine/form';
+import { upperFirst, useToggle } from '@mantine/hooks';
+import { createUser, loginUser } from '../api/user';
+import type { CreateUserSchema, LoginParams } from '../types/users/api_types';
+import { useMutation } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { setAccessToken } from '../api/apiClient';
+import { notifications } from '@mantine/notifications';
 
-  export function AuthenticationForm(props: PaperProps) {
-    const [type, toggle] = useToggle(['login', 'register']);
-    const form = useForm<CreateUserSchema>({
-      initialValues: {
-        email: '',
-        first_name: '',
-        last_name: '',
-        password: '',
-        skill_level: 'beginner',
-      },
+export function AuthenticationForm(props: PaperProps) {
+  const [type, toggle] = useToggle(['login', 'register']);
+  const form = useForm<CreateUserSchema>({
+    initialValues: {
+      email: '',
+      first_name: '',
+      last_name: '',
+      password: '',
+      skill_level: 'beginner',
+    },
   
       validate: {
         email: (val) => (/^\S+@\S+$/.test(val) ? null : 'Invalid email'),
@@ -55,21 +56,23 @@ import {
       },
     });
 
-    const loginMutation = useMutation({
+    const navigate = useNavigate();
+
+  const loginMutation = useMutation({
       mutationFn: loginUser,
-      onSuccess: () => {
+      onSuccess: (data) => {
+        setAccessToken(data.access_token);
         notifications.show({
           title: 'Success!',
           message: 'You have successfully logged in.',
           color: 'green',
         });
-        toggle('login'); 
-        form.reset(); 
+        navigate('/');
       },
       onError: (error) => {
         notifications.show({
           title: 'Error',
-          message: error.message || 'An unexpected error occurred. Please try again.',
+          message: error.message || 'Invalid email or password.',
           color: 'red',
         });
       },
@@ -91,10 +94,6 @@ import {
           password: values.password,
         };
         loginMutation.mutate(loginData);
-        notifications.show({
-          title: 'Login Submitted',
-          message: 'Login functionality is not yet implemented.',
-        });
       }
     };
   

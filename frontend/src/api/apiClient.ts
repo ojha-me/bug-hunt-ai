@@ -3,12 +3,11 @@ import { jwtDecode } from "jwt-decode";
 
 const BASE_URL = "http://localhost:8000/api/";
 
-let accessToken: string | null = null;
+const TOKEN_KEY = 'auth_token';
 
 export const setAccessToken = (token: string) => {
-  accessToken = token;
+  localStorage.setItem(TOKEN_KEY, token);
 };
-
 
 const isTokenExpired = (token: string) => {
   if (!token) return true;
@@ -17,8 +16,13 @@ const isTokenExpired = (token: string) => {
   return decoded.exp ? decoded.exp < now : true;
 };
 
+export const getAccessToken = () => {
+  return localStorage.getItem(TOKEN_KEY);
+};
 
-export const getAccessToken = () => accessToken;
+export const removeAccessToken = () => {
+  localStorage.removeItem(TOKEN_KEY);
+};
 
 const apiClient = axios.create({
     baseURL: BASE_URL,
@@ -33,7 +37,6 @@ const apiClient = axios.create({
 // finally attach the token to the request headers
 apiClient.interceptors.request.use(async (config) => {
   let token = getAccessToken();
-
   // If token exists and is expired, refresh first
   if (token && isTokenExpired(token)) {
     try {

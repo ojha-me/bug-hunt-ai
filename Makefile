@@ -8,7 +8,7 @@ dev:
 
 # Backend server
 backend:
-	cd backend && python manage.py runserver
+	cd backend && source .venv/bin/activate  && python manage.py runserver
 
 # ASGI server (if using uvicorn)
 asgi:

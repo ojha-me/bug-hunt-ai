@@ -43,4 +43,3 @@ def create_conversation(request: HttpRequest, params: CreateConversationSchema):
 #     )
 #     return response
 
-

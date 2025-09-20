@@ -1,23 +1,21 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
-from .models import Conversation, Message, MessageSenderChoices, MessageTypeChoices
-from asgiref.sync import sync_to_async
 from django.conf import settings
 from google import genai
+from google.genai import types
+from .models import Conversation, Message, MessageSenderChoices, MessageTypeChoices
 
 GEMINI_API_KEY = settings.GEMINI_API_KEY
 client = genai.Client(api_key=GEMINI_API_KEY)
-chat = client.chats.create(model="gemini-2.5-flash")
+
 
 class AIChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-
-
         self.conversation_id = self.scope['url_route']['kwargs']['conversation_id']
+        self.user = self.scope["user"]
         self.room_group_name = f"conversation_{self.conversation_id}"
-
-        # Join the group for this conversation
+        
         await self.channel_layer.group_add(
             self.room_group_name,
             self.channel_name
@@ -25,8 +23,9 @@ class AIChatConsumer(AsyncWebsocketConsumer):
 
         await self.accept()
 
+        self.conversation = await self.get_conversation(self.conversation_id)
+
     async def disconnect(self, close_code):
-        # Leave the group
         await self.channel_layer.group_discard(
             self.room_group_name,
             self.channel_name
@@ -36,62 +35,93 @@ class AIChatConsumer(AsyncWebsocketConsumer):
         data = json.loads(text_data)
         message_content = data.get("message")
 
-        user_message = await self.save_message(sender=MessageSenderChoices.USER, content=message_content)
+        if not message_content:
+            return
 
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
-                "type": "chat_message",
-                "sender": user_message.sender,
-                "content": user_message.content,
-                "message_type": user_message.message_type,
-                "created_at": user_message.created_at.isoformat(),
-            }
+        # If conversation doesn't exist, generate title and create it
+        if not self.conversation:
+            title = await self.generate_conversation_title(message_content)
+            self.conversation = await self.create_conversation(title)
+
+        # Save user message
+        user_message = await self.save_message(
+            conversation=self.conversation,
+            sender=MessageSenderChoices.USER,
+            message_content=message_content
         )
 
-        ai_response_content = await self.generate_ai_response(message_content)
+       
+        await self.broadcast_message(user_message)
 
-        ai_message = await self.save_message(sender=MessageSenderChoices.AI,
-                                             content=ai_response_content,
-                                             message_type=MessageTypeChoices.FEEDBACK)
+        # Generate AI response
+        ai_text = await self.generate_ai_response(message_content)
 
-        # Broadcast AI response to the group if multiple tabs are open
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
-                "type": "chat_message",
-                "sender": ai_message.sender,
-                "content": ai_message.content,
-                "message_type": ai_message.message_type,
-                "created_at": ai_message.created_at.isoformat(),
-            }
+
+        # Save AI message
+        ai_message = await self.save_message(
+            conversation=self.conversation,
+            sender=MessageSenderChoices.AI,
+            message_content=ai_text,
+            message_type=MessageTypeChoices.CONVERSATION
         )
 
-    # Handler for messages sent to the group
-    async def chat_message(self, event):
-        await self.send(text_data=json.dumps(event))
+        await self.broadcast_message(ai_message)
 
     @database_sync_to_async
-    def save_message(self, sender, content, message_type=None):
-        conversation = Conversation.objects.get(id=self.conversation_id)
+    def get_conversation(self, conversation_id):
+        try:
+            return Conversation.objects.get(id=conversation_id)
+        except Conversation.DoesNotExist:
+            return None
+
+    @database_sync_to_async
+    def create_conversation(self, title):
+        return Conversation.objects.create(id=self.conversation_id, user=self.user, title=title)
+
+    @database_sync_to_async
+    def save_message(self, conversation, sender, message_content, message_type=None):
         return Message.objects.create(
             conversation=conversation,
             sender=sender,
-            content=content,
+            content=message_content,
             message_type=message_type
         )
 
     async def generate_ai_response(self, user_message):
-        """
-        call gemini api to generate response
-        """
-        async def call_genai():
-            response = await sync_to_async(client.generate_text)(
-                model="text-bison-001",  # choose your model
-                prompt=user_message,
-                temperature=0.7,
-                max_output_tokens=500
-            )
-            return response.text
-        ai_text = await call_genai()
-        return ai_text
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            config=types.GenerateContentConfig(
+            thinking_config=types.ThinkingConfig(thinking_budget=0) # by default all the models have thinking enabled, Disables thinking
+            ),
+            contents=user_message
+        )   
+        return response.text
+
+    async def generate_conversation_title(self, user_message):
+        prompt = f"Generate a concise title for this conversation: {user_message}"
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            config=types.GenerateContentConfig(
+            thinking_config=types.ThinkingConfig(thinking_budget=0) # by default all the models have thinking enabled, Disables thinking
+            ),
+            contents=prompt + "\n\n" + user_message
+        )   
+        return response.text
+
+    async def broadcast_message(self, message):
+        await self.channel_layer.group_send(
+            self.room_group_name,
+            {
+                # this chat.message will be received by the chat_message method
+                "type": "chat.message",
+                "message": {
+                    "id": str(message.id),
+                    "sender": message.sender,
+                    "content": message.content,
+                    "timestamp": message.created_at.isoformat()
+                }
+            }
+        )
+
+    async def chat_message(self, event):
+        await self.send(text_data=json.dumps(event["message"]))

@@ -17,7 +17,7 @@ import {
   import { useMutation } from '@tanstack/react-query';
   import { notifications } from '@mantine/notifications';
   
-  
+
   export function AuthenticationForm(props: PaperProps) {
     const [type, toggle] = useToggle(['login', 'register']);
     const form = useForm<CreateUserSchema>({

@@ -1,5 +1,5 @@
-import { AuthenticationForm } from "./components/AuthenticationForm";
+import { Sidebar } from "./components/Sidebar";
 
 export default function App() {
-  return <AuthenticationForm />;
+  return <><Sidebar /></>;
 };

@@ -34,11 +34,7 @@ export interface LoginParams {
 export interface LogoutParams {
   refresh_token: string;
 }
-export interface RefreshTokenParams {
-  refresh_token: string;
-}
 export interface Schema {}
-export interface TokenPair {
+export interface TokenResponse {
   access_token: string;
-  refresh_token: string;
 }

@@ -6,12 +6,13 @@
 */
 
 export interface ConversationResponse {
-  id: number;
+  id: string;
   title: string;
   created_at: string;
   last_active_at: string;
 }
 export interface CreateConversationSchema {
+  id: string;
   title: string;
 }
 export interface Schema {}

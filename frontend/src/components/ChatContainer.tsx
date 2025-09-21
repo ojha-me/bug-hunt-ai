@@ -1,13 +1,40 @@
 import { useParams } from "react-router-dom";
 import { Box, Text, TextInput, Button, Stack, Group, Alert } from "@mantine/core";
-import { useState } from "react";
-import { FaExclamationCircle } from 'react-icons/fa';
+import { useState, useEffect, useMemo } from "react";
+import { FaExclamationCircle } from "react-icons/fa";
 import { useWebSocket } from "../hooks/useWebSocket";
+import { getConversation } from "../api/conversation";
+import type { ConversationResponse } from "../types/ai_core/api_types";
 
 export const ChatContainer = () => {
   const { conversationId } = useParams<{ conversationId: string }>();
   const [message, setMessage] = useState("");
-  const { messages, sendMessage, isConnected } = useWebSocket(conversationId!);
+  const [conversation, setConversation] = useState<ConversationResponse | null>(null);
+  const { messages: liveMessages, sendMessage, isConnected } = useWebSocket(conversationId!);
+
+  useEffect(() => {
+    const fetchConversation = async () => {
+      if (conversationId) {
+        try {
+          const data = await getConversation(conversationId);
+          setConversation(data);
+        } catch (error) {
+          console.error("Error fetching conversation:", error);
+        }
+      }
+    };
+
+    fetchConversation();
+  }, [conversationId]);
+
+  // Merge API conversation history + live WebSocket messages
+  const allMessages = useMemo(() => {
+    const history = conversation?.messages ?? [];
+    return [...history, ...liveMessages].sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+  }, [conversation, liveMessages]);
+
   const handleSendMessage = () => {
     if (message.trim() && isConnected) {
       sendMessage(message);
@@ -18,20 +45,25 @@ export const ChatContainer = () => {
   return (
     <Box p="md" style={{ height: "calc(100vh - 2rem)" }}>
       {!isConnected && (
-        <Alert icon={<FaExclamationCircle size={16} />} title="Connection Lost" color="red" mb="md">
+        <Alert
+          icon={<FaExclamationCircle size={16} />}
+          title="Connection Lost"
+          color="red"
+          mb="md"
+        >
           Trying to reconnect to the server...
         </Alert>
       )}
 
       <Stack style={{ height: "100%" }}>
         <Box style={{ flex: 1, overflowY: "auto" }} p="xs">
-          {messages.length === 0 ? (
+          {allMessages.length === 0 ? (
             <Text c="dimmed" ta="center" pt="xl">
               Start a new conversation
             </Text>
           ) : (
             <Stack gap="sm">
-              {messages.map((msg) => (
+              {allMessages.map((msg) => (
                 <Box
                   key={msg.id}
                   style={{
@@ -42,13 +74,18 @@ export const ChatContainer = () => {
                   <Box
                     p="sm"
                     style={{
-                      backgroundColor: msg.sender === "user" ? "#e3f2fd" : "#f5f5f5",
+                      backgroundColor:
+                        msg.sender === "user" ? "#e3f2fd" : "#f5f5f5",
                       borderRadius: "8px",
                     }}
                   >
                     <Text size="sm">{msg.content}</Text>
                   </Box>
-                  <Text size="xs" c="dimmed" ta={msg.sender === "user" ? "right" : "left"}>
+                  <Text
+                    size="xs"
+                    c="dimmed"
+                    ta={msg.sender === "user" ? "right" : "left"}
+                  >
                     {new Date(msg.timestamp).toLocaleTimeString()}
                   </Text>
                 </Box>
@@ -66,7 +103,10 @@ export const ChatContainer = () => {
             style={{ flex: 1 }}
             disabled={!isConnected}
           />
-          <Button onClick={handleSendMessage} disabled={!isConnected || !message.trim()}>
+          <Button
+            onClick={handleSendMessage}
+            disabled={!isConnected || !message.trim()}
+          >
             Send
           </Button>
         </Group>

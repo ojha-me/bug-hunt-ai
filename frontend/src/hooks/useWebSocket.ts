@@ -34,12 +34,10 @@ export const useWebSocket = (conversationId: string) => {
     const wsHost = apiUrl.port ? `${apiUrl.hostname}:${apiUrl.port}` : apiUrl.hostname;
 
     const wsUrl = `${protocol}://${wsHost}/ws/chat/${conversationId}/?token=${token}`;
-    console.log("Connecting to:", wsUrl);
 
     const newSocket = new WebSocket(wsUrl);
 
     newSocket.onopen = () => {
-      console.log("WebSocket connected");
       setIsConnected(true);
       setReconnectAttempts(0);
     };
@@ -54,13 +52,11 @@ export const useWebSocket = (conversationId: string) => {
 
     newSocket.onclose = (event) => {
       setIsConnected(false);
-      console.log("WebSocket closed:", event.code, event.reason);
 
       if (event.code !== 1000 && reconnectAttempts < maxReconnectAttempts) {
         const attempt = reconnectAttempts + 1;
         setReconnectAttempts(attempt);
         setTimeout(() => {
-          console.log(`Reconnecting... Attempt ${attempt}`);
           setSocket(null); 
         }, 2 ** attempt * 1000); // Exponential backoff
       }

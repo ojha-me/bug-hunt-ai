@@ -17,7 +17,7 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 class AIChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.conversation_id = uuid.UUID(self.scope['url_route']['kwargs']['conversation_id'])
-        print("yeta pugyo ki??")
+        print("yeta pugyo ki??", self.conversation_id)
         # Get token from query string
         query_string = self.scope['query_string'].decode()  
         query_params = parse_qs(query_string)
@@ -25,7 +25,7 @@ class AIChatConsumer(AsyncWebsocketConsumer):
 
         self.conversation: Conversation | None = None
         if not self.token:
-            await self.close(code=4001)  
+            await sel   .close(code=4001)  
             return
         
         try:

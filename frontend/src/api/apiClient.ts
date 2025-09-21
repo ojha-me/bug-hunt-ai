@@ -36,17 +36,17 @@ const apiClient = axios.create({
 // if expired, refresh the token
 // finally attach the token to the request headers
 apiClient.interceptors.request.use(async (config) => {
-  let token = getAccessToken();
+  const token = getAccessToken();
   // If token exists and is expired, refresh first
-  if (token && isTokenExpired(token)) {
-    try {
-      const { data } = await apiClient.post("/refresh");
-      setAccessToken(data.access_token);
-      token = data.access_token;
-    } catch (err) {
-      console.error("Refresh token failed", err);
-    }
-  }
+  // if (token && isTokenExpired(token)) {
+  //   try {
+  //     const { data } = await apiClient.post("/refresh");
+  //     setAccessToken(data.access_token);
+  //     token = data.access_token;
+  //   } catch (err) {
+  //     console.error("Refresh token failed", err);
+  //   }
+  // }
 
   if (token) {
     config.headers["Authorization"] = `Bearer ${token}`;

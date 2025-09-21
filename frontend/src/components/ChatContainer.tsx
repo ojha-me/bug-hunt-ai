@@ -1,27 +1,22 @@
 import { useParams } from "react-router-dom";
 import { Box, Text, TextInput, Button, Stack, Group, Alert } from "@mantine/core";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { FaExclamationCircle } from "react-icons/fa";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { getConversation } from "../api/conversation";
 import type { ConversationResponse } from "../types/ai_core/api_types";
+import { useQuery } from "@tanstack/react-query";
 
 export const ChatContainer = () => {
   const { conversationId } = useParams<{ conversationId: string }>();
   const [message, setMessage] = useState("");
-  const [conversation, setConversation] = useState<ConversationResponse | null>(null);
   const { messages: liveMessages, sendMessage, isConnected } = useWebSocket(conversationId!);
 
-  useEffect(() => {
-    const fetchConversation = async () => {
-      if (conversationId) {
-        const data = await getConversation(conversationId);
-        setConversation(data);
-      }
-    };
-
-    fetchConversation();
-  }, [conversationId]);
+  const { data: conversation } = useQuery<ConversationResponse>({
+    queryKey: ['conversation', conversationId],
+    queryFn: () => getConversation(conversationId!),
+    enabled: !!conversationId,
+  });
 
   // Merge API conversation history + live WebSocket messages
   const allMessages = useMemo(() => {

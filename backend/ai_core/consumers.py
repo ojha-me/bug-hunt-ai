@@ -5,13 +5,12 @@ from .models import MessageSenderChoices, MessageTypeChoices
 from .utils.ai_helpers import AIService
 from .utils.auth_helpers import authenticate_user
 from .utils.conversation_helpers import ConversationService
+from channels.db import database_sync_to_async
 
 
 class AIChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.conversation_id = uuid.UUID(self.scope['url_route']['kwargs']['conversation_id'])
-        self.conversation = None
-        
         try:
             self.user = await authenticate_user(self.scope)
         except ValueError:
@@ -25,6 +24,9 @@ class AIChatConsumer(AsyncWebsocketConsumer):
         )
         self.ai_service = AIService()
         self.conversation_service = ConversationService()
+
+        self.conversation = await self.conversation_service.get_conversation(self.conversation_id)
+        
         await self.accept()
 
 
@@ -41,18 +43,25 @@ class AIChatConsumer(AsyncWebsocketConsumer):
         if not message_content:
             return
 
-        # If conversation doesn't exist, create it
-        if not self.conversation:
-            self.conversation = await self.conversation_service.get_or_create_conversation(
-                self.user, message_content
-            )
-
         # Save user message
         user_message = await self.conversation_service.save_message(
             self.conversation,
             MessageSenderChoices.USER,
             message_content
         )
+
+        needs_title = False
+        user_messages_count = await database_sync_to_async(
+                lambda: self.conversation.messages.filter(sender=MessageSenderChoices.USER).count()
+            )()
+        if user_messages_count == 1:
+            needs_title = True
+        
+        if needs_title:
+            await self.conversation_service.generate_and_update_title(
+                self.conversation,
+                message_content
+            )
 
         await self.broadcast_message(user_message)
 
@@ -74,7 +83,6 @@ class AIChatConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_send(
             self.room_group_name,
             {
-                # this chat.message will be received by the chat_message method
                 "type": "chat.message",
                 "message": {
                     "id": str(message.id),

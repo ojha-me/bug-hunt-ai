@@ -3,7 +3,7 @@ from ninja import Router
 from ai_core.models import Conversation
 from ai_core.api_types import ConversationResponse, MessageResponse
 from django.http import HttpRequest, HttpResponse
-
+from django.shortcuts import get_object_or_404
 from users.utils.ninja import post, get
 from typing import Dict
 
@@ -11,10 +11,9 @@ from typing import Dict
 router = Router(tags=["conversation"])
 
 
-@get(router, "/", response={200: list[ConversationResponse], 401: Dict[str, str]})
-def list_conversations(request: HttpRequest):
+@get(router, "/get-conversations", response={200: list[ConversationResponse], 401: Dict[str, str]})
+def get_conversations(request: HttpRequest):
     conversations = Conversation.objects.filter(user=request.user).prefetch_related("messages")
-    print("Conversations", conversations)
     response = [
         ConversationResponse(
             id=conversation.id,
@@ -40,8 +39,10 @@ def list_conversations(request: HttpRequest):
 
 @get(router, "/{conversation_id}/", response={200: ConversationResponse, 401: Dict[str, str]})
 def get_conversation(request: HttpRequest, conversation_id: UUID):
-    conversation = Conversation.objects.get(id=conversation_id)
-    
+    conversation = get_object_or_404(Conversation, id=conversation_id)
+    if conversation is None:
+        conversation = Conversation.objects.create(user=request.user, title="New Conversation")
+        
     response = ConversationResponse(
         id=conversation.id,
         title=conversation.title,
@@ -60,4 +61,16 @@ def get_conversation(request: HttpRequest, conversation_id: UUID):
     )
     return response
 
+
+@post(router, "create-conversation", response={200: ConversationResponse, 401: Dict[str, str]})
+def create_conversation(request: HttpRequest):
+    conversation = Conversation.objects.create(user=request.user, title="New Conversation")
+    response = ConversationResponse(
+        id=conversation.id,
+        title=conversation.title,
+        created_at=conversation.created_at,
+        last_active_at=conversation.last_active_at,
+        messages=[]
+    )
+    return response
 

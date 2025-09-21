@@ -1,10 +1,10 @@
 import { Button, Stack, ScrollArea, Box, Text, Loader } from "@mantine/core";
 import { FaPlus } from "react-icons/fa6";
 import { useNavigate } from "react-router-dom";
-import { v4 as uuidv4 } from 'uuid';
-import { getConversations } from "../api/conversation";
-import { useQuery } from "@tanstack/react-query";
+import { getConversations, createConversation } from "../api/conversation";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type { ConversationResponse } from "../types/ai_core/api_types";
+import { notifications } from "@mantine/notifications";
 
 export const Sidebar = () => {
   const navigate = useNavigate();
@@ -14,10 +14,24 @@ export const Sidebar = () => {
     queryFn: getConversations
   });
 
-  const handleNewConversation = () => {
-    const newConversationId = uuidv4();
-    navigate(`/conversation/${newConversationId}`);
-  };
+  const createConvoMutation = useMutation({
+    mutationFn: createConversation,
+    onSuccess: (newConversation) => {
+      notifications.show({
+        title: 'Success!',
+        message: 'New Conversation created',
+        color: 'green',
+      });
+      navigate(`/conversation/${newConversation.id}`);
+    },
+    onError: (error) => {
+      notifications.show({
+        title: 'Error',
+        message: error.message || 'An unexpected error occurred. Please try again.',
+        color: 'red',
+      });
+    },
+  });
 
   const handleConversationClick = (conversationId: string) => {
     navigate(`/conversation/${conversationId}`);
@@ -46,7 +60,7 @@ export const Sidebar = () => {
           variant="filled"
           fullWidth 
           leftSection={<FaPlus />}
-          onClick={handleNewConversation}
+          onClick={() => createConvoMutation.mutate()}
         >
           New Conversation
         </Button>

@@ -1,6 +1,10 @@
 # Makefile
 .PHONY: dev backend frontend migrate migrate-make migrate-run types
 
+# make env 
+env:
+	cd backend && source .venv/bin/activate 
+
 # Start both servers
 dev:
 	cd backend && python manage.py runserver &

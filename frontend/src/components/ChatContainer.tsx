@@ -15,12 +15,8 @@ export const ChatContainer = () => {
   useEffect(() => {
     const fetchConversation = async () => {
       if (conversationId) {
-        try {
-          const data = await getConversation(conversationId);
-          setConversation(data);
-        } catch (error) {
-          console.error("Error fetching conversation:", error);
-        }
+        const data = await getConversation(conversationId);
+        setConversation(data);
       }
     };
 

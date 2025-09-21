@@ -44,3 +44,34 @@ class Message(models.Model):
     def __str__(self):
         return f"{self.sender} - {self.created_at} - {self.message_type}"
 
+# I might bring the summary type feature in future
+# so just keeping it here to remind me in future what i was thinking 
+#
+# class SummaryTypeChoices(models.TextChoices):
+#     GENERAL = 'general', 'General'
+#     CODE = 'code', 'Code'
+#     ERROR = 'error', 'Error'
+#     DEBUG = 'debug', 'Debug'
+#     FEEDBACK = 'feedback', 'Feedback'
+
+class Summary(models.Model):
+    """
+    Represents a summary of a conversation.
+    Each summary is tied to a conversation. 
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    conversation = models.ForeignKey(Conversation, related_name="summaries", on_delete=models.CASCADE)
+    content = models.TextField()
+    last_updated_at = models.DateTimeField(auto_now=True)
+    # upto which message was the summary for
+    last_message = models.ForeignKey(
+        Message,
+        related_name="summaries_until",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL
+    )
+
+    def __str__(self):
+        return f"Summary for Conversation {self.conversation.id}"
+    

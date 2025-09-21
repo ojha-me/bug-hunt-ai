@@ -1,0 +1,41 @@
+services:
+  # The PostgreSQL Database Service
+  db:
+    image: postgres:16-alpine
+    container_name: bughunt_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    env_file:
+      - ./.env.db
+    restart: always
+
+  # The Django Backend Service
+  backend:
+    build: ./backend
+    container_name: bughunt_backend
+    ports:
+      - "8000:8000"
+    # volumes:
+    #   - ./backend:/app
+    command: python -m daphne -b 0.0.0.0 -p 8000 bug_hunt_project.asgi:application
+    env_file:
+      - ./.env.db             
+      - ./backend/.env 
+    depends_on:
+      - db
+    restart: always
+
+  # The React Frontend Service (served by Nginx)
+  frontend:
+    build: ./frontend
+    container_name: bughunt_frontend
+    ports:
+      - "5173:80" # Map container's port 80 (Nginx) to host's 5173 (like Vite's default)
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  postgres_data:

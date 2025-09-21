@@ -1,0 +1,30 @@
+# Git files
+.git
+.gitignore
+
+# Docker files
+Dockerfile
+.dockerignore
+
+# Environment variables
+.env
+
+# Python generated files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+build/
+dist/
+*.egg-info/
+
+# Local database
+db.sqlite3
+*.sqlite3
+
+.venv
+venv/
+env/
+
+backend/.venv

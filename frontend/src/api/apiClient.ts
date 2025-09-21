@@ -2,18 +2,10 @@ import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 
 const BASE_URL = "http://localhost:8000/api/";
-
 const TOKEN_KEY = 'auth_token';
 
 export const setAccessToken = (token: string) => {
   localStorage.setItem(TOKEN_KEY, token);
-};
-
-const isTokenExpired = (token: string) => {
-  if (!token) return true;
-  const decoded = jwtDecode(token);
-  const now = Date.now() / 1000;
-  return decoded.exp ? decoded.exp < now : true;
 };
 
 export const getAccessToken = () => {
@@ -24,35 +16,60 @@ export const removeAccessToken = () => {
   localStorage.removeItem(TOKEN_KEY);
 };
 
+const isTokenExpired = (token: string) => {
+  if (!token) return true;
+  const decoded = jwtDecode(token);
+  const now = Date.now() / 1000; 
+  return decoded.exp ? decoded.exp < now : true;
+};
+
+// using a separate refreshApiClient for refreshing token
+// token expires -> checks token -> sees expired -> uses apiClient -> my suspect it this cycle runs infinitely and the app crashes
+// to prevent infinite loop.
+// This may work may not. Fingers Crossed.
+const refreshApiClient = axios.create({
+  baseURL: BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+
 const apiClient = axios.create({
-    baseURL: BASE_URL,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-  
+  baseURL: BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
-// check if the token is expired
-// if expired, refresh the token
-// finally attach the token to the request headers
+
 apiClient.interceptors.request.use(async (config) => {
-  const token = getAccessToken();
-  // If token exists and is expired, refresh first
-  // if (token && isTokenExpired(token)) {
-  //   try {
-  //     const { data } = await apiClient.post("/refresh");
-  //     setAccessToken(data.access_token);
-  //     token = data.access_token;
-  //   } catch (err) {
-  //     console.error("Refresh token failed", err);
-  //   }
-  // }
+  let token = getAccessToken();
 
+  // If token exists and is expired, refresh it
+  if (token && isTokenExpired(token)) {
+    try {
+      const response = await refreshApiClient.post("users/refresh", {
+        refresh: token,
+      });
+
+      const newAccessToken = response.data.access_token;
+      setAccessToken(newAccessToken);
+      token = newAccessToken;
+    } catch (error) {
+      console.error("Token refresh failed", error);
+      removeAccessToken();
+      window.location.href = "/login";
+      return Promise.reject(error);
+    }
+  }
+
+  // Attach Authorization header if we have a token
   if (token) {
     config.headers["Authorization"] = `Bearer ${token}`;
   }
+
   return config;
 });
-
 
 export default apiClient;

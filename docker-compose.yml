@@ -17,12 +17,13 @@ services:
     container_name: bughunt_backend
     ports:
       - "8000:8000"
-    # volumes:
-    #   - ./backend:/app
-    command: python -m daphne -b 0.0.0.0 -p 8000 bug_hunt_project.asgi:application
+    volumes:
+      - ./backend:/app
+      - /app/.venv 
+    command: /app/.venv/bin/python -m daphne -b 0.0.0.0 -p 8000 bug_hunt_project.asgi:application
     env_file:
-      - ./.env.db             
-      - ./backend/.env 
+      - ./.env.db
+      - ./backend/.env
     depends_on:
       - db
     restart: always

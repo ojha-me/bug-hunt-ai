@@ -75,3 +75,45 @@ class Summary(models.Model):
     def __str__(self):
         return f"Summary for Conversation {self.conversation.id}"
     
+
+
+class ConversationModeChoices(models.TextChoices):
+    IDLE = 'idle', 'Idle - Normal conversation'
+    CHALLENGE_ACTIVE = 'challenge_active', 'Challenge Active - Waiting for code submission'
+    HINT_ACTIVE = 'hint_active', 'Hint Active - Providing hints'
+    FEEDBACK_ACTIVE = 'feedback_active', 'Feedback Active - Providing feedback'
+    CONVERSATION = 'conversation', 'General Conversation'
+
+class ConversationState(models.Model):
+    """
+    Tracks the current state and mode of a conversation.
+    Each conversation has exactly one state.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    conversation = models.OneToOneField(
+        Conversation,
+        related_name="state",
+        on_delete=models.CASCADE,
+        unique=True
+    )
+    mode = models.CharField(
+        max_length=20,
+        choices=ConversationModeChoices.choices,
+        default=ConversationModeChoices.IDLE
+    )
+    last_message_type = models.CharField(
+        max_length=20,
+        choices=MessageTypeChoices.choices,
+        null=True,
+        blank=True,
+        help_text="Type of the last AI message"
+    )
+    attempt_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of attempts made for the current challenge"
+    )
+    last_updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"State for Conversation {self.conversation.id}"
+

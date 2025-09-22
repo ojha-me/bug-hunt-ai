@@ -1,7 +1,7 @@
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 
-const BASE_URL = "http://localhost:8000/api/";
+const BASE_URL = "/api/";
 const TOKEN_KEY = 'auth_token';
 
 export const setAccessToken = (token: string) => {

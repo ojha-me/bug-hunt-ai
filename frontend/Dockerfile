@@ -12,6 +12,7 @@ COPY package.json yarn.lock ./
 
 RUN yarn install
 
+COPY .env .env
 
 COPY . .
 
@@ -28,6 +29,9 @@ FROM nginx:1.27-alpine
 # Copy the built static files from the "builder" stage (from /app/dist)
 # into the Nginx directory that serves HTML files.
 COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Copy SPA Nginx config
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Tell Docker the container will listen on port 80
 EXPOSE 80

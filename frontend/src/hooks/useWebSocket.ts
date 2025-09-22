@@ -23,19 +23,12 @@ export const useWebSocket = (conversationId: string) => {
       return;
     }
 
-    const API_URL = import.meta.env.VITE_API_URL;
-    if (!API_URL) {
-      console.error("VITE_API_URL is not set in .env");
-      return;
-    }
+    const wsPath = "/ws";
+    const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+    const host = window.location.host; 
 
-    const protocol = API_URL.startsWith("https://") ? "wss" : "ws";
-    const apiUrl = new URL(API_URL);
-    const wsHost = apiUrl.port ? `${apiUrl.hostname}:${apiUrl.port}` : apiUrl.hostname;
-    const wsUrl = `${protocol}://${wsHost}/ws/chat/${conversationId}/?token=${token}`;
-
-    console.log("Connecting WebSocket:", wsUrl);
-
+    const wsUrl = `${protocol}${host}${wsPath}/chat/${conversationId}/?token=${token}`;
+    
     const connect = () => {
       const ws = new WebSocket(wsUrl);
       socketRef.current = ws;

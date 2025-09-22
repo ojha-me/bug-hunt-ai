@@ -6,9 +6,6 @@
 Dockerfile
 .dockerignore
 
-# Environment variables
-.env
-
 # Dependencies
 node_modules
 

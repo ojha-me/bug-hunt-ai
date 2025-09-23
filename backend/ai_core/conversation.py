@@ -6,7 +6,9 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404
 from users.utils.ninja import post, get
 from typing import Dict
+import logging
 
+logger = logging.getLogger('ai_core.conversation')
 
 router = Router(tags=["conversation"])
 

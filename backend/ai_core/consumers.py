@@ -6,10 +6,15 @@ from .utils.ai_helpers import AIService
 from .utils.auth_helpers import authenticate_user
 from .utils.conversation_helpers import ConversationService
 from channels.db import database_sync_to_async
+import logging
+
+logger = logging.getLogger('ai_core.consumers')
+
 
 
 class AIChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
+        logger.info("WebSocket connection attempt------------")
         self.conversation_id = uuid.UUID(self.scope['url_route']['kwargs']['conversation_id'])
         try:
             self.user = await authenticate_user(self.scope)
@@ -37,6 +42,7 @@ class AIChatConsumer(AsyncWebsocketConsumer):
         )
 
     async def receive(self, text_data):
+        print(f"DEBUG received text data:---------------- {text_data}", flush=True)
         data = json.loads(text_data)
         message_content = data.get("message")
 
@@ -64,6 +70,8 @@ class AIChatConsumer(AsyncWebsocketConsumer):
             )
 
         await self.broadcast_message(user_message)
+
+
 
         # Generate AI response
         ai_text = await self.ai_service.generate_response(message_content)

@@ -20,7 +20,7 @@ services:
     volumes:
       - ./backend:/app
       - /app/.venv 
-    command: /app/.venv/bin/python -m daphne -b 0.0.0.0 -p 8000 bug_hunt_project.asgi:application
+    command: /app/.venv/bin/python -m uvicorn bug_hunt_project.asgi:application --host 0.0.0.0 --port 8000 --reload
     env_file:
       - ./.env.db
       - ./backend/.env

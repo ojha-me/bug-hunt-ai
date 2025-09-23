@@ -2,12 +2,13 @@
 from google import genai
 from google.genai import types
 from django.conf import settings
-
-
+import logging
+from .prompts import SYSTEM_PROMPT
 GEMINI_API_KEY = settings.GEMINI_API_KEY
 AI_MODEL = "gemini-2.5-flash"
 client = genai.Client(api_key=GEMINI_API_KEY)
 
+logger = logging.getLogger('ai_core.utils.ai_helpers')
 
 class AIService:
     """
@@ -19,11 +20,12 @@ class AIService:
 
     async def generate_response(self, prompt: str) -> str:
         """Send user prompt to AI and return text response."""
+        full_prompt = f"{SYSTEM_PROMPT}\n\n{prompt}"
         response = self.chat.send_message(
             config=types.GenerateContentConfig(
                 thinking_config=types.ThinkingConfig(thinking_budget=0)
             ),
-            message=prompt
+            message=full_prompt,
         )
         return response.text
 

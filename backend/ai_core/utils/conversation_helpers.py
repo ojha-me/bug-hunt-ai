@@ -1,8 +1,11 @@
 # utils/conversation_helpers.py
 
+import logging
 from channels.db import database_sync_to_async
 from ai_core.models import Conversation, Message, MessageSenderChoices, MessageTypeChoices
 from .ai_helpers import AIService
+
+logger = logging.getLogger('ai_core.utils.conversation_helpers')
 
 
 class ConversationService:
@@ -49,6 +52,8 @@ class ConversationService:
         """
         Generate a title using AI and update the conversation.
         """
+        logger.info(f"Generating and updating title for conversation: {conversation.id}")
         ai_service = AIService()
         generated_title = await ai_service.generate_title(initial_message)
         await ConversationService._update_title_in_db(conversation, generated_title)
+        logger.debug(f"Updated title to: {generated_title}")

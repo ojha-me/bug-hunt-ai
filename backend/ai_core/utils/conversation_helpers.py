@@ -1,5 +1,4 @@
-# utils/conversation_helpers.py
-
+import json
 import logging
 from channels.db import database_sync_to_async
 from ai_core.models import Conversation, Message, MessageSenderChoices, MessageTypeChoices
@@ -25,11 +24,37 @@ class ConversationService:
 
     @staticmethod
     @database_sync_to_async
-    def save_message(conversation, sender, content, message_type=None):
+    def save_ai_message(conversation, content):
+        message_type = ''
+        code_snippet = ''
+
+        try:
+            parsed_content = json.loads(content)  # Parse the JSON string
+            message_type = parsed_content.get("type", "")
+            content_text = parsed_content.get("content", "")
+            code_snippet = parsed_content.get("code", "")
+        except json.JSONDecodeError:
+            content_text = content
+
+        print(content_text, "→ parsed content")
         return Message.objects.create(
             conversation=conversation,
-            sender=sender,
+            sender=MessageSenderChoices.AI,
             content=content,
+            code_snippet=code_snippet,
+            message_type=message_type or MessageTypeChoices.CONVERSATION
+        )
+
+    @staticmethod
+    @database_sync_to_async
+    def save_user_message(conversation, content):
+        message_type = ''
+        code_snippet = ''
+        return Message.objects.create(
+            conversation=conversation,
+            sender=MessageSenderChoices.USER,
+            content=content,
+            code_snippet=code_snippet,
             message_type=message_type or MessageTypeChoices.CONVERSATION
         )
 

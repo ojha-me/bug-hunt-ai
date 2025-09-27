@@ -42,7 +42,6 @@ class AIChatConsumer(AsyncWebsocketConsumer):
         )
 
     async def receive(self, text_data):
-        print(f"DEBUG received text data:---------------- {text_data}", flush=True)
         data = json.loads(text_data)
         message_content = data.get("message")
 
@@ -50,9 +49,8 @@ class AIChatConsumer(AsyncWebsocketConsumer):
             return
 
         # Save user message
-        user_message = await self.conversation_service.save_message(
+        user_message = await self.conversation_service.save_user_message(
             self.conversation,
-            MessageSenderChoices.USER,
             message_content
         )
 
@@ -71,17 +69,13 @@ class AIChatConsumer(AsyncWebsocketConsumer):
 
         await self.broadcast_message(user_message)
 
-
-
         # Generate AI response
         ai_text = await self.ai_service.generate_response(message_content)
 
         # Save AI message
-        ai_message = await self.conversation_service.save_message(
+        ai_message = await self.conversation_service.save_ai_message(
             self.conversation,
-            MessageSenderChoices.AI,
-            ai_text,
-            MessageTypeChoices.CONVERSATION
+            ai_text
         )
 
         await self.broadcast_message(ai_message)
@@ -96,6 +90,8 @@ class AIChatConsumer(AsyncWebsocketConsumer):
                     "id": str(message.id),
                     "sender": message.sender,
                     "content": message.content,
+                    "message_type": message.message_type,
+                    "code_snippet": message.code_snippet,
                     "timestamp": message.created_at.isoformat()
                 }
             }

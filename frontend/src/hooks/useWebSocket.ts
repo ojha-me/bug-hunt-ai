@@ -5,6 +5,7 @@ interface Message {
   id: string;
   sender: "user" | "ai";
   content: string;
+  code_snippet?: string | null;
   timestamp: string;
 }
 
@@ -42,9 +43,14 @@ export const useWebSocket = (conversationId: string) => {
       ws.onmessage = (event) => {
         try {
           const data: Message = JSON.parse(event.data);
+
+          if (!data?.id || !data?.sender || !data?.content || !data?.timestamp) {
+            console.warn("Invalid message format received:", data);
+            return;
+        }
           setMessages((prev) =>
             prev.some((m) => m.id === data.id) ? prev : [...prev, data]
-          );
+        );
         } catch (err) {
           console.error("Failed to parse message:", err);
         }

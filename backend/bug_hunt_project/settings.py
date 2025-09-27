@@ -18,11 +18,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173", '*'
-]
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = True # okay for development
 CORS_ALLOW_CREDENTIALS = True 
 
 # Application definition

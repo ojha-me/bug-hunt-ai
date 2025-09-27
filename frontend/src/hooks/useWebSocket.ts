@@ -24,11 +24,12 @@ export const useWebSocket = (conversationId: string) => {
       return;
     }
 
+    const apiBase = import.meta.env.VITE_WS_BASE;
     const wsPath = "/ws";
-    const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-    const host = window.location.host; 
-
-    const wsUrl = `${protocol}${host}${wsPath}/chat/${conversationId}/?token=${token}`;
+    const wsProtocol = apiBase.startsWith("https") ? "wss://" : "ws://";
+    const urlWithoutProtocol = apiBase.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    const wsUrl = `${wsProtocol}${urlWithoutProtocol}${wsPath}/chat/${conversationId}/?token=${token}`;
+    
     
     const connect = () => {
       const ws = new WebSocket(wsUrl);

@@ -1,7 +1,9 @@
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 
-const BASE_URL = "/api/";
+
+const BASE_URL = import.meta.env.VITE_API_BASE;
+
 const TOKEN_KEY = 'auth_token';
 
 export const setAccessToken = (token: string) => {

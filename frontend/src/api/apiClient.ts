@@ -49,10 +49,7 @@ apiClient.interceptors.request.use(async (config) => {
   // If token exists and is expired, refresh it
   if (token && isTokenExpired(token)) {
     try {
-      const response = await refreshApiClient.post("users/refresh", {
-        refresh: token,
-      });
-
+      const response = await refreshApiClient.post("users/refresh");
       const newAccessToken = response.data.access_token;
       setAccessToken(newAccessToken);
       token = newAccessToken;

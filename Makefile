@@ -60,3 +60,6 @@ add-frontend-pkg: ## Add a Node package to the frontend
 # --- Development Helpers ---
 shell-backend: ## Open a bash shell inside the backend container
 	$(COMPOSE_CMD) exec $(BACKEND_SERVICE) bash
+
+types:
+	cd backend && python manage.py shell < scripts/generate_pydantic_ts_types.py

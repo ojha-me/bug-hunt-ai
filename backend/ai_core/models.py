@@ -21,6 +21,12 @@ class MessageSenderChoices(models.TextChoices):
     USER = 'user'
     AI = 'ai'
 
+class MessageLanguageChoices(models.TextChoices):
+    PYTHON = 'python'
+    JAVASCRIPT = 'javascript'
+    TYPESCRIPT = 'typescript'
+
+
 class MessageTypeChoices(models.TextChoices):
     HINT = 'hint'
     CHALLENGE = 'challenge'
@@ -37,6 +43,7 @@ class Message(models.Model):
     sender = models.CharField(choices=MessageSenderChoices.choices)
     content = models.TextField()
     code_snippet = models.TextField(blank=True, null=True)
+    language = models.CharField(choices=MessageLanguageChoices.choices, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     message_type = models.CharField(choices=MessageTypeChoices.choices, max_length=50, blank=True, null=True)

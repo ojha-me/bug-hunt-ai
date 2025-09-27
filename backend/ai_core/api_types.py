@@ -3,6 +3,8 @@ from datetime import datetime
 from uuid import UUID
 from typing import Optional, List
 
+from ai_core.models import MessageLanguageChoices
+
 class CreateConversationSchema(Schema):
     id: UUID
     title: str
@@ -13,6 +15,7 @@ class MessageResponse(Schema):
     sender: str
     content: str
     code_snippet: Optional[str]
+    language: Optional[MessageLanguageChoices]
     timestamp: datetime
 
 class ConversationResponse(Schema):

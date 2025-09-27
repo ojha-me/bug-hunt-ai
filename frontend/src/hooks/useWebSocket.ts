@@ -6,6 +6,7 @@ interface Message {
   sender: "user" | "ai";
   content: string;
   code_snippet?: string | null;
+  language?: string;
   timestamp: string;
 }
 

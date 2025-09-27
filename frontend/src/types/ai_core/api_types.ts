@@ -5,6 +5,8 @@
 /* Do not modify it by hand - just update the pydantic models and then re-run the script
 */
 
+export type MessageLanguageChoices = "python" | "javascript" | "typescript";
+
 export interface ConversationResponse {
   id: string;
   title: string;
@@ -17,6 +19,7 @@ export interface MessageResponse {
   sender: string;
   content: string;
   code_snippet: string | null;
+  language: MessageLanguageChoices | null;
   timestamp: string;
 }
 export interface CreateConversationSchema {

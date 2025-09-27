@@ -27,21 +27,22 @@ class ConversationService:
     def save_ai_message(conversation, content):
         message_type = ''
         code_snippet = ''
-
+        language = ''
         try:
             parsed_content = json.loads(content)  # Parse the JSON string
             message_type = parsed_content.get("type", "")
             content_text = parsed_content.get("content", "")
             code_snippet = parsed_content.get("code", "")
+            language = parsed_content.get("language", "")
         except json.JSONDecodeError:
             content_text = content
 
-        print(content_text, "→ parsed content")
         return Message.objects.create(
             conversation=conversation,
             sender=MessageSenderChoices.AI,
-            content=content,
+            content=content_text,
             code_snippet=code_snippet,
+            language=language,
             message_type=message_type or MessageTypeChoices.CONVERSATION
         )
 

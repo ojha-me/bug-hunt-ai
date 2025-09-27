@@ -42,6 +42,7 @@ class AIChatConsumer(AsyncWebsocketConsumer):
         )
 
     async def receive(self, text_data):
+        print("text data kasto dekhinxa herna khojdai", text_data)
         data = json.loads(text_data)
         message_content = data.get("message")
 
@@ -92,6 +93,7 @@ class AIChatConsumer(AsyncWebsocketConsumer):
                     "content": message.content,
                     "message_type": message.message_type,
                     "code_snippet": message.code_snippet,
+                    "language": message.language,
                     "timestamp": message.created_at.isoformat()
                 }
             }

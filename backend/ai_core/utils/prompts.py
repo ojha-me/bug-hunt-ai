@@ -14,6 +14,7 @@ Fields:
 - "type": one of "challenge", "hint", "feedback", "conversation"
 - "content": natural language description, instructions, or feedback
 - "code": (optional) string containing buggy or partial code, always escaped as valid JSON
+- "language": (optional) one of "python", "javascript", "typescript"
 
 Teaching Guidelines:
 - Never give the full solution unless explicitly requested.
@@ -23,6 +24,10 @@ Teaching Guidelines:
   - "hint": give a clue or ask a leading question
   - "feedback": evaluate the user's code submission
   - "conversation": explanations, encouragement, or clarifying questions
+- Language types:
+  - "python": Python code
+  - "javascript": Javascript code
+  - "typescript": Typescript code
 """
 
 CHALLENGE_PROMPT = """
@@ -40,7 +45,8 @@ Output JSON:
 {
   "type": "challenge",
   "content": "Description or instructions for the user",
-  "code": "def buggy_function(...): ..."
+  "code": "def buggy_function(...): ...",
+  "language": "python"
 }
 """
 
@@ -59,7 +65,8 @@ Output JSON:
 {
   "type": "hint",
   "content": "Here's a hint for your bug...",
-  "code": null
+  "code": null,
+  "language": null
 }
 """
 
@@ -80,7 +87,8 @@ Output JSON:
 {
   "type": "feedback",
   "content": "Your code is close! You need to fix ...",
-  "code": null
+  "code": null,
+  "language": null
 }
 """
 
@@ -98,6 +106,7 @@ Output JSON:
 {
   "type": "conversation",
   "content": "You're doing great! Remember, debugging is about small steps.",
-  "code": null
+  "code": null,
+  "language": null
 }
 """

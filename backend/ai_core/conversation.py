@@ -28,7 +28,8 @@ def get_conversations(request: HttpRequest):
                     sender=message.sender,
                     content=message.content,
                     code_snippet=message.code_snippet,
-                    timestamp=message.created_at
+                    timestamp=message.created_at,
+                    language=message.language if message.language else None
                 )
                 for message in conversation.messages.all()
             ] or []
@@ -56,7 +57,8 @@ def get_conversation(request: HttpRequest, conversation_id: UUID):
                 sender=message.sender,
                 content=message.content,
                 code_snippet=message.code_snippet,
-                timestamp=message.created_at
+                timestamp=message.created_at,
+                language=message.language if message.language else None
             )
             for message in conversation.messages.all()
         ]

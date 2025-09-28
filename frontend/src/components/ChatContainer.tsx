@@ -58,7 +58,7 @@ export const ChatContainer = () => {
 
   const handleSendMessage = () => {
     if (message.trim() && isConnected) {
-      sendMessage(message);
+      sendMessage({ message });
       setMessage("");
     }
   };
@@ -79,6 +79,19 @@ export const ChatContainer = () => {
     }
     } finally {
       setIsExecuting(false);
+    }
+  };
+
+
+  const handleSubmitCode = async (code: string, language: string, message?: string) => {
+    console.log("herna mann lagyo,",code,language)
+    if (isConnected) {
+      sendMessage({
+        message: message || "",
+        code_snippet: code,
+        language,
+      });
+      setIsDrawerOpen(false);
     }
   };
 
@@ -104,7 +117,6 @@ export const ChatContainer = () => {
           </Alert>
         )}
 
-        {/* Messages Area */}
         <Box style={{ flex: 1, overflowY: "auto", paddingBottom: "1rem" }}>
           {allMessages.length === 0 && !isTyping ? (
             <Text c="dimmed" ta="center" pt="xl">Start a new conversation</Text>
@@ -113,8 +125,6 @@ export const ChatContainer = () => {
               {allMessages.map((msg) => (
                 <Box key={msg.id} style={{ display: "flex", flexDirection: "column", alignItems: msg.sender === "user" ? "flex-end" : "flex-start" }}>
                   <Box p="sm" style={{ backgroundColor: msg.sender === "user" ? "#e3f2fd" : "#f5f5f5", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", maxWidth: "70%" }}>
-                    
-                    {/* THIS IS THE KEY CHANGE: CONDITIONAL RENDERING */}
                     {msg.code_snippet && msg.language ? (
                       <Stack gap="xs">
                         {msg.content && <Text size="sm">{msg.content}</Text>}
@@ -182,6 +192,7 @@ export const ChatContainer = () => {
         executionOutput={executionOutput}
         isExecuting={isExecuting}
         onRunCode={handleRunCode}
+        onSubmitCode={handleSubmitCode}
       />
     </>
   );

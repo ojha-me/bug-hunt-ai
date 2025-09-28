@@ -10,6 +10,12 @@ interface Message {
   timestamp: string;
 }
 
+interface OutgoingMessage {
+  message: string;
+  code_snippet?: string;
+  language?: string;
+}
+
 interface Event {
   type: 'typing_start' | 'done' | 'message_chunk'; // Keep other events if needed
   content: string;
@@ -113,9 +119,9 @@ export const useWebSocket = (conversationId: string) => {
     };
   }, [conversationId, token]);
 
-  const sendMessage = useCallback((message: string) => {
+  const sendMessage = useCallback((payload: OutgoingMessage) => {
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify({ message }));
+      socketRef.current.send(JSON.stringify(payload));
     } else {
       console.warn("WebSocket not connected");
     }

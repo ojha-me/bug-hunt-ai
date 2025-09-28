@@ -48,15 +48,14 @@ class ConversationService:
 
     @staticmethod
     @database_sync_to_async
-    def save_user_message(conversation, content):
-        message_type = ''
-        code_snippet = ''
+    def save_user_message(conversation, content, code_snippet=None, language=None ):
         return Message.objects.create(
             conversation=conversation,
             sender=MessageSenderChoices.USER,
             content=content,
             code_snippet=code_snippet,
-            message_type=message_type or MessageTypeChoices.CONVERSATION
+            language=language,
+            message_type=MessageTypeChoices.CONVERSATION
         )
 
     @staticmethod

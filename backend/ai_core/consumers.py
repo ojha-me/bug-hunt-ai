@@ -45,14 +45,19 @@ class AIChatConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         data = json.loads(text_data)
         message_content = data.get("message")
+        message_content = data.get("message")
+        code_snippet = data.get("code_snippet")
+        language = data.get("language")
 
-        if not message_content:
+        if not message_content and not code_snippet:
             return
 
         # Save user message
         user_message = await self.conversation_service.save_user_message(
             self.conversation,
-            message_content
+            message_content,
+            code_snippet,
+            language,
         )
         await self.broadcast_message(user_message)
         # tell the frontend the ai is typing...

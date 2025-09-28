@@ -2,7 +2,7 @@ from uuid import UUID
 from ninja import Router
 from ai_core.models import Conversation
 from ai_core.api_types import ConversationResponse, MessageResponse
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
 from users.utils.ninja import post, get
 from typing import Dict

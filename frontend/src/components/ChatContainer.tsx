@@ -1,5 +1,3 @@
-// In your components/ChatContainer.tsx
-
 import { useParams } from "react-router-dom";
 import {
   Box,
@@ -9,29 +7,31 @@ import {
   Stack,
   Group,
   Alert,
-  ActionIcon,
-  Loader, // <-- Import Loader for the typing indicator
+  Loader,
 } from "@mantine/core";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { FaExclamationCircle } from "react-icons/fa";
-import { FiMaximize, FiMinimize } from "react-icons/fi";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { getConversation } from "../api/conversation";
 import type { ConversationResponse } from "../types/ai_core/api_types";
-import Editor from "@monaco-editor/react";
 import { useQuery } from "@tanstack/react-query";
+
+import { CodeDrawer } from "./CodeDrawer";
+import { RiCodeBoxLine } from "react-icons/ri";
+import { runCode } from "../api/execution";
 
 export const ChatContainer = () => {
   const { conversationId } = useParams<{ conversationId: string }>();
   const [message, setMessage] = useState("");
-  const [expandedEditors, setExpandedEditors] = useState<{
-    [key: string]: boolean;
-  }>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Get the new isTyping state from the hook
-  const { messages: liveMessages, sendMessage, isConnected, isTyping } =
-    useWebSocket(conversationId!);
+  // WebSocket and historical data fetching
+  const {
+    messages: liveMessages,
+    sendMessage,
+    isConnected,
+    isTyping,
+  } = useWebSocket(conversationId!);
 
   const { data: conversation } = useQuery<ConversationResponse>({
     queryKey: ["conversation", conversationId],
@@ -39,8 +39,14 @@ export const ChatContainer = () => {
     enabled: !!conversationId,
   });
 
+  // State for the Code Drawer
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [activeCode, setActiveCode] = useState<{ content: string; language: string; } | null>(null);
+  const [executionOutput, setExecutionOutput] = useState<string>("");
+  const [isExecuting, setIsExecuting] = useState(false);
+
+
   const allMessages = useMemo(() => {
-    // Make sure to handle potential duplicates between history and live messages
     const messageIds = new Set(conversation?.messages.map(m => m.id));
     const uniqueLiveMessages = liveMessages.filter(m => !messageIds.has(m.id));
 
@@ -57,200 +63,126 @@ export const ChatContainer = () => {
     }
   };
 
-  const toggleExpand = (id: string) => {
-    setExpandedEditors((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
+  const handleRunCode = async (code: string, language: string) => {
+    setIsExecuting(true);
+    setExecutionOutput("");
+    try {
+      const response = await runCode({ code, language });
+      console.log(response,"herna mann lagyo")
+      const fullOutput = response.output ? response.output : `Error: ${response.error}`;
+      setExecutionOutput(fullOutput);
+    } catch (e) {
+      if (typeof e === "string") {
+        setExecutionOutput(e.toUpperCase());
+    } else if (e instanceof Error) {
+        setExecutionOutput(e.message);
+    }
+    } finally {
+      setIsExecuting(false);
+    }
   };
 
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [allMessages, isTyping]); // Also scroll when typing indicator appears
+  }, [allMessages, isTyping]);
 
   return (
-    <Box
-      p="md"
-      style={{
-        height: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        background: "#f9f9f9",
-      }}
-    >
-      {!isConnected && (
-        <Alert
-          icon={<FaExclamationCircle size={16} />}
-          title="Connection Lost"
-          color="red"
-          mb="md"
-        >
-          Trying to reconnect to the server...
-        </Alert>
-      )}
-
-      {/* Messages Area */}
+    <>
       <Box
+        p="md"
         style={{
-          flex: 1,
-          overflowY: "auto",
-          paddingBottom: "1rem",
+          height: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          background: "#f9f9f9",
         }}
       >
-        {allMessages.length === 0 && !isTyping ? ( // Hide "start conversation" if AI is about to reply
-          <Text c="dimmed" ta="center" pt="xl">
-            Start a new conversation
-          </Text>
-        ) : (
-          <Stack gap="sm">
-            {allMessages.map((msg) => (
-              // ... Your existing message rendering logic (unchanged)
-              <Box
-                key={msg.id}
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems:
-                    msg.sender === "user" ? "flex-end" : "flex-start",
-                  marginBottom: "0.5rem",
-                }}
-              >
-                {/* Message Bubble */}
-                <Box
-                  p="sm"
-                  style={{
-                    backgroundColor:
-                      msg.sender === "user" ? "#e3f2fd" : "#f5f5f5",
-                    borderRadius: "12px",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                    maxWidth: "70%",
-                    position: "relative",
-                  }}
-                >
-                  {msg.code_snippet && msg.language ? (
-                    <Stack gap="xs" style={{ position: "relative" }}>
-                      {msg.content && (
-                        <Text size="sm">{msg.content}</Text>
-                      )}
-
-                      {/* Expand/Contract Icon */}
-                      <Group justify="right">
-                        <ActionIcon
-                          size="sm"
-                          variant="light"
-                          onClick={() => toggleExpand(msg.id)}
-                        >
-                          {expandedEditors[msg.id] ? (
-                            <FiMinimize />
-                          ) : (
-                            <FiMaximize />
-                          )}
-                        </ActionIcon>
-                      </Group>
-
-                      <Editor
-                        className={`editor-${msg.id}`}
-                        defaultLanguage={msg.language}
-                        value={msg.code_snippet}
-                        onChange={(newValue) => {
-                          // Note: This mutation is not ideal. Consider a stateful approach.
-                          // For now, it works for local reflection.
-                          msg.code_snippet = newValue ?? "";
-                        }}
-                        language={msg.language}
-                        options={{
-                          minimap: { enabled: false },
-                          fontSize: 14,
-                          wordWrap: "on",
-                        }}
-                        height={expandedEditors[msg.id] ? "80vh" : "400px"}
-                      />
-
-                      <Button
-                        size="xs"
-                        variant="light"
-                        onClick={() => {
-                          if (isConnected) {
-                            sendMessage(
-                              JSON.stringify({
-                                type: "code_update",
-                                id: msg.id,
-                                code_snippet: msg.code_snippet,
-                              })
-                            );
-                          }
-                        }}
-                      >
-                        Save & Send
-                      </Button>
-                    </Stack>
-                  ) : (
-                    <Text size="sm">{msg.content}</Text>
-                  )}
-                </Box>
-
-                {/* Timestamp */}
-                <Text
-                  size="xs"
-                  c="dimmed"
-                  ta={msg.sender === "user" ? "right" : "left"}
-                  style={{ marginTop: "2px" }}
-                >
-                  {new Date(msg.timestamp).toLocaleTimeString()}
-                </Text>
-              </Box>
-            ))}
-
-            {/* AI Typing Indicator */}
-            {isTyping && (
-              <Group gap="xs" style={{ alignSelf: 'flex-start' }}>
-                <Box
-                  p="sm"
-                  style={{
-                    backgroundColor: "#f5f5f5",
-                    borderRadius: "12px",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                  }}
-                >
-                  <Loader size="sm" type="dots" />
-                </Box>
-              </Group>
-            )}
-
-            <div ref={messagesEndRef} />
-          </Stack>
+        {!isConnected && (
+          <Alert icon={<FaExclamationCircle size={16} />} title="Connection Lost" color="red" mb="md">
+            Trying to reconnect to the server...
+          </Alert>
         )}
-      </Box>
 
-      {/* Input Area */}
-      {/* ... Your existing input area logic (unchanged) */}
-      <Box
-        style={{
-          borderTop: "1px solid #ddd",
-          paddingTop: "0.5rem",
-          background: "#fff",
-        }}
-      >
-        <Group gap="sm" style={{ width: "100%" }}>
-          <TextInput
-            placeholder="Type your message..."
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={(e) =>
-              e.key === "Enter" && handleSendMessage()
-            }
-            style={{ flex: 1 }}
-            disabled={!isConnected || isTyping} // <-- Disable input while AI is typing
-          />
-          <Button
-            onClick={handleSendMessage}
-            disabled={!isConnected || !message.trim() || isTyping} // <-- Disable button while AI is typing
-          >
-            Send
-          </Button>
-        </Group>
+        {/* Messages Area */}
+        <Box style={{ flex: 1, overflowY: "auto", paddingBottom: "1rem" }}>
+          {allMessages.length === 0 && !isTyping ? (
+            <Text c="dimmed" ta="center" pt="xl">Start a new conversation</Text>
+          ) : (
+            <Stack gap="sm">
+              {allMessages.map((msg) => (
+                <Box key={msg.id} style={{ display: "flex", flexDirection: "column", alignItems: msg.sender === "user" ? "flex-end" : "flex-start" }}>
+                  <Box p="sm" style={{ backgroundColor: msg.sender === "user" ? "#e3f2fd" : "#f5f5f5", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", maxWidth: "70%" }}>
+                    
+                    {/* THIS IS THE KEY CHANGE: CONDITIONAL RENDERING */}
+                    {msg.code_snippet && msg.language ? (
+                      <Stack gap="xs">
+                        {msg.content && <Text size="sm">{msg.content}</Text>}
+                        <Button
+                          variant="light"
+                          size="xs"
+                          leftSection={<RiCodeBoxLine size={16} />}
+                          onClick={() => {
+                            setActiveCode({
+                              content: msg.code_snippet!,
+                              language: msg.language!,
+                            });
+                            setExecutionOutput(""); // Clear previous output
+                            setIsDrawerOpen(true);
+                          }}
+                        >
+                          View & Run Code ({msg.language})
+                        </Button>
+                      </Stack>
+                    ) : (
+                      <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>{msg.content}</Text>
+                    )}
+
+                  </Box>
+                  <Text size="xs" c="dimmed" ta={msg.sender === "user" ? "right" : "left"} style={{ marginTop: "2px" }}>
+                    {new Date(msg.timestamp).toLocaleTimeString()}
+                  </Text>
+                </Box>
+              ))}
+
+              {isTyping && (
+                <Group gap="xs" style={{ alignSelf: 'flex-start' }}>
+                  <Box p="sm" style={{ backgroundColor: "#f5f5f5", borderRadius: "12px" }}>
+                    <Loader size="sm" type="dots" />
+                  </Box>
+                </Group>
+              )}
+              <div ref={messagesEndRef} />
+            </Stack>
+          )}
+        </Box>
+
+        {/* Input Area */}
+        <Box style={{ borderTop: "1px solid #ddd", paddingTop: "0.5rem", background: "#fff" }}>
+          <Group gap="sm" style={{ width: "100%" }}>
+            <TextInput
+              placeholder="Type your message..."
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+              style={{ flex: 1 }}
+              disabled={!isConnected || isTyping}
+            />
+            <Button onClick={handleSendMessage} disabled={!isConnected || !message.trim() || isTyping}>
+              Send
+            </Button>
+          </Group>
+        </Box>
       </Box>
-    </Box>
+      <CodeDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        code={activeCode?.content ?? ""}
+        language={activeCode?.language ?? "plaintext"}
+        executionOutput={executionOutput}
+        isExecuting={isExecuting}
+        onRunCode={handleRunCode}
+      />
+    </>
   );
 };

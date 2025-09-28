@@ -20,6 +20,8 @@ services:
     volumes:
       - ./backend:/app
       - /app/.venv 
+      # required to initiate the docker client, ro for read only.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     command: /app/.venv/bin/python -m uvicorn bug_hunt_project.asgi:application --host 0.0.0.0 --port 8000 --reload
     env_file:
       - ./.env.db

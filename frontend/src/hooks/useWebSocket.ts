@@ -10,10 +10,27 @@ interface Message {
   timestamp: string;
 }
 
+interface Event {
+  type: 'typing_start' | 'done' | 'message_chunk'; // Keep other events if needed
+  content: string;
+}
+
+// Type guard to check if the received data is a message
+function isMessage(data: any): data is Message {
+  return data && typeof data.id !== 'undefined' && typeof data.sender !== 'undefined';
+}
+
+// Type guard to check if the received data is an event
+function isEvent(data: any): data is Event {
+    return data && typeof data.type !== 'undefined';
+}
+
+
 export const useWebSocket = (conversationId: string) => {
   const socketRef = useRef<WebSocket | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isConnected, setIsConnected] = useState(false);
+  const [isTyping, setIsTyping] = useState(false); // <-- New state for typing indicator
   const reconnectAttemptsRef = useRef(0);
   const maxReconnectAttempts = 5;
 
@@ -44,15 +61,23 @@ export const useWebSocket = (conversationId: string) => {
 
       ws.onmessage = (event) => {
         try {
-          const data: Message = JSON.parse(event.data);
+          const data = JSON.parse(event.data);
 
-          if (!data?.id || !data?.sender || !data?.content || !data?.timestamp) {
-            console.warn("Invalid message format received:", data);
-            return;
-        }
-          setMessages((prev) =>
-            prev.some((m) => m.id === data.id) ? prev : [...prev, data]
-        );
+          // Check if it's a message event
+          if (isMessage(data)) {
+            setMessages((prev) =>
+              prev.some((m) => m.id === data.id) ? prev : [...prev, data]
+            );
+          // Check if it's an event for typing status
+          } else if (isEvent(data)) {
+              if (data.type === 'typing_start') {
+                  setIsTyping(true);
+              } else if (data.type === 'done') {
+                  setIsTyping(false);
+              }
+          } else {
+            console.warn("Invalid data format received:", data);
+          }
         } catch (err) {
           console.error("Failed to parse message:", err);
         }
@@ -60,6 +85,7 @@ export const useWebSocket = (conversationId: string) => {
 
       ws.onclose = (event) => {
         setIsConnected(false);
+        setIsTyping(false); // Reset typing status on disconnect
         socketRef.current = null;
 
         if (event.code !== 1000 && reconnectAttemptsRef.current < maxReconnectAttempts) {
@@ -73,6 +99,7 @@ export const useWebSocket = (conversationId: string) => {
 
       ws.onerror = (err) => {
         console.error("WebSocket error:", err);
+        setIsTyping(false); // Also reset on error
       };
     };
 
@@ -94,5 +121,6 @@ export const useWebSocket = (conversationId: string) => {
     }
   }, []);
 
-  return { messages, sendMessage, isConnected };
+  // Expose the new isTyping state
+  return { messages, sendMessage, isConnected, isTyping };
 };

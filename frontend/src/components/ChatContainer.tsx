@@ -1,3 +1,5 @@
+// In your components/ChatContainer.tsx
+
 import { useParams } from "react-router-dom";
 import {
   Box,
@@ -8,6 +10,7 @@ import {
   Group,
   Alert,
   ActionIcon,
+  Loader, // <-- Import Loader for the typing indicator
 } from "@mantine/core";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { FaExclamationCircle } from "react-icons/fa";
@@ -26,7 +29,8 @@ export const ChatContainer = () => {
   }>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { messages: liveMessages, sendMessage, isConnected } =
+  // Get the new isTyping state from the hook
+  const { messages: liveMessages, sendMessage, isConnected, isTyping } =
     useWebSocket(conversationId!);
 
   const { data: conversation } = useQuery<ConversationResponse>({
@@ -36,8 +40,12 @@ export const ChatContainer = () => {
   });
 
   const allMessages = useMemo(() => {
+    // Make sure to handle potential duplicates between history and live messages
+    const messageIds = new Set(conversation?.messages.map(m => m.id));
+    const uniqueLiveMessages = liveMessages.filter(m => !messageIds.has(m.id));
+
     const history = conversation?.messages ?? [];
-    return [...history, ...liveMessages].sort(
+    return [...history, ...uniqueLiveMessages].sort(
       (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
   }, [conversation, liveMessages]);
@@ -59,7 +67,7 @@ export const ChatContainer = () => {
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [allMessages]);
+  }, [allMessages, isTyping]); // Also scroll when typing indicator appears
 
   return (
     <Box
@@ -90,13 +98,14 @@ export const ChatContainer = () => {
           paddingBottom: "1rem",
         }}
       >
-        {allMessages.length === 0 ? (
+        {allMessages.length === 0 && !isTyping ? ( // Hide "start conversation" if AI is about to reply
           <Text c="dimmed" ta="center" pt="xl">
             Start a new conversation
           </Text>
         ) : (
           <Stack gap="sm">
             {allMessages.map((msg) => (
+              // ... Your existing message rendering logic (unchanged)
               <Box
                 key={msg.id}
                 style={{
@@ -126,7 +135,7 @@ export const ChatContainer = () => {
                       )}
 
                       {/* Expand/Contract Icon */}
-                      <Group position="right">
+                      <Group justify="right">
                         <ActionIcon
                           size="sm"
                           variant="light"
@@ -145,6 +154,8 @@ export const ChatContainer = () => {
                         defaultLanguage={msg.language}
                         value={msg.code_snippet}
                         onChange={(newValue) => {
+                          // Note: This mutation is not ideal. Consider a stateful approach.
+                          // For now, it works for local reflection.
                           msg.code_snippet = newValue ?? "";
                         }}
                         language={msg.language}
@@ -190,12 +201,30 @@ export const ChatContainer = () => {
                 </Text>
               </Box>
             ))}
+
+            {/* AI Typing Indicator */}
+            {isTyping && (
+              <Group gap="xs" style={{ alignSelf: 'flex-start' }}>
+                <Box
+                  p="sm"
+                  style={{
+                    backgroundColor: "#f5f5f5",
+                    borderRadius: "12px",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                  }}
+                >
+                  <Loader size="sm" type="dots" />
+                </Box>
+              </Group>
+            )}
+
             <div ref={messagesEndRef} />
           </Stack>
         )}
       </Box>
 
       {/* Input Area */}
+      {/* ... Your existing input area logic (unchanged) */}
       <Box
         style={{
           borderTop: "1px solid #ddd",
@@ -212,11 +241,11 @@ export const ChatContainer = () => {
               e.key === "Enter" && handleSendMessage()
             }
             style={{ flex: 1 }}
-            disabled={!isConnected}
+            disabled={!isConnected || isTyping} // <-- Disable input while AI is typing
           />
           <Button
             onClick={handleSendMessage}
-            disabled={!isConnected || !message.trim()}
+            disabled={!isConnected || !message.trim() || isTyping} // <-- Disable button while AI is typing
           >
             Send
           </Button>

@@ -11,7 +11,7 @@ from ninja.security import HttpBearer
 from typing import Optional
 
 JWT_ALGORITHM = "HS256"
-JWT_ACCESS_LIFETIME = timedelta(minutes=10)
+JWT_ACCESS_LIFETIME = timedelta(minutes=100)
 JWT_REFRESH_LIFETIME = timedelta(days=7)
 JWT_ROTATE_REFRESH_TOKENS = True
 

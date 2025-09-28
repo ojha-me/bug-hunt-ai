@@ -7,6 +7,7 @@ from .utils.auth_helpers import authenticate_user
 from .utils.conversation_helpers import ConversationService
 from channels.db import database_sync_to_async
 import logging
+import asyncio
 
 logger = logging.getLogger('ai_core.consumers')
 
@@ -42,7 +43,6 @@ class AIChatConsumer(AsyncWebsocketConsumer):
         )
 
     async def receive(self, text_data):
-        print("text data kasto dekhinxa herna khojdai", text_data)
         data = json.loads(text_data)
         message_content = data.get("message")
 
@@ -54,6 +54,12 @@ class AIChatConsumer(AsyncWebsocketConsumer):
             self.conversation,
             message_content
         )
+        await self.broadcast_message(user_message)
+        # tell the frontend the ai is typing...
+        await self.broadcast_event("typing_start")
+
+        # short natural delay to simulate human like pause
+        await asyncio.sleep(1)
 
         needs_title = False
         user_messages_count = await database_sync_to_async(
@@ -68,7 +74,6 @@ class AIChatConsumer(AsyncWebsocketConsumer):
                 message_content
             )
 
-        await self.broadcast_message(user_message)
 
         # Generate AI response
         ai_text = await self.ai_service.generate_response(message_content)
@@ -78,6 +83,8 @@ class AIChatConsumer(AsyncWebsocketConsumer):
             self.conversation,
             ai_text
         )
+        # tell the frontend the ai is done typing
+        await self.broadcast_event("done")
 
         await self.broadcast_message(ai_message)
 
@@ -101,3 +108,19 @@ class AIChatConsumer(AsyncWebsocketConsumer):
 
     async def chat_message(self, event):
         await self.send(text_data=json.dumps(event["message"]))
+
+
+    async def broadcast_event(self, event_type: str, content: str = ""):
+        await self.channel_layer.group_send(
+            self.room_group_name,
+            {
+                "type": "chat.event",
+                "event": {
+                    "type": event_type,
+                    "content": content,
+                },
+            },
+        )
+
+    async def chat_event(self, event):
+        await self.send(text_data=json.dumps(event["event"]))

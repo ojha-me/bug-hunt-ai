@@ -45,8 +45,11 @@ export const ChatContainer = () => {
   const [executionOutput, setExecutionOutput] = useState<string>("");
   const [isExecuting, setIsExecuting] = useState(false);
 
-
   const allMessages = useMemo(() => {
+    if (!conversation?.messages) 
+    {
+      return []
+    }
     const messageIds = new Set(conversation?.messages.map(m => m.id));
     const uniqueLiveMessages = liveMessages.filter(m => !messageIds.has(m.id));
 

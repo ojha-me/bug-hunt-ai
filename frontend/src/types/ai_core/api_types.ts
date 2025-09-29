@@ -27,3 +27,7 @@ export interface CreateConversationSchema {
   title: string;
 }
 export interface Schema {}
+export interface UpdateConversationTitleSchema {
+  conversation_id: string;
+  title: string;
+}

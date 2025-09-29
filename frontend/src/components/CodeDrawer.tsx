@@ -17,7 +17,6 @@ interface CodeDrawerProps {
   onClose: () => void;
   code: string;
   language: string;
-  messageId: string;
   executionOutput: string;
   isExecuting: boolean;
   onRunCode: (code: string, language: string) => void;
@@ -29,7 +28,6 @@ export const CodeDrawer = ({
   onClose,
   code,
   language,
-  messageId,
   executionOutput,
   isExecuting,
   onRunCode,
@@ -42,35 +40,10 @@ export const CodeDrawer = ({
 
   useEffect(() => {
     if (isOpen) {
-      // When drawer opens, try to restore saved code and output for this specific message
-      const storageKey = `codeExecution_${messageId}`;
-      const savedData = localStorage.getItem(storageKey);
-      if (savedData) {
-        try {
-          const parsed = JSON.parse(savedData);
-          // Only restore if it's recent (less than 1 hour old)
-          if (Date.now() - parsed.timestamp < 3600000) {
-            setCurrentCode(parsed.code || code);
-            if (parsed.output || parsed.error) {
-              setCurrentOutput(parsed.output || `Error: ${parsed.error}`);
-            }
-          } else {
-            // Use passed props if saved data is too old
-            setCurrentCode(code);
-            setCurrentOutput(executionOutput);
-          }
-        } catch {
-          // Use passed props if parsing fails
-          setCurrentCode(code);
-          setCurrentOutput(executionOutput);
-        }
-      } else {
-        // Use passed props if no saved data
         setCurrentCode(code);
         setCurrentOutput(executionOutput);
-      }
     }
-  }, [isOpen, code, executionOutput, messageId]);
+  }, [isOpen, code, executionOutput]);
 
   return (
     <Drawer

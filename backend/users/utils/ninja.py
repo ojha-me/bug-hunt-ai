@@ -50,3 +50,9 @@ def public_get(router: Router, path: str, response: Dict[int, Any], **kwargs):
 
 def public_post(router: Router, path: str, response: Dict[int, Any], **kwargs):
     return setup_route("POST", router, path, response, auth=None, **kwargs)
+
+def put(router: Router, path: str, response: Dict[int, Any], **kwargs):
+    return setup_route("PUT", router, path, response, auth=JWTAuth, **kwargs)
+
+def delete(router: Router, path: str, response: Dict[int, Any], **kwargs):
+    return setup_route("DELETE", router, path, response, auth=JWTAuth, **kwargs)

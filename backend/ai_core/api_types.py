@@ -9,6 +9,9 @@ class CreateConversationSchema(Schema):
     id: UUID
     title: str
 
+class UpdateConversationTitleSchema(Schema):
+    conversation_id: UUID
+    title: str
 
 class MessageResponse(Schema):
     id: UUID

@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'ai_core',
     'execution',
     'billing',
+    'learning_paths',
 ]
 
 MIDDLEWARE = [

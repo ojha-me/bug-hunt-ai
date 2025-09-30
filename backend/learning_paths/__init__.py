@@ -1,0 +1,1 @@
+# Learning Paths Django App

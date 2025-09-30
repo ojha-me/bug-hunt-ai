@@ -12,7 +12,6 @@ import asyncio
 logger = logging.getLogger('ai_core.consumers')
 
 
-
 class AIChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         logger.info("WebSocket connection attempt------------")
@@ -44,7 +43,6 @@ class AIChatConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data):
         data = json.loads(text_data)
-        message_content = data.get("message")
         message_content = data.get("message")
         code_snippet = data.get("code_snippet")
         language = data.get("language")
@@ -81,13 +79,16 @@ class AIChatConsumer(AsyncWebsocketConsumer):
 
 
         # Generate AI response
-        ai_text = await self.ai_service.generate_response(message_content)
+        ai_text = await self.ai_service.generate_response(message_content, code_snippet, self.conversation)
 
         # Save AI message
         ai_message = await self.conversation_service.save_ai_message(
             self.conversation,
             ai_text
         )
+
+        await self.ai_service.generate_summary(self.conversation)
+
         # tell the frontend the ai is done typing
         await self.broadcast_event("done")
 

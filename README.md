@@ -1,8 +1,8 @@
 # BugHunt AI   
-**Learn to Code by Fixing Bugs — In Real-Time Conversations**
+**Master Programming Through Interactive Bug Hunting & Structured Learning Paths**
 
-> 💡 Traditional coding tutorials are passive. You read. You watch. Then you struggle. You get bored. You get the faulty feeling of acheivement but you've hardly learnt anything.  
-> **BugHunt AI flips the script.** Learn by doing — inside a live conversation with an AI tutor who gives you broken code and challenges you to fix it.
+> Traditional coding tutorials are passive. You read. You watch. Then you struggle. You get bored. You get the fake sense of achievement but you've hardly learnt anything.  
+> **BugHunt AI flips the script.** Learn by doing — either through structured learning journeys or instant bug-hunting challenges with an AI tutor who gives you broken code and guides you to fix it.
 
 [![Tech Stack](https://img.shields.io/badge/Tech-Django%20%2B%20React%20%2B%20Gemini-blue)](tech)
 [![Status](https://img.shields.io/badge/Status-Beta-green)](status)
@@ -11,47 +11,88 @@
 
 ## The Big Idea
 
-Most learners forget code because they don’t *use* it deeply enough.
+Most learners forget code because they don't *use* it deeply enough.
 
-**BugHunt AI makes learning active, engaging, and memorable** by turning coding education into a **bug-hunting game** powered by AI:
+**BugHunt AI makes learning active, engaging, and memorable** through two powerful learning modes:
 
-1. Ask a question: *"What’s a closure in JavaScript?"*
-2. Get a clear explanation — and a live code editor with working (or broken!) examples.
-3. Tweak, run, and explore right in your browser.
-4. The AI throws you a challenge: *"This function should return 6, but it returns NaN. Find the bug!"*
-5. Fix it. Submit. Get instant feedback.
-6. Level up.
+### **Learning Paths Mode** (Structured Learning Path)
+Follow curated programming courses with progress tracking:
+1. Choose a topic: *"JavaScript Fundamentals"* or *"Python Basics"*
+2. Progress through structured lessons with clear objectives
+3. Learn concepts through interactive explanations and examples
+4. Practice with targeted bug-fixing challenges for each topic
+5. Track your progress and build skills systematically
+6. Master programming step-by-step with AI guidance
 
-🧠 It’s not just about answers — it’s about **thinking like a developer**.
+### **General Chat Mode** (Instant Bug Hunting)
+Jump straight into coding challenges and get immediate help:
+1. Ask any question: *"What's a closure in JavaScript?"*
+2. Get explanations with live, editable code examples
+3. Receive instant challenges: *"This function should return 6, but it returns NaN. Find the bug!"*
+4. Fix it, submit, get feedback, and level up
+5. Learn through exploration and immediate problem-solving
+
+It's not just about answers — it's about **thinking like a developer** through both structured learning and hands-on practice.
 
 ---
 
-## ✨ Key Features
+## Key Features
 
-### 💬 Conversational Learning
+### **Structured Learning Paths**
+- **Curated Topics**: JavaScript Fundamentals, Python Basics, React Development, and more
+- **Progress Tracking**: Visual progress bars and completion statistics
+- **Learning Objectives**: Clear goals for each lesson and subtopic
+- **Flexible Navigation**: Skip, revisit, or advance through topics at your own pace
+- **Prerequisites System**: Logical learning progression with topic dependencies
+
+### **Conversational Learning**
 Chat with a Gemini-powered AI tutor that adapts to your level and guides you through concepts with real code.
 
-### 🧩 Interactive Code Snippets
+### **Interactive Code Snippets**
 Every code example appears in a **fully-featured Monaco editor** (same engine as VS Code) — editable, syntax-highlighted, and ready to run.
 
-### ⚡ In-Browser Execution
+### **In-Browser Execution**
 Run code safely in a sandboxed Docker container — no setup, no risk. See output instantly without leaving the chat.
 
-### 🐛 AI-Generated Challenges
-The AI doesn’t just teach — it **tests your understanding** with unique, context-aware coding puzzles containing subtle bugs.
+### **AI-Generated Challenges**
+The AI doesn't just teach — it **tests your understanding** with unique, context-aware coding puzzles containing subtle bugs.
 
-### 🔍 Real-Time Code Review
+### **Real-Time Code Review**
 Submit your fix and get:
-- ✅ Confirmation if correct
-- 🛠 Hints if you’re stuck
-- 📚 Explanations of what went wrong and why
+- Confirmation if correct
+- Hints if you're stuck
+- Explanations of what went wrong and why
 
-### 🔄 Feedback Loop Built-In
-Mistakes are part of learning. Every failed attempt becomes a teaching moment — all inside the same conversation.
+### **Dual Learning Modes**
+- **Learning Path Mode**: Structured, goal-oriented learning with progress tracking
+- **General Chat Mode**: Free-form exploration and instant bug-hunting challenges
+- **Seamless Switching**: Move between modes as your learning needs change
 
 ---
 
-## 🛠️ How It Works
+## How It Works
+
+### **Learning Path Mode**
+
+1. **Choose Your Journey**  
+   Browse curated topics like "JavaScript Fundamentals" or "Python Basics" with difficulty indicators and time estimates.
+
+2. **Start Learning**  
+   Begin with structured lessons that build on each other, complete with learning objectives and progress tracking.
+
+3. **Interactive Learning**  
+   Each lesson includes AI explanations, live code examples in Monaco editor, and hands-on practice.
+
+4. **Challenge Phase**  
+   After learning concepts, tackle bug-fixing challenges specifically designed for that topic.
+
+5. **Track Progress**  
+   Monitor your advancement through visual dashboards, completion rates, and skill development.
+
+6. **Master & Advance**  
+   Complete topics to unlock advanced courses and build comprehensive programming skills.
+
+### **General Chat Mode**
 
 1. **Start a Conversation**  
    Ask anything: *"Explain async/await in Python"* or *"Show me a React component with state."*
@@ -60,16 +101,16 @@ Mistakes are part of learning. Every failed attempt becomes a teaching moment �
    The AI responds with explanation + an embedded code editor. Run it. Break it. Fix it.
 
 3. **Receive a Challenge**  
-   “Here’s a function that’s supposed to reverse a string — but it doesn’t work. Can you find the bug?”
+   "Here's a function that's supposed to reverse a string — but it doesn't work. Can you find the bug?"
 
 4. **Hunt the Bug**  
    Edit the code in the editor. Try different fixes. Run it repeatedly.
 
 5. **Submit & Learn**  
-   Click “Submit Solution.” The AI runs it, analyzes your fix, and gives personalized feedback.
+   Click "Submit Solution." The AI runs it, analyzes your fix, and gives personalized feedback.
 
-6. **Repeat & Master**  
-   Build muscle memory through practice, not passive watching.
+6. **Explore & Discover**  
+   Jump between topics, explore edge cases, and learn through curiosity-driven practice.
 
 ---
 
@@ -77,7 +118,7 @@ Mistakes are part of learning. Every failed attempt becomes a teaching moment �
 
 | Layer       | Technology |
 |------------|-----------|
-| **Frontend** | React, TypeScript, Vite, TailwindCSS, Monaco Editor |
+| **Frontend** | React, TypeScript, Vite, Mantine UI, Monaco Editor |
 | **Backend**  | Python, Django, Django Ninja (API), Django Channels (WebSockets) |
 | **AI Engine** | Google Gemini API (for explanations, challenges, and code review) |
 | **Code Execution** | Docker containers (sandboxed, secure, per-session isolation) |
@@ -86,23 +127,5 @@ Mistakes are part of learning. Every failed attempt becomes a teaching moment �
 
 All code execution happens in isolated, resource-limited containers — safe even if users write infinite loops or malicious code.
 
----
 
-## 🚀 Future Roadmap
 
-- [ ] Support multiple languages: JavaScript,TypeScript, Python
-- [ ] Save progress & track skills over time
-- [ ] Create custom challenges (teachers/coaches)
-- [ ] Add multiplayer debugging races
-- [ ] Export snippets to GitHub Gist
-
----
-
-## 🎯 Ready to Hunt Bugs?
-
-> “The best way to learn code is to break it, then fix it.”  
-> — BugHunt AI
-
-👉 Start the conversation. Break something. Learn deeply.
-
-🚀 **Launch the app and begin your first bug hunt today.**

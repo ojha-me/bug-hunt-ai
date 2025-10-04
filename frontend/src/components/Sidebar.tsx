@@ -1,11 +1,13 @@
-import { Button, Stack, ScrollArea, Box, Text, Loader, Modal, Group, TextInput } from "@mantine/core";
-import { FaPlus, FaEdit, FaTrash } from "react-icons/fa";
+import { Button, Stack, ScrollArea, Box, Text, Loader, Modal, Group, TextInput, Divider, Progress, Badge } from "@mantine/core";
+import { FaPlus, FaEdit, FaTrash, FaGraduationCap, FaPlay } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { getConversations, createConversation, updateConversationTitle, deleteConversation } from "../api/conversation";
+import { generateLearningPath, userLearningPaths } from "../api/learningPaths";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ConversationResponse } from "../types/ai_core/api_types";
 import { notifications } from "@mantine/notifications";
 import { useState } from "react";
+import type { UserLearningPathResponse } from "../types/learning_paths/api_types";
 
 export const Sidebar = () => {
   const navigate = useNavigate();
@@ -19,6 +21,11 @@ export const Sidebar = () => {
     queryFn: getConversations
   });
 
+  const { data: learningPaths, isLoading: pathsLoading } = useQuery<UserLearningPathResponse[]>({
+    queryKey: ['learning-paths'],
+    queryFn: () => userLearningPaths()
+  });
+  
   const createConvoMutation = useMutation({
     mutationFn: createConversation,
     onSuccess: (newConversation) => {
@@ -106,6 +113,15 @@ export const Sidebar = () => {
       deleteConvoMutation.mutate(deletingConversationId);
     }
   };
+
+  const handleLearningPathClick = (pathId: string) => {
+    navigate(`/learning-path/${pathId}`);
+  };
+
+  const handleContinueLearning = (conversationId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate(`/conversation/${conversationId}`);
+  };
   
   return (
     <Box 
@@ -125,61 +141,140 @@ export const Sidebar = () => {
     >
       <Text size="xl" fw={700} mb="md" style={{ textAlign: 'center' }}>BugHunt</Text>
       
-      <Box mb="md">
+      <Stack gap="sm" mb="md">
+        
         <Button 
-          variant="filled"
+          variant="outline"
           fullWidth 
           leftSection={<FaPlus />}
           onClick={() => createConvoMutation.mutate()}
         >
-          New Conversation
+          New Chat
         </Button>
-      </Box>
+        <Button 
+          variant="filled"
+          fullWidth 
+          leftSection={<FaGraduationCap />}
+          onClick={() => navigate('/topics')}
+        >
+          Learning Paths
+        </Button>
+      </Stack>
 
       <Box style={{ flex: 1, overflow: 'hidden' }}>
-        <Text size="sm" c="dimmed" mb="xs">Recent Conversations</Text>
-        <ScrollArea style={{ height: '100%' }}>
-          <Stack gap={0}>
-            {isLoading ? (
-              <Box ta="center" pt="xl">
-                <Loader size="sm" />
-              </Box>
-            ) : !conversations?.length ? (
-              <Text size="sm" c="dimmed" ta="center" mt="md">
-                No conversations yet
-              </Text>
-            ) : (
-              conversations.map((conv) => (
-                <Box 
-                  key={conv.id} 
-                  p="sm" 
-                  className="hover:bg-gray-50 cursor-pointer border-b border-gray-100"
-                  onClick={() => handleConversationClick(conv.id)}
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                >
-                  <Box style={{ flex: 1, minWidth: 0 }}>
-                    <Text lineClamp={1}>{conv.title}</Text>
-                    <Text size="xs" c="dimmed">
-                      {new Date(conv.created_at).toLocaleDateString()}
-                    </Text>
-                  </Box>
-                  <Group gap="xs" style={{ flexShrink: 0 }}>
-                    <FaEdit 
-                      size={14}
-                      className="cursor-pointer text-gray-500 hover:text-blue-500"
-                      onClick={(e) => handleEditClick(conv, e)}
-                    />
-                    <FaTrash 
-                      size={14}
-                      className="cursor-pointer text-gray-500 hover:text-red-500"
-                      onClick={(e) => handleDeleteClick(conv.id, e)}
-                    />
-                  </Group>
+        <Box mb="md">
+          <Text size="sm" c="dimmed" mb="xs">Active Learning Paths</Text>
+          <ScrollArea style={{ maxHeight: '200px' }}>
+            <Stack gap={0}>
+              {pathsLoading ? (
+                <Box ta="center" pt="sm">
+                  <Loader size="sm" />
                 </Box>
-              ))
-            )}
-          </Stack>
-        </ScrollArea>
+              ) : !learningPaths?.length ? (
+                <Text size="xs" c="dimmed" ta="center" py="sm">
+                  No active learning paths
+                </Text>
+              ) : (
+                learningPaths.map((path) => (
+                  <Box 
+                    key={path.id} 
+                    p="sm" 
+                    className="hover:bg-gray-50 cursor-pointer border-b border-gray-100"
+                    onClick={() => handleLearningPathClick(path.id)}
+                    style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}
+                  >
+                    <Group justify="space-between" align="flex-start">
+                      <Box style={{ flex: 1, minWidth: 0 }}>
+                        <Text size="sm" lineClamp={1} fw={500}>
+                          {path.topic.name}
+                        </Text>
+                        <Group gap="xs" mt={2}>
+                          <Badge 
+                            size="xs" 
+                            color={path.is_completed ? 'green' : 'blue'}
+                            variant="light"
+                          >
+                            {Math.round(path.progress_percentage)}%
+                          </Badge>
+                          {path.current_subtopic && (
+                            <Text size="xs" c="dimmed" lineClamp={1}>
+                              {path.current_subtopic.name}
+                            </Text>
+                          )}
+                        </Group>
+                      </Box>
+                      {!path.is_completed && (
+                        <Button
+                          size="xs"
+                          variant="subtle"
+                          onClick={(e) => handleContinueLearning(path.conversation_id, e)}
+                        >
+                          <FaPlay size={10} />
+                        </Button>
+                      )}
+                    </Group>
+                    <Progress 
+                      value={path.progress_percentage} 
+                      size="xs" 
+                      color={path.is_completed ? 'green' : 'blue'}
+                    />
+                  </Box>
+                ))
+              )}
+            </Stack>
+          </ScrollArea>
+        </Box>
+
+        <Divider mb="md" />
+
+        {/* Regular Conversations Section */}
+        <Box>
+          <Text size="sm" c="dimmed" mb="xs">Recent Conversations</Text>
+          <ScrollArea style={{ height: '100%' }}>
+            <Stack gap={0}>
+              {isLoading ? (
+                <Box ta="center" pt="xl">
+                  <Loader size="sm" />
+                </Box>
+              ) : !conversations?.length ? (
+                <Text size="sm" c="dimmed" ta="center" mt="md">
+                  No conversations yet
+                </Text>
+              ) : (
+                conversations
+                  .filter(conv => !learningPaths?.some(path => path.conversation_id === conv.id))
+                  .map((conv) => (
+                    <Box 
+                      key={conv.id} 
+                      p="sm" 
+                      className="hover:bg-gray-50 cursor-pointer border-b border-gray-100"
+                      onClick={() => handleConversationClick(conv.id)}
+                      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                    >
+                      <Box style={{ flex: 1, minWidth: 0 }}>
+                        <Text lineClamp={1}>{conv.title}</Text>
+                        <Text size="xs" c="dimmed">
+                          {new Date(conv.created_at).toLocaleDateString()}
+                        </Text>
+                      </Box>
+                      <Group gap="xs" style={{ flexShrink: 0 }}>
+                        <FaEdit 
+                          size={14}
+                          className="cursor-pointer text-gray-500 hover:text-blue-500"
+                          onClick={(e) => handleEditClick(conv, e)}
+                        />
+                        <FaTrash 
+                          size={14}
+                          className="cursor-pointer text-gray-500 hover:text-red-500"
+                          onClick={(e) => handleDeleteClick(conv.id, e)}
+                        />
+                      </Group>
+                    </Box>
+                  ))
+              )}
+            </Stack>
+          </ScrollArea>
+        </Box>
       </Box>
       
       {/* Edit Conversation Modal */}

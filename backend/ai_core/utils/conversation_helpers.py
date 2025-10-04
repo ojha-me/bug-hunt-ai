@@ -2,7 +2,7 @@ import json
 import logging
 from channels.db import database_sync_to_async
 from ai_core.models import Conversation, Message, MessageSenderChoices, MessageTypeChoices, Summary
-from .ai_helpers import AIService
+from .ai_helpers_general import AIService
 
 logger = logging.getLogger('ai_core.utils.conversation_helpers')
 

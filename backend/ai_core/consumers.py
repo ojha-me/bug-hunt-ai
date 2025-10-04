@@ -2,7 +2,7 @@ import json
 import uuid
 from channels.generic.websocket import AsyncWebsocketConsumer
 from .models import MessageSenderChoices, MessageTypeChoices
-from .utils.ai_helpers import AIService
+from .utils.ai_helpers_general import AIService
 from .utils.auth_helpers import authenticate_user
 from .utils.conversation_helpers import ConversationService
 from channels.db import database_sync_to_async

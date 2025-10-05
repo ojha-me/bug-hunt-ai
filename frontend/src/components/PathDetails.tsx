@@ -37,11 +37,13 @@ export const PathDetails = () => {
     enabled: !!pathId
   });
 
-  const { data: userLearningPath } = useQuery<UserLearningPathResponse>({
+  const { data: userLearningPath } = useQuery<UserLearningPathResponse[]>({
     queryKey: ['user-learning-path', pathId],
     queryFn: () => userLearningPaths(pathId!),
     enabled: !!pathId
   });
+  
+  const currentSubtopic = userLearningPath?.length ? userLearningPath?.[0].current_subtopic?.id : null;
 
   const enrollMutation = useMutation({
     mutationFn: enrollInLearningPath,
@@ -70,6 +72,9 @@ const handleEnroll = () => {
     enrollMutation.mutate(pathId);
 }
 
+const handleSkipSubtopic = () => {
+   console.log("implement skip here")
+}
 
   if (isLoading) {
     return (
@@ -122,7 +127,7 @@ const handleEnroll = () => {
           </Badge>
         </Group>
         {
-            !userLearningPath && (
+            userLearningPath?.length === 0 && (
                 <Button
                 mt="md"
                 leftSection={<FaPlay size={16} />}
@@ -159,14 +164,23 @@ const handleEnroll = () => {
                 ))}
               </List>
               {
-                userLearningPath?.current_subtopic?.id !== subtopic.id && (
+                currentSubtopic === subtopic.id && (
+                  <Group>
                   <Button
                   mt="md"
                   leftSection={<FaPlay size={16} />}
-                  onClick={()=>navigate(`/learning-path/chat-interface/${pathId}`)}
+                  onClick={()=>navigate(`/learning-path/chat-interface/${pathId}/${subtopic.id}`)}
                   >
                   Start Learning
+                </Button>
+                <Button
+                mt="md"
+                leftSection={<FaPlay size={16} />}
+                onClick={()=>handleSkipSubtopic()}
+                >
+                Skip Subtopic
               </Button>
+              </Group>
                 )
               }
             </Accordion.Panel>

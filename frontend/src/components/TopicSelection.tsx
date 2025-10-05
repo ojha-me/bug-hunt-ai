@@ -82,8 +82,8 @@ export const TopicSelection = () => {
     return userPaths?.find(path => path.topic.id === topicId && path.is_active);
   };
 
-  const handleContinueLearning = (conversationId: string) => {
-    navigate(`/conversation/${conversationId}`);
+  const handleContinueLearning = (learningTopic: LearningTopicResponse) => {
+    navigate(`/learning-path/${learningTopic.id}`);
   };
 
   if (topicsLoading) {
@@ -241,7 +241,7 @@ export const TopicSelection = () => {
                         variant={isCompleted ? "outline" : "filled"}
                         color={isCompleted ? "green" : "blue"}
                         leftSection={isCompleted ? <FaCheck size={16} /> : <FaPlay size={16} />}
-                        onClick={() => handleContinueLearning(userPath.conversation_id)}
+                        onClick={() => handleContinueLearning(topic)}
                       >
                         {isCompleted ? 'Review' : 'Continue Learning'}
                       </Button>

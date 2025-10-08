@@ -22,7 +22,7 @@ export default function App() {
           <Route path="/topics" element={<TopicSelection />} />
           <Route path="/learning-path/:pathId" element={<PathDetails />} />
           <Route path="/conversation/:conversationId" element={<ChatContainer />} />
-          <Route path="/learning-path/chat-interface/:pathId/:subtopicId" element={<LearningPathChatInterface />} />
+          <Route path="/learning-path/chat-interface/:learningTopicId" element={<LearningPathChatInterface />} />
         </Route>
       </Route>
 

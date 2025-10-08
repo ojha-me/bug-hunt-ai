@@ -2,7 +2,7 @@ import { Button, Stack, ScrollArea, Box, Text, Loader, Modal, Group, TextInput, 
 import { FaPlus, FaEdit, FaTrash, FaGraduationCap, FaPlay } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { getConversations, createConversation, updateConversationTitle, deleteConversation } from "../api/conversation";
-import { generateLearningPath, userLearningPaths } from "../api/learningPaths";
+import { userLearningPaths } from "../api/learningPaths";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ConversationResponse } from "../types/ai_core/api_types";
 import { notifications } from "@mantine/notifications";

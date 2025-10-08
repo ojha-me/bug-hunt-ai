@@ -33,3 +33,8 @@ export const topicDetails = async (topicId: string) => {
     const response = await apiClient.get(`/learning-paths/topics/${topicId}`);
     return response.data;
 };
+
+export const getLearningPathMessages = async (topicId: string) => {
+    const response = await apiClient.get(`/learning-paths/${topicId}/messages`);
+    return response.data;
+};

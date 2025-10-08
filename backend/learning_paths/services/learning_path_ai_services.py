@@ -4,6 +4,18 @@ from google.genai import types
 from django.conf import settings
 import json
 import logging
+from learning_paths.models import UserLearningPath, SubtopicProgress
+from learning_paths.utils.learning_prompts import (
+    LEARNING_PATH_SYSTEM_PROMPT,
+    SUBTOPIC_INTRODUCTION_PROMPT,
+    SOCRATIC_QUESTIONING_PROMPT,
+    ADAPTIVE_FEEDBACK_PROMPT,
+    PROGRESS_ASSESSMENT_PROMPT,
+    ENCOURAGEMENT_PROMPT,
+    CONCEPT_EXPLANATION_PROMPT
+)
+from learning_paths.utils.learning_context_helpers import generate_learning_context
+from asgiref.sync import sync_to_async
 
 logger = logging.getLogger("ai_core.services.learning_path_service")
 
@@ -69,3 +81,363 @@ class LearningPathAI:
             raise ValueError("Invalid AI response format") from exception
 
         return data
+
+
+class LearningPathTutorAI:
+    """
+    Specialized AI tutor for learning path interactions using Socratic methodology
+    """
+    
+    def __init__(self, user_learning_path: UserLearningPath):
+        self.chat = client.chats.create(model=AI_MODEL)
+        self.user_learning_path = user_learning_path
+    
+    async def generate_greeting_message(self, topic_name: str, subtopic_name: str):
+        """Generate a greeting message for the user"""
+        system_prompt = (
+            "You are a helpful assistant that creates friendly, motivational greeting messages "
+            "for learning modules. "
+            """Response Format Rules (strict):
+            - You must respond **only in JSON** (no Markdown fences, no extra text).
+            - Valid JSON must be parsable by `json.loads` without errors.
+            - Do not include triple backticks or language tags like ```json or ```python.
+            - Do not include commentary outside the JSON.
+            - The JSON must have exactly this structure: {"greeting_message": "your message here"}
+            """
+        )
+
+        user_query = (
+            f"Create a short, engaging greeting message for a learning module.\n"
+            f"Topic: {topic_name}\n"
+            f"Subtopic: {subtopic_name}\n\n"
+            "The message should:\n"
+            "1. Start with a friendly, welcoming greeting.\n"
+            "2. Briefly introduce the topic and subtopic in a motivating way.\n"
+            "3. Explain why this subtopic is important or exciting to learn.\n"
+            "4. Clearly tell the learner what they will be able to do or understand by the end of this subtopic.\n"
+            "5. End with an engaging, open-ended question to encourage the user to reply, like, Shall we start?.\n\n"
+            'Return ONLY a JSON object with this exact format: {"greeting_message": "your complete message here"}'
+        )
+
+
+        full_prompt = f"{system_prompt}\n\nUser request: {user_query}"
+
+        response = self.chat.send_message(
+            config=types.GenerateContentConfig(
+                thinking_config=types.ThinkingConfig(thinking_budget=0)
+            ),
+            message=full_prompt,
+        )
+
+        try:
+            data = json.loads(response.text)
+        except json.JSONDecodeError as exception:
+            logger.error("Gemini returned invalid JSON: %s", response.text)
+            raise ValueError("Invalid AI response format") from exception
+
+        return data
+    
+    async def generate_response(self, message_content: str, code_snippet: str | None = None) -> str:
+        """Generate contextual tutoring response based on learning progress"""
+        
+        # Get rich learning context
+        learning_context = await generate_learning_context(self.user_learning_path)
+        
+        # Determine the type of response needed
+        response_type = await self._determine_response_type(message_content, learning_context)
+        
+        # Generate appropriate response
+        if response_type == "introduction":
+            return await self._generate_subtopic_introduction()
+        elif response_type == "socratic_question":
+            return await self._generate_socratic_question(message_content, learning_context)
+        elif response_type == "feedback":
+            return await self._generate_adaptive_feedback(message_content, code_snippet, learning_context)
+        elif response_type == "assessment":
+            return await self._generate_progress_assessment(learning_context)
+        elif response_type == "encouragement":
+            return await self._generate_encouragement(learning_context)
+        elif response_type == "explanation":
+            return await self._generate_concept_explanation(message_content, learning_context)
+        else:
+            return await self._generate_general_response(message_content, learning_context)
+    
+    async def _determine_response_type(self, message_content: str, learning_context: str) -> str:
+        """Determine what type of response is most appropriate"""
+        
+        # Check if this is a new subtopic introduction
+        if "start_learning_path" in learning_context or "introduce_subtopic" in learning_context:
+            return "introduction"
+        
+        # Check for code submission (feedback needed)
+        if any(keyword in message_content.lower() for keyword in ['def ', 'function', 'class ', 'import ', '```']):
+            return "feedback"
+        
+        # Check for confusion/help requests
+        if any(keyword in message_content.lower() for keyword in ['confused', 'don\'t understand', 'stuck', 'help', '?']):
+            return "socratic_question"
+        
+        # Check for progress assessment needs
+        if any(keyword in message_content.lower() for keyword in ['done', 'finished', 'complete', 'next']):
+            return "assessment"
+        
+        # Check for encouragement needs
+        if "frustrated" in learning_context or "struggling" in learning_context:
+            return "encouragement"
+        
+        # Check for explanation requests
+        if any(keyword in message_content.lower() for keyword in ['explain', 'what is', 'how does', 'why']):
+            return "explanation"
+        
+        return "socratic_question"  # Default to Socratic questioning
+    
+    async def _generate_subtopic_introduction(self) -> str:
+        """Generate an introduction to the current subtopic"""
+        current_subtopic = await sync_to_async(lambda: self.user_learning_path.current_subtopic)()
+        if not current_subtopic:
+            return await self._generate_general_response("Let's start your learning journey!", "")
+        
+        learning_context = await generate_learning_context(self.user_learning_path)
+        
+        # Get learning objectives asynchronously
+        learning_objectives = await sync_to_async(lambda: current_subtopic.learning_objectives)()
+        topic_name = await sync_to_async(lambda: self.user_learning_path.topic.name)()
+        difficulty_level = await sync_to_async(lambda: self.user_learning_path.topic.difficulty_level)()
+        
+        prompt = SUBTOPIC_INTRODUCTION_PROMPT.format(
+            topic_name=topic_name,
+            subtopic_name=current_subtopic.name,
+            learning_objectives=learning_objectives,
+            progress_summary=learning_context,
+            difficulty_level=difficulty_level
+        )
+        
+        full_prompt = f"{LEARNING_PATH_SYSTEM_PROMPT}\n\n{prompt}"
+        
+        response = await sync_to_async(self.chat.send_message)(
+            config=types.GenerateContentConfig(
+                thinking_config=types.ThinkingConfig(thinking_budget=0)
+            ),
+            message=full_prompt,
+        )
+        
+        return response.text
+    
+    async def _generate_socratic_question(self, student_response: str, learning_context: str) -> str:
+        """Generate a Socratic question to guide learning"""
+        current_subtopic = await sync_to_async(lambda: self.user_learning_path.current_subtopic)()
+        if not current_subtopic:
+            return await self._generate_general_response(student_response, learning_context)
+        
+        # Get current learning objective asynchronously
+        learning_objectives = await sync_to_async(lambda: current_subtopic.learning_objectives)()
+        current_objective = learning_objectives[0] if learning_objectives else "Understanding the concept"
+        
+        prompt = SOCRATIC_QUESTIONING_PROMPT.format(
+            subtopic_name=current_subtopic.name,
+            student_response=student_response,
+            current_objective=current_objective,
+            recent_conversation=learning_context
+        )
+        
+        full_prompt = f"{LEARNING_PATH_SYSTEM_PROMPT}\n\n{prompt}"
+        
+        response = await sync_to_async(self.chat.send_message)(
+            config=types.GenerateContentConfig(
+                thinking_config=types.ThinkingConfig(thinking_budget=0)
+            ),
+            message=full_prompt,
+        )
+        
+        return response.text
+    
+    async def _generate_adaptive_feedback(self, student_work: str, code_snippet: str | None, learning_context: str) -> str:
+        """Generate adaptive feedback based on student's work"""
+        current_subtopic = await sync_to_async(lambda: self.user_learning_path.current_subtopic)()
+        if not current_subtopic:
+            return await self._generate_general_response(student_work, learning_context)
+        
+        # Get performance pattern from context
+        performance_pattern = "steady_learner"  # Default, should be extracted from learning_context
+        if "struggling" in learning_context:
+            performance_pattern = "struggling"
+        elif "high_achiever" in learning_context:
+            performance_pattern = "high_achiever"
+        
+        exercise_description = f"Working on {current_subtopic.name}"
+        learning_objectives = await sync_to_async(lambda: current_subtopic.learning_objectives)()
+        learning_outcome = learning_objectives[0] if learning_objectives else "Understanding the concept"
+        
+        prompt = ADAPTIVE_FEEDBACK_PROMPT.format(
+            subtopic_name=current_subtopic.name,
+            exercise_description=exercise_description,
+            student_work=student_work + (f"\n\nCode:\n{code_snippet}" if code_snippet else ""),
+            learning_outcome=learning_outcome,
+            performance_pattern=performance_pattern
+        )
+        
+        full_prompt = f"{LEARNING_PATH_SYSTEM_PROMPT}\n\n{prompt}"
+        
+        response = await sync_to_async(self.chat.send_message)(
+            config=types.GenerateContentConfig(
+                thinking_config=types.ThinkingConfig(thinking_budget=0)
+            ),
+            message=full_prompt,
+        )
+        
+        # Update progress based on feedback
+        await self._update_subtopic_progress_from_feedback(response.text)
+        
+        return response.text
+    
+    async def _generate_progress_assessment(self, learning_context: str) -> str:
+        """Assess student's progress and readiness to advance"""
+        current_subtopic = await sync_to_async(lambda: self.user_learning_path.current_subtopic)()
+        if not current_subtopic:
+            return await self._generate_general_response("Let's assess your progress!", learning_context)
+        
+        # Get current progress data
+        current_progress = await sync_to_async(
+            lambda: SubtopicProgress.objects.filter(
+                user_path=self.user_learning_path,
+                subtopic=current_subtopic
+            ).first()
+        )()
+        
+        objectives_list = await sync_to_async(lambda: current_subtopic.learning_objectives)()
+        interaction_summary = learning_context
+        time_spent = "Ongoing"  # Could be calculated from progress timestamps
+        challenges_completed = current_progress.challenges_completed if current_progress else 0
+        
+        prompt = PROGRESS_ASSESSMENT_PROMPT.format(
+            subtopic_name=current_subtopic.name,
+            objectives_list=objectives_list,
+            interaction_summary=interaction_summary,
+            time_spent=time_spent,
+            challenges_completed=challenges_completed
+        )
+        
+        full_prompt = f"{LEARNING_PATH_SYSTEM_PROMPT}\n\n{prompt}"
+        
+        response = await sync_to_async(self.chat.send_message)(
+            config=types.GenerateContentConfig(
+                thinking_config=types.ThinkingConfig(thinking_budget=0)
+            ),
+            message=full_prompt,
+        )
+        
+        return response.text
+    
+    async def _generate_encouragement(self, learning_context: str) -> str:
+        """Generate motivational encouragement"""
+        # Extract emotional indicators from context
+        challenge_level = "moderate"
+        recent_performance = "mixed"
+        emotional_indicators = "frustration"
+        consistency_pattern = "regular"
+        
+        if "struggling" in learning_context:
+            challenge_level = "high"
+            recent_performance = "challenging"
+        elif "high_achiever" in learning_context:
+            challenge_level = "appropriate"
+            recent_performance = "excellent"
+            emotional_indicators = "confidence"
+        
+        prompt = ENCOURAGEMENT_PROMPT.format(
+            challenge_level=challenge_level,
+            recent_performance=recent_performance,
+            emotional_indicators=emotional_indicators,
+            consistency_pattern=consistency_pattern
+        )
+        
+        full_prompt = f"{LEARNING_PATH_SYSTEM_PROMPT}\n\n{prompt}"
+        
+        response = await sync_to_async(self.chat.send_message)(
+            config=types.GenerateContentConfig(
+                thinking_config=types.ThinkingConfig(thinking_budget=0)
+            ),
+            message=full_prompt,
+        )
+        
+        return response.text
+    
+    async def _generate_concept_explanation(self, concept_request: str, learning_context: str) -> str:
+        """Generate clear concept explanations"""
+        current_subtopic = await sync_to_async(lambda: self.user_learning_path.current_subtopic)()
+        concept_name = concept_request
+        
+        # Extract understanding level from context
+        current_understanding = "basic"
+        if "high_achiever" in learning_context:
+            current_understanding = "advanced"
+        elif "struggling" in learning_context:
+            current_understanding = "beginner"
+        
+        learning_style = "mixed"  # Could be determined from user preferences
+        subtopic_context = current_subtopic.name if current_subtopic else "General learning"
+        complexity_level = await sync_to_async(lambda: self.user_learning_path.topic.difficulty_level.lower())()
+        
+        prompt = CONCEPT_EXPLANATION_PROMPT.format(
+            concept_name=concept_name,
+            current_understanding=current_understanding,
+            learning_style=learning_style,
+            subtopic_context=subtopic_context,
+            complexity_level=complexity_level
+        )
+        
+        full_prompt = f"{LEARNING_PATH_SYSTEM_PROMPT}\n\n{prompt}"
+        
+        response = await sync_to_async(self.chat.send_message)(
+            config=types.GenerateContentConfig(
+                thinking_config=types.ThinkingConfig(thinking_budget=0)
+            ),
+            message=full_prompt,
+        )
+        
+        return response.text
+    
+    async def _generate_general_response(self, message_content: str, learning_context: str) -> str:
+        """Generate general tutoring response"""
+        full_prompt = f"{LEARNING_PATH_SYSTEM_PROMPT}\n\nLearning Context:\n{learning_context}\n\nStudent Message: {message_content}"
+        
+        response = await sync_to_async(self.chat.send_message)(
+            config=types.GenerateContentConfig(
+                thinking_config=types.ThinkingConfig(thinking_budget=0)
+            ),
+            message=full_prompt,
+        )
+        
+        return response.text
+    
+    async def _update_subtopic_progress_from_feedback(self, ai_response: str):
+        """Update subtopic progress based on AI feedback analysis"""
+        try:
+            # Parse AI response to extract difficulty adjustment
+            response_data = json.loads(ai_response)
+            difficulty_adjustment = response_data.get('difficulty_adjustment')
+            
+            if difficulty_adjustment:
+                current_subtopic = await sync_to_async(lambda: self.user_learning_path.current_subtopic)()
+                if current_subtopic:
+                    progress, created = await sync_to_async(
+                        SubtopicProgress.objects.get_or_create
+                    )(
+                        user_path=self.user_learning_path,
+                        subtopic=current_subtopic,
+                        defaults={'status': 'learning'}
+                    )
+                    
+                    # Update progress based on difficulty adjustment
+                    if difficulty_adjustment == "easier":
+                        # Student is struggling, provide more support
+                        progress.notes = f"Needs additional support. {progress.notes or ''}".strip()
+                    elif difficulty_adjustment == "harder":
+                        # Student is ready for more challenge
+                        progress.notes = f"Ready for advanced challenges. {progress.notes or ''}".strip()
+                    
+                    await sync_to_async(progress.save)()
+                    
+        except (json.JSONDecodeError, KeyError):
+            # AI response wasn't in expected format, continue without updating
+            pass

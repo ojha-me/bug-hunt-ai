@@ -76,6 +76,11 @@ const handleSkipSubtopic = () => {
    console.log("implement skip here")
 }
 
+const handleStartLearning = () => {
+  if (!userLearningPath) return;
+   navigate(`/learning-path/chat-interface/${learningPathDetail?.id}`)
+}
+
   if (isLoading) {
     return (
       <Center h="50vh">
@@ -169,7 +174,7 @@ const handleSkipSubtopic = () => {
                   <Button
                   mt="md"
                   leftSection={<FaPlay size={16} />}
-                  onClick={()=>navigate(`/learning-path/chat-interface/${pathId}/${subtopic.id}`)}
+                  onClick={()=>handleStartLearning()}
                   >
                   Start Learning
                 </Button>

@@ -59,6 +59,21 @@ class ConversationService:
         )
 
     @staticmethod
+    @database_sync_to_async
+    def save_message(conversation, content, sender, message_type, code_snippet=None, language=None):
+        """
+        Generic method to save messages from either AI or user
+        """
+        return Message.objects.create(
+            conversation=conversation,
+            sender=sender,
+            content=content,
+            code_snippet=code_snippet,
+            language=language,
+            message_type=message_type
+        )
+
+    @staticmethod
     async def get_or_create_conversation(user, initial_message):
         """Create a new conversation with an AI-generated title."""
         ai_service = AIService()
@@ -82,8 +97,3 @@ class ConversationService:
         generated_title = await ai_service.generate_title(initial_message)
         await ConversationService._update_title_in_db(conversation, generated_title)
         logger.debug(f"Updated title to: {generated_title}")
-
-
-        
-
-        

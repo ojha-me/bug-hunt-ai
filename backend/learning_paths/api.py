@@ -147,7 +147,7 @@ def get_user_learning_paths(request: HttpRequest, topic_id: Optional[UUID] = Non
         .prefetch_related('progress__subtopic', 'topic__subtopics')
         .order_by('-started_at')
     )
-    
+
     response = []
     for path in paths:
         # Build progress data
@@ -284,6 +284,56 @@ def enroll_in_learning_path(request: HttpRequest, topic_id: UUID):
         current_subtopic=topic.subtopics.filter(is_active=True).order_by('order').first()
     )
     return 200, None
+
+
+@get(router, "/{topic_id}/messages", response={200: List[Dict], 401: Dict[str, str], 404: Dict[str, str]})
+def get_learning_path_messages(request: HttpRequest, topic_id: UUID):
+    """Get all messages for a learning path conversation"""
+    import json as json_module
+    
+    # Get the user's learning path for this topic
+    learning_path = get_object_or_404(
+        UserLearningPath,
+        topic_id=topic_id,
+        user=request.user,
+        is_active=True
+    )
+    
+    # Get all messages from the associated conversation
+    messages = learning_path.conversation.messages.all().order_by('created_at')
+    
+    # Format messages for response
+    message_list = []
+    for message in messages:
+        content = message.content
+        message_type = None
+        next_action = None
+        
+        # Try to parse content as JSON (for AI messages with metadata)
+        try:
+            parsed_content = json_module.loads(content)
+            if isinstance(parsed_content, dict):
+                # Extract structured data from JSON
+                content = parsed_content.get('content', content)
+                message_type = parsed_content.get('type')
+                next_action = parsed_content.get('next_action')
+        except (json_module.JSONDecodeError, TypeError):
+            # If not JSON, use content as-is
+            pass
+        
+        message_data = {
+            'id': str(message.id),
+            'sender': message.sender,
+            'content': content,
+            'timestamp': message.created_at.isoformat(),
+            'code_snippet': message.code_snippet,
+            'language': message.language,
+            'type': message_type,
+            'next_action': next_action,
+        }
+        message_list.append(message_data)
+    
+    return message_list
 
 @put(router, "/{path_id}/progress", response={200: UserLearningPathResponse, 401: Dict[str, str], 404: Dict[str, str]})
 def update_progress(request: HttpRequest, path_id: UUID, data: UpdateProgressRequest):

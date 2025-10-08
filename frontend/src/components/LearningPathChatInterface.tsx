@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import {
   Box,
   Text,
@@ -12,62 +12,119 @@ import {
   Loader,
   Title,
   Divider,
+  Badge,
+  Alert,
 } from "@mantine/core";
-import { RiMenuLine } from "react-icons/ri";
+import { RiMenuLine, RiLightbulbLine, RiCheckLine } from "react-icons/ri";
 import { useQuery } from "@tanstack/react-query";
 import type { LearningTopicDetailResponse } from "../types/learning_paths/api_types";
-import { topicDetails } from "../api/learningPaths";
+import { topicDetails, getLearningPathMessages } from "../api/learningPaths";
 import { useParams } from "react-router-dom";
+import { useLearningPathWebSocket } from "../hooks/useLearningPathWebSocket";
+
+// Message interface for learning path messages
+interface LearningPathMessage {
+  id: string;
+  sender: "user" | "ai";
+  content: string;
+  code_snippet?: string | null;
+  language?: string | null;
+  timestamp: string;
+  type?: "explanation" | "question" | "challenge" | "feedback" | "encouragement" | "assessment";
+  next_action?: string;
+}
 
 export const LearningPathChatInterface = () => {
 
-  const { pathId } = useParams<{ pathId: string }>();
-  const { subtopicId } = useParams<{ subtopicId: string }>();
+  const { learningTopicId } = useParams<{ learningTopicId: string }>();
 
   const { data: learningPathDetail, isLoading } =
     useQuery<LearningTopicDetailResponse>({
-      queryKey: ["learning-path", pathId],
-      queryFn: () => topicDetails(pathId!),
-      enabled: !!pathId,
+      queryKey: ["user-learning-paths", learningTopicId],
+      queryFn: () => topicDetails(learningTopicId!),
+      enabled: !!learningTopicId,
     });
+  
+  // Fetch historical messages from the database
+  const { data: historicalMessages } = useQuery({
+    queryKey: ["learning-path-messages", learningTopicId],
+    queryFn: () => getLearningPathMessages(learningTopicId!),
+    enabled: !!learningTopicId,
+  });
+
+  // State for live messages from WebSocket
+  const [liveMessages, setLiveMessages] = useState<LearningPathMessage[]>([]);
+
+  // Callback to handle new messages from WebSocket
+  const handleNewMessage = useCallback((message: LearningPathMessage) => {
+    setLiveMessages((prev) => [...prev, message]);
+  }, []);
+
+  const {
+    isConnected,
+    isTyping,
+  } = useLearningPathWebSocket(learningTopicId!, handleNewMessage);
+
+  // merge the live messages and the historical messages.
+  const allMessages = useMemo(() => {
+    if (!historicalMessages) {
+      return liveMessages;
+    }
+    
+    // Parse historical messages to handle any JSON content
+    const parsedHistoricalMessages = (historicalMessages as LearningPathMessage[]).map((msg) => {
+      let content = msg.content;
+      let type = msg.type;
+      let next_action = msg.next_action;
+      
+      // Try to parse content as JSON (fallback if backend didn't parse it)
+      try {
+        if (typeof content === 'string' && content.trim().startsWith('{')) {
+          const parsed = JSON.parse(content);
+          if (parsed.content) {
+            content = parsed.content;
+            type = parsed.type || type;
+            next_action = parsed.next_action || next_action;
+          }
+        }
+      } catch {
+        // If parsing fails, use content as-is
+      }
+      
+      return { ...msg, content, type, next_action };
+    });
+    
+    // Create a Set of historical message IDs for quick lookup
+    const historicalMessageIds = new Set(parsedHistoricalMessages.map((m) => m.id));
+    
+    // Filter out live messages that are already in historical messages
+    const uniqueLiveMessages = liveMessages.filter(m => !historicalMessageIds.has(m.id));
+    
+    // Combine and sort by timestamp
+    return [...parsedHistoricalMessages, ...uniqueLiveMessages].sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+  }, [historicalMessages, liveMessages]);
+
   const [drawerOpened, setDrawerOpened] = useState(false);
   const [message, setMessage] = useState("");
+  const [codeInput, setCodeInput] = useState("");
+  const [showCodeInput, setShowCodeInput] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Temporary placeholder chat messages
-  const placeholderMessages = [
-    {
-      id: "1",
-      sender: "assistant",
-      content: "Hello! Ready to begin learning about React fundamentals?",
-      timestamp: new Date().toISOString(),
-    },
-    {
-      id: "2",
-      sender: "user",
-      content: "Yes! Let's get started.",
-      timestamp: new Date().toISOString(),
-    },
-    {
-      id: "3",
-      sender: "assistant",
-      content:
-        "Great! We'll begin with the basics of components and how they compose your UI.",
-      timestamp: new Date().toISOString(),
-    },
-  ];
-
-  const handleSendMessage = () => {
-    if (message.trim()) {
-      console.log("Message sent:", message);
-      setMessage("");
-    }
-  };
 
   // Auto-scroll to latest message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [placeholderMessages]);
+  }, [allMessages]);
+
+  // Show code input for challenges
+  useEffect(() => {
+    const lastMessage = allMessages[allMessages.length - 1];
+    if (lastMessage?.sender === "ai" && lastMessage?.type === "challenge") {
+      setShowCodeInput(true);
+    }
+  }, [allMessages]);
 
   return (
     <Box
@@ -78,11 +135,8 @@ export const LearningPathChatInterface = () => {
         background: "#f9f9f9",
       }}
     >
-      {/* Top Bar */}
-      <Group
-        justify="space-between"
-        align="center"
-        p="md"
+      {/* Top Bar with Progress */}
+      <Box
         style={{
           background: "#fff",
           borderBottom: "1px solid #e0e0e0",
@@ -90,20 +144,28 @@ export const LearningPathChatInterface = () => {
           zIndex: 10,
         }}
       >
-        <Title order={4} c="dark">
-          {learningPathDetail?.name || "Learning Path"}
-        </Title>
+        <Group justify="space-between" align="center" p="md">
+          <Box style={{ flex: 1 }}>
+            <Title order={4} c="dark">
+              {learningPathDetail?.name || "Learning Path"}
+            </Title>
+              <Group gap="xs" mt="xs">
+                <Badge size="sm" color={isConnected ? "green" : "red"}>
+                  {isConnected ? "Connected" : "Disconnected"}
+                </Badge>
+              </Group>
+          </Box>
 
-        <ActionIcon
-          variant="light"
-          radius="xl"
-          onClick={() => setDrawerOpened(true)}
-        >
-          <RiMenuLine size={20} />
-        </ActionIcon>
-      </Group>
+          <ActionIcon
+            variant="light"
+            radius="xl"
+            onClick={() => setDrawerOpened(true)}
+          >
+            <RiMenuLine size={20} />
+          </ActionIcon>
+        </Group>
+      </Box>
 
-      {/* Chat Section */}
       <Box
         style={{
           flex: 1,
@@ -117,46 +179,169 @@ export const LearningPathChatInterface = () => {
           </Group>
         ) : (
           <Stack gap="sm">
-            {placeholderMessages.map((msg) => (
+            { allMessages.length === 0 && (
+              <Alert color="blue" title="Preparing your learning journey...">
+                Your AI tutor is getting ready to guide you through this topic. This will just take a moment!
+              </Alert>
+            )}
+
+            {allMessages.map((msg: LearningPathMessage) => (
               <Box
                 key={msg.id}
                 style={{
                   display: "flex",
                   flexDirection: "column",
-                  alignItems:
-                    msg.sender === "user" ? "flex-end" : "flex-start",
+                  alignItems: msg.sender === "user" ? "flex-end" : "flex-start",
                 }}
               >
                 <Box
                   p="sm"
                   style={{
-                    backgroundColor:
-                      msg.sender === "user" ? "#e3f2fd" : "#f5f5f5",
+                    backgroundColor: msg.sender === "user" ? "#e3f2fd" : "#f5f5f5",
                     borderRadius: "12px",
                     boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
                     maxWidth: "70%",
+                    position: "relative",
                   }}
                 >
+                  {/* Message type indicator for AI messages */}
+                  {msg.sender === "ai" && msg.type && (
+                    <Group gap="xs" mb="xs">
+                      <Text size="xs">
+                        {""}
+                      </Text>
+                      <Badge size="xs" variant="light">
+                        {msg.type}
+                      </Badge>
+                    </Group>
+                  )}
+
                   <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
                     {msg.content}
                   </Text>
+
+                  {msg.code_snippet && (
+                    <Box
+                      mt="sm"
+                      p="sm"
+                      style={{
+                        backgroundColor: "#f8f9fa",
+                        borderRadius: "8px",
+                        fontFamily: "monospace",
+                        fontSize: "12px",
+                        border: "1px solid #e9ecef",
+                      }}
+                    >
+                      <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
+                        {msg.code_snippet}
+                      </pre>
+                    </Box>
+                  )}
+
+                  {/* Next action suggestion */}
+                  {msg.next_action && (
+                    <Text size="xs" c="dimmed" mt="xs" style={{ fontStyle: "italic" }}>
+                      💡 {msg.next_action}
+                    </Text>
+                  )}
                 </Box>
-                <Text
-                  size="xs"
-                  c="dimmed"
-                  ta={msg.sender === "user" ? "right" : "left"}
-                  style={{ marginTop: "2px" }}
-                >
-                  {new Date(msg.timestamp).toLocaleTimeString()}
-                </Text>
+
+                <Group gap="xs" mt="xs">
+                  <Text
+                    size="xs"
+                    c="dimmed"
+                    ta={msg.sender === "user" ? "right" : "left"}
+                  >
+                    {new Date(msg.timestamp).toLocaleTimeString()}
+                  </Text>
+
+                  {/* Action buttons for AI messages */}
+                  {msg.sender === "ai" && msg.type === "challenge" && (
+                    <Button
+                      size="xs"
+                      variant="light"
+                      leftSection={<RiLightbulbLine size={12} />}
+                    >
+                      Hint
+                    </Button>
+                  )}
+                </Group>
               </Box>
             ))}
+
+            {/* Typing indicator */}
+            {isTyping && (
+              <Box
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                }}
+              >
+                <Box
+                  p="sm"
+                  style={{
+                    backgroundColor: "#f5f5f5",
+                    borderRadius: "12px",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                  }}
+                >
+                  <Group gap="xs">
+                    <Loader size="xs" />
+                    <Text size="sm" c="dimmed">
+                      AI is thinking...
+                    </Text>
+                  </Group>
+                </Box>
+              </Box>
+            )}
+
             <div ref={messagesEndRef} />
           </Stack>
         )}
       </Box>
 
-      {/* Input Section */}
+      {/* Code Input Section (shown for challenges) */}
+      {showCodeInput && (
+        <Box
+          style={{
+            borderTop: "1px solid #ddd",
+            padding: "0.5rem",
+            background: "#fff8e1",
+          }}
+        >
+          <Text size="sm" mb="xs" fw={500}>
+            💻 Submit your code solution:
+          </Text>
+          <Group gap="sm" style={{ width: "100%" }}>
+            <TextInput
+              placeholder="Write your code here..."
+              value={codeInput}
+              onChange={(e) => setCodeInput(e.target.value)}
+              style={{ flex: 1 }}
+              styles={{
+                input: {
+                  fontFamily: "monospace",
+                  fontSize: "12px",
+                },
+              }}
+            />
+            <Button
+              disabled={!codeInput.trim()}
+              leftSection={<RiCheckLine size={14} />}
+            >
+              Submit
+            </Button>
+            <Button
+              variant="light"
+              onClick={() => setShowCodeInput(false)}
+            >
+              Cancel
+            </Button>
+          </Group>
+        </Box>
+      )}
+
+      {/* Regular Input Section */}
       <Box
         style={{
           borderTop: "1px solid #ddd",
@@ -169,10 +354,13 @@ export const LearningPathChatInterface = () => {
             placeholder="Type your message..."
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+            onKeyDown={(e) => e.key === "Enter"}
             style={{ flex: 1 }}
+            disabled={!isConnected}
           />
-          <Button onClick={handleSendMessage} disabled={!message.trim()}>
+          <Button
+            disabled={!message.trim() || !isConnected}
+          >
             Send
           </Button>
         </Group>
@@ -184,7 +372,7 @@ export const LearningPathChatInterface = () => {
         onClose={() => setDrawerOpened(false)}
         position="right"
         size="md"
-        title="Subtopics"
+        title="Learning Progress"
         overlayProps={{ backgroundOpacity: 0.3, blur: 3 }}
       >
         {isLoading ? (
@@ -199,12 +387,15 @@ export const LearningPathChatInterface = () => {
                 {learningPathDetail.description}
               </Text>
             )}
+
             <Divider mb="sm" />
 
-            <ScrollArea h="70vh">
+            <ScrollArea h="60vh">
               <Stack gap="xs">
                 {learningPathDetail?.subtopics?.map((sub) => {
-                  const isActive = sub.id === subtopicId;
+                  const isActive = false;
+                  const isCompleted = false;
+                  
                   return (
                     <Box
                       key={sub.id}
@@ -213,20 +404,36 @@ export const LearningPathChatInterface = () => {
                         borderRadius: "8px",
                         backgroundColor: isActive
                           ? "#e3f2fd"
+                          : isCompleted
+                          ? "#e8f5e8"
                           : "transparent",
                         border: isActive
                           ? "1px solid #90caf9"
+                          : isCompleted
+                          ? "1px solid #81c784"
                           : "1px solid transparent",
                         transition: "background-color 0.2s",
                         cursor: "pointer",
                       }}
                     >
-                      <Text fw={isActive ? 600 : 400}>{sub.name}</Text>
-                      {sub.estimated_duration && (
-                        <Text size="xs" c="dimmed">
-                          {sub.estimated_duration}
-                        </Text>
-                      )}
+                      <Group justify="space-between">
+                        <Box style={{ flex: 1 }}>
+                          <Text fw={isActive ? 600 : 400}>{sub.name}</Text>
+                          {sub.estimated_duration && (
+                            <Text size="xs" c="dimmed">
+                              {sub.estimated_duration}
+                            </Text>
+                          )}
+                        </Box>
+                        {isCompleted && (
+                          <RiCheckLine color="green" size={16} />
+                        )}
+                        {isActive && (
+                          <Badge size="xs" color="blue">
+                            Current
+                          </Badge>
+                        )}
+                      </Group>
                     </Box>
                   );
                 })}

@@ -53,15 +53,18 @@ export const useLearningPathWebSocket = (
           const data = JSON.parse(event.data);
           console.log("WebSocket message received:", data);
           
-          // Handle different message types
-          if (data.type === "conversation" && data.payload) {
-            // This is a regular message
+          // Handle different event types
+          if (data.type === "typing_start") {
+            // Handle typing indicator
+            setIsTyping(true);
+          } else if (data.type === "done") {
+            // AI finished typing
+            setIsTyping(false);
+          } else if (data.payload) {
+            // This is a message (user or AI) - has payload with message data
             if (onMessageReceived) {
               onMessageReceived(data.payload);
             }
-          } else if (data.type === "typing") {
-            // Handle typing indicator
-            setIsTyping(data.payload?.isTyping || false);
           }
         } catch (err) {
           console.error("Failed to parse message:", err);
@@ -101,8 +104,23 @@ export const useLearningPathWebSocket = (
   }, [learningTopicId, token, onMessageReceived]);
 
 
+  const sendMessage = (message: string, codeSnippet?: string, language?: string) => {
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.send(
+        JSON.stringify({
+          message,
+          code_snippet: codeSnippet,
+          language: language || "python",
+        })
+      );
+    } else {
+      console.error("WebSocket is not connected");
+    }
+  };
+
   return {
     isConnected,
     isTyping,
+    sendMessage,
   };
 };

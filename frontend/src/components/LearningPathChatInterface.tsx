@@ -15,12 +15,14 @@ import {
   Badge,
   Alert,
 } from "@mantine/core";
-import { RiMenuLine, RiLightbulbLine, RiCheckLine } from "react-icons/ri";
+import { RiMenuLine, RiLightbulbLine, RiCheckLine, RiCodeLine } from "react-icons/ri";
 import { useQuery } from "@tanstack/react-query";
 import type { LearningTopicDetailResponse } from "../types/learning_paths/api_types";
 import { topicDetails, getLearningPathMessages } from "../api/learningPaths";
 import { useParams } from "react-router-dom";
 import { useLearningPathWebSocket } from "../hooks/useLearningPathWebSocket";
+import { CodeDrawer } from "./CodeDrawer";
+import { runCode } from "../api/execution";
 
 // Message interface for learning path messages
 interface LearningPathMessage {
@@ -57,12 +59,20 @@ export const LearningPathChatInterface = () => {
 
   // Callback to handle new messages from WebSocket
   const handleNewMessage = useCallback((message: LearningPathMessage) => {
-    setLiveMessages((prev) => [...prev, message]);
+    setLiveMessages((prev) => {
+      // Check if message already exists to prevent duplicates
+      const exists = prev.some(m => m.id === message.id);
+      if (exists) {
+        return prev;
+      }
+      return [...prev, message];
+    });
   }, []);
 
   const {
     isConnected,
     isTyping,
+    sendMessage,
   } = useLearningPathWebSocket(learningTopicId!, handleNewMessage);
 
   // merge the live messages and the historical messages.
@@ -111,6 +121,58 @@ export const LearningPathChatInterface = () => {
   const [codeInput, setCodeInput] = useState("");
   const [showCodeInput, setShowCodeInput] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Code drawer state
+  const [codeDrawerOpen, setCodeDrawerOpen] = useState(false);
+  const [currentCode, setCurrentCode] = useState("");
+  const [currentLanguage, setCurrentLanguage] = useState("python");
+  const [executionOutput, setExecutionOutput] = useState("");
+  const [isExecuting, setIsExecuting] = useState(false);
+
+  // Handle sending messages
+  const handleSendMessage = () => {
+    if (!message.trim() || !isConnected) return;
+    
+    sendMessage(message);
+    setMessage("");
+  };
+
+  // Handle sending code submissions
+  const handleSendCode = () => {
+    if (!codeInput.trim() || !isConnected) return;
+    
+    sendMessage("Here's my code solution:", codeInput, "python");
+    setCodeInput("");
+    setShowCodeInput(false);
+  };
+
+  // Handle opening code drawer with AI-provided code
+  const handleOpenCodeDrawer = (code: string, language: string) => {
+    setCurrentCode(code);
+    setCurrentLanguage(language);
+    setExecutionOutput("");
+    setCodeDrawerOpen(true);
+  };
+
+  // Handle running code
+  const handleRunCode = async (code: string, language: string) => {
+    setIsExecuting(true);
+    try {
+      const result = await runCode({ code, language });
+      setExecutionOutput(result.output || result.error || "No output");
+    } catch (error) {
+      setExecutionOutput(`Error: ${error}`);
+    } finally {
+      setIsExecuting(false);
+    }
+  };
+
+  // Handle submitting code to AI
+  const handleSubmitCode = (code: string, language: string, userMessage?: string) => {
+    const messageText = userMessage || "Here's my code solution:";
+    sendMessage(messageText, code, language);
+    setCodeDrawerOpen(false);
+  };
 
 
   // Auto-scroll to latest message
@@ -221,20 +283,30 @@ export const LearningPathChatInterface = () => {
                   </Text>
 
                   {msg.code_snippet && (
-                    <Box
-                      mt="sm"
-                      p="sm"
-                      style={{
-                        backgroundColor: "#f8f9fa",
-                        borderRadius: "8px",
-                        fontFamily: "monospace",
-                        fontSize: "12px",
-                        border: "1px solid #e9ecef",
-                      }}
-                    >
-                      <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
-                        {msg.code_snippet}
-                      </pre>
+                    <Box mt="sm">
+                      <Box
+                        p="sm"
+                        style={{
+                          backgroundColor: "#f8f9fa",
+                          borderRadius: "8px",
+                          fontFamily: "monospace",
+                          fontSize: "12px",
+                          border: "1px solid #e9ecef",
+                        }}
+                      >
+                        <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
+                          {msg.code_snippet}
+                        </pre>
+                      </Box>
+                      <Button
+                        size="xs"
+                        variant="light"
+                        leftSection={<RiCodeLine size={14} />}
+                        mt="xs"
+                        onClick={() => handleOpenCodeDrawer(msg.code_snippet!, msg.language || "python")}
+                      >
+                        Open in Editor
+                      </Button>
                     </Box>
                   )}
 
@@ -326,8 +398,9 @@ export const LearningPathChatInterface = () => {
               }}
             />
             <Button
-              disabled={!codeInput.trim()}
+              disabled={!codeInput.trim() || !isConnected}
               leftSection={<RiCheckLine size={14} />}
+              onClick={handleSendCode}
             >
               Submit
             </Button>
@@ -354,12 +427,18 @@ export const LearningPathChatInterface = () => {
             placeholder="Type your message..."
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter"}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSendMessage();
+              }
+            }}
             style={{ flex: 1 }}
             disabled={!isConnected}
           />
           <Button
             disabled={!message.trim() || !isConnected}
+            onClick={handleSendMessage}
           >
             Send
           </Button>
@@ -442,6 +521,18 @@ export const LearningPathChatInterface = () => {
           </Box>
         )}
       </Drawer>
+
+      {/* Code Drawer for running and editing code */}
+      <CodeDrawer
+        isOpen={codeDrawerOpen}
+        onClose={() => setCodeDrawerOpen(false)}
+        code={currentCode}
+        language={currentLanguage}
+        executionOutput={executionOutput}
+        isExecuting={isExecuting}
+        onRunCode={handleRunCode}
+        onSubmitCode={handleSubmitCode}
+      />
     </Box>
   );
 };

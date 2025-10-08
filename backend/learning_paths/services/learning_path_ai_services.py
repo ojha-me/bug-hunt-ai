@@ -137,30 +137,98 @@ class LearningPathTutorAI:
 
         return data
     
-    async def generate_response(self, message_content: str, code_snippet: str | None = None) -> str:
+    async def generate_response(self, message_content: str, code_snippet: str | None = None, conversation=None) -> str:
         """Generate contextual tutoring response based on learning progress"""
+        from ai_core.models import Message, Summary
         
-        # Get rich learning context
-        learning_context = await generate_learning_context(self.user_learning_path)
+        # Get conversation context (messages + summary)
+        context_from_messages = ""
+        context_from_summary = ""
         
-        # Determine the type of response needed
-        response_type = await self._determine_response_type(message_content, learning_context)
+        if conversation:
+            messages = await sync_to_async(
+                lambda: list(Message.objects.filter(conversation=conversation).order_by('-created_at')[:6])
+            )()
+            
+            # Build message context (oldest to newest)
+            for message in reversed(messages):
+                context_from_messages += f"{message.sender}: {message.content[:300]}\n"
+            
+            # Get summary if available
+            summary = await sync_to_async(
+                lambda: Summary.objects.filter(conversation=conversation).order_by('-last_updated_at').first()
+            )()
+            
+            if summary:
+                context_from_summary = f"Previous Session Summary:\n{summary.content}\n\n"
         
-        # Generate appropriate response
-        if response_type == "introduction":
-            return await self._generate_subtopic_introduction()
-        elif response_type == "socratic_question":
-            return await self._generate_socratic_question(message_content, learning_context)
-        elif response_type == "feedback":
-            return await self._generate_adaptive_feedback(message_content, code_snippet, learning_context)
-        elif response_type == "assessment":
-            return await self._generate_progress_assessment(learning_context)
-        elif response_type == "encouragement":
-            return await self._generate_encouragement(learning_context)
-        elif response_type == "explanation":
-            return await self._generate_concept_explanation(message_content, learning_context)
-        else:
-            return await self._generate_general_response(message_content, learning_context)
+        # Get learning path context
+        current_subtopic = await sync_to_async(lambda: self.user_learning_path.current_subtopic)()
+        subtopic_name = current_subtopic.name if current_subtopic else "General Programming"
+        topic_name = await sync_to_async(lambda: self.user_learning_path.topic.name)()
+        
+        # Build teaching-focused prompt
+        teaching_prompt = f"""{LEARNING_PATH_SYSTEM_PROMPT}
+
+You are teaching: {topic_name} - {subtopic_name}
+
+TEACHING APPROACH:
+- Be INSTRUCTIONAL and DIRECT (not overly Socratic)
+- ALWAYS provide code examples when teaching programming concepts
+- Explain concepts clearly with practical examples
+- Show working code that students can run and experiment with
+- Use analogies to make complex ideas simple
+- Ask questions ONLY to check understanding, not as primary teaching method
+- Build on previous conversation context
+
+{context_from_summary}
+
+RECENT CONVERSATION:
+{context_from_messages}
+
+STUDENT'S MESSAGE: {message_content}
+{f"STUDENT'S CODE: {code_snippet}" if code_snippet else ""}
+
+Respond with JSON containing:
+- "content": Your clear, instructional explanation
+- "code": Working code example (REQUIRED for programming concepts)
+- "language": "python"
+- "type": "explanation"
+- "next_action": What student should try next"""
+
+        response = await sync_to_async(self.chat.send_message)(
+            config=types.GenerateContentConfig(
+                thinking_config=types.ThinkingConfig(thinking_budget=0)
+            ),
+            message=teaching_prompt,
+        )
+        
+        # Strip markdown and parse response
+        response_text = response.text.strip()
+        if response_text.startswith("```json"):
+            response_text = response_text[7:]
+        elif response_text.startswith("```"):
+            response_text = response_text[3:]
+        if response_text.endswith("```"):
+            response_text = response_text[:-3]
+        response_text = response_text.strip()
+        
+        try:
+            parsed = json.loads(response_text)
+            return json.dumps({
+                "content": parsed.get("content", response_text),
+                "code_snippet": parsed.get("code"),
+                "language": parsed.get("language", "python"),
+                "type": parsed.get("type", "explanation"),
+                "next_action": parsed.get("next_action")
+            })
+        except json.JSONDecodeError:
+            return json.dumps({
+                "content": response_text,
+                "code_snippet": None,
+                "language": None,
+                "type": "explanation"
+            })
     
     async def _determine_response_type(self, message_content: str, learning_context: str) -> str:
         """Determine what type of response is most appropriate"""
@@ -408,7 +476,35 @@ class LearningPathTutorAI:
             message=full_prompt,
         )
         
-        return response.text
+        # Strip markdown code fences if present
+        response_text = response.text.strip()
+        if response_text.startswith("```json"):
+            response_text = response_text[7:]
+        elif response_text.startswith("```"):
+            response_text = response_text[3:]
+        if response_text.endswith("```"):
+            response_text = response_text[:-3]
+        response_text = response_text.strip()
+        
+        # Try to parse and restructure the response
+        try:
+            parsed = json.loads(response_text)
+            # Restructure to match expected format
+            return json.dumps({
+                "content": parsed.get("content", response_text),
+                "code_snippet": parsed.get("code"),
+                "language": parsed.get("language", "python"),
+                "type": parsed.get("type", "conversation"),
+                "next_action": parsed.get("next_action")
+            })
+        except json.JSONDecodeError:
+            # Return as plain text wrapped in JSON
+            return json.dumps({
+                "content": response_text,
+                "code_snippet": None,
+                "language": None,
+                "type": "conversation"
+            })
     
     async def _update_subtopic_progress_from_feedback(self, ai_response: str):
         """Update subtopic progress based on AI feedback analysis"""
@@ -441,3 +537,63 @@ class LearningPathTutorAI:
         except (json.JSONDecodeError, KeyError):
             # AI response wasn't in expected format, continue without updating
             pass
+    
+    async def generate_summary(self, conversation):
+        """
+        Generate and save a summary of the learning path conversation.
+        Includes learning progress and key concepts covered.
+        """
+        from ai_core.models import Message, Summary
+        from learning_paths.utils.learning_context_helpers import generate_learning_context
+        
+        # Get learning context for richer summary
+        learning_context = await generate_learning_context(self.user_learning_path)
+        
+        # Get recent conversation messages
+        messages = await sync_to_async(
+            lambda: list(Message.objects.filter(conversation=conversation).order_by('-created_at')[:10])
+        )()
+        
+        # Build conversation context
+        conversation_text = "\n".join([
+            f"{msg.sender}: {msg.content[:200]}" 
+            for msg in reversed(messages)
+        ])
+        
+        # Get current subtopic info
+        current_subtopic = await sync_to_async(lambda: self.user_learning_path.current_subtopic)()
+        subtopic_name = current_subtopic.name if current_subtopic else "General"
+        topic_name = await sync_to_async(lambda: self.user_learning_path.topic.name)()
+        
+        summary_prompt = f"""Summarize this learning session focusing on:
+1. Key concepts discussed
+2. Student's understanding level
+3. Progress made
+4. Areas needing more work
+
+Learning Path Context:
+- Topic: {topic_name}
+- Current Subtopic: {subtopic_name}
+- Learning Context: {learning_context[:500]}
+
+Recent Conversation:
+{conversation_text}
+
+Provide a concise summary (2-3 sentences) that captures the essence of this learning session."""
+
+        summary_response = await sync_to_async(self.chat.send_message)(
+            config=types.GenerateContentConfig(
+                thinking_config=types.ThinkingConfig(thinking_budget=0)
+            ),
+            message=summary_prompt
+        )
+
+        last_message = await sync_to_async(
+            lambda: Message.objects.filter(conversation=conversation).order_by('-created_at').first()
+        )()
+
+        await sync_to_async(Summary.objects.create)(
+            conversation=conversation,
+            content=summary_response.text,
+            last_message=last_message
+        )

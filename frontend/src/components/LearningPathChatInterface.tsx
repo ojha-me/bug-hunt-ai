@@ -14,13 +14,15 @@ import {
   Divider,
   Badge,
   Alert,
+  Progress,
+  Card,
 } from "@mantine/core";
 import { RiMenuLine, RiLightbulbLine, RiCheckLine, RiCodeLine } from "react-icons/ri";
 import { useQuery } from "@tanstack/react-query";
 import type { LearningTopicDetailResponse } from "../types/learning_paths/api_types";
 import { topicDetails, getLearningPathMessages } from "../api/learningPaths";
 import { useParams } from "react-router-dom";
-import { useLearningPathWebSocket } from "../hooks/useLearningPathWebSocket";
+import { useLearningPathWebSocket, type SubtopicProgress } from "../hooks/useLearningPathWebSocket";
 import { CodeDrawer } from "./CodeDrawer";
 import { runCode } from "../api/execution";
 
@@ -57,6 +59,9 @@ export const LearningPathChatInterface = () => {
   // State for live messages from WebSocket
   const [liveMessages, setLiveMessages] = useState<LearningPathMessage[]>([]);
 
+  // State for progress tracking
+  const [currentProgress, setCurrentProgress] = useState<SubtopicProgress | null>(null);
+
   // Callback to handle new messages from WebSocket
   const handleNewMessage = useCallback((message: LearningPathMessage) => {
     setLiveMessages((prev) => {
@@ -69,11 +74,25 @@ export const LearningPathChatInterface = () => {
     });
   }, []);
 
+  // State for subtopic completion
+  const [showNextSubtopicButton, setShowNextSubtopicButton] = useState(false);
+
+  // Callback when AI detects subtopic completion
+  const handleSubtopicComplete = useCallback(() => {
+    setShowNextSubtopicButton(true);
+  }, []);
+
+  // Callback to handle progress updates
+  const handleProgressUpdate = useCallback((progress: SubtopicProgress) => {
+    setCurrentProgress(progress);
+  }, []);
+
   const {
     isConnected,
     isTyping,
     sendMessage,
-  } = useLearningPathWebSocket(learningTopicId!, handleNewMessage);
+    moveToNextSubtopic,
+  } = useLearningPathWebSocket(learningTopicId!, handleNewMessage, handleSubtopicComplete, undefined, handleProgressUpdate);
 
   // merge the live messages and the historical messages.
   const allMessages = useMemo(() => {
@@ -215,6 +234,11 @@ export const LearningPathChatInterface = () => {
                 <Badge size="sm" color={isConnected ? "green" : "red"}>
                   {isConnected ? "Connected" : "Disconnected"}
                 </Badge>
+                {currentProgress && (
+                  <Badge size="sm" color="blue" variant="light">
+                    {currentProgress.progress_percentage.toFixed(0)}% Complete
+                  </Badge>
+                )}
               </Group>
           </Box>
 
@@ -226,6 +250,18 @@ export const LearningPathChatInterface = () => {
             <RiMenuLine size={20} />
           </ActionIcon>
         </Group>
+        
+        {/* Progress Bar */}
+        {currentProgress && (
+          <Box px="md" pb="sm">
+            <Progress 
+              value={currentProgress.progress_percentage} 
+              size="sm" 
+              color={currentProgress.is_ready_to_move_on ? "green" : "blue"}
+              animated={!currentProgress.is_ready_to_move_on}
+            />
+          </Box>
+        )}
       </Box>
 
       <Box
@@ -414,6 +450,31 @@ export const LearningPathChatInterface = () => {
         </Box>
       )}
 
+      {showNextSubtopicButton && (
+        <Box
+          style={{
+            borderTop: "1px solid #ddd",
+            padding: "0.75rem",
+            background: "#e8f5e9",
+          }}
+        >
+          <Group justify="space-between">
+            <Text size="sm" fw={500}>
+              🎉 Great progress! Ready to move to the next subtopic?
+            </Text>
+            <Button
+              color="green"
+              onClick={() => {
+                moveToNextSubtopic();
+                setShowNextSubtopicButton(false);
+              }}
+            >
+              Next Subtopic →
+            </Button>
+          </Group>
+        </Box>
+      )}
+
       {/* Regular Input Section */}
       <Box
         style={{
@@ -445,7 +506,6 @@ export const LearningPathChatInterface = () => {
         </Group>
       </Box>
 
-      {/* Drawer for Subtopics */}
       <Drawer
         opened={drawerOpened}
         onClose={() => setDrawerOpened(false)}
@@ -469,7 +529,87 @@ export const LearningPathChatInterface = () => {
 
             <Divider mb="sm" />
 
-            <ScrollArea h="60vh">
+            {/* Current Progress Card */}
+            {currentProgress && (
+              <Card shadow="sm" p="md" mb="md" withBorder>
+                <Text fw={600} mb="sm">Current Subtopic Progress</Text>
+                
+                <Stack gap="xs">
+                  <Box>
+                    <Group justify="space-between" mb="xs">
+                      <Text size="sm" fw={500}>Overall Progress</Text>
+                      <Text size="sm" fw={600} c="blue">
+                        {currentProgress.progress_percentage.toFixed(0)}%
+                      </Text>
+                    </Group>
+                    <Progress 
+                      value={currentProgress.progress_percentage} 
+                      size="md" 
+                      color={currentProgress.is_ready_to_move_on ? "green" : "blue"}
+                    />
+                  </Box>
+
+                  <Box>
+                    <Group justify="space-between" mb="xs">
+                      <Text size="sm" fw={500}>AI Confidence</Text>
+                      <Text size="sm" fw={600} c={currentProgress.ai_confidence >= 0.8 ? "green" : "orange"}>
+                        {(currentProgress.ai_confidence * 100).toFixed(0)}%
+                      </Text>
+                    </Group>
+                    <Progress 
+                      value={currentProgress.ai_confidence * 100} 
+                      size="md" 
+                      color={currentProgress.ai_confidence >= 0.8 ? "green" : "orange"}
+                    />
+                  </Box>
+
+                  {currentProgress.challenges_attempted > 0 && (
+                    <Group justify="space-between">
+                      <Text size="sm" c="dimmed">Challenges</Text>
+                      <Text size="sm" fw={500}>
+                        {currentProgress.challenges_completed}/{currentProgress.challenges_attempted}
+                      </Text>
+                    </Group>
+                  )}
+
+                  {currentProgress.covered_points.length > 0 && (
+                    <Box>
+                      <Text size="sm" fw={500} mb="xs">Covered Concepts</Text>
+                      <Stack gap={4}>
+                        {currentProgress.covered_points.map((point, idx) => (
+                          <Group key={idx} gap="xs">
+                            <RiCheckLine size={14} color="green" />
+                            <Text size="xs">{point}</Text>
+                          </Group>
+                        ))}
+                      </Stack>
+                    </Box>
+                  )}
+
+                  {currentProgress.remaining_points.length > 0 && (
+                    <Box>
+                      <Text size="sm" fw={500} mb="xs">Remaining Concepts</Text>
+                      <Stack gap={4}>
+                        {currentProgress.remaining_points.map((point, idx) => (
+                          <Text key={idx} size="xs" c="dimmed" pl="md">
+                            • {point}
+                          </Text>
+                        ))}
+                      </Stack>
+                    </Box>
+                  )}
+
+                  {currentProgress.is_ready_to_move_on && (
+                    <Alert color="green" title="Ready to Advance!">
+                      You've mastered this subtopic! You can move on when ready.
+                    </Alert>
+                  )}
+                </Stack>
+              </Card>
+            )}
+
+            <Text fw={600} mb="sm">All Subtopics</Text>
+            <ScrollArea h="40vh">
               <Stack gap="xs">
                 {learningPathDetail?.subtopics?.map((sub) => {
                   const isActive = false;

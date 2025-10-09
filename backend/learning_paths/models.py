@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 import uuid
 from users.models import CustomUser
+from django.contrib.postgres.fields import ArrayField
 
 
 class DifficultyLevelChoices(models.TextChoices):
@@ -115,7 +116,6 @@ class UserLearningPath(models.Model):
 class SubtopicProgressChoices(models.TextChoices):
     NOT_STARTED = 'not_started', 'Not Started'
     LEARNING = 'learning', 'Learning'
-    CHALLENGING = 'challenging', 'In Challenge Phase'
     COMPLETED = 'completed', 'Completed'
     SKIPPED = 'skipped', 'Skipped'
 
@@ -131,6 +131,24 @@ class SubtopicProgress(models.Model):
         on_delete=models.CASCADE
     )
     subtopic = models.ForeignKey(LearningSubtopic, on_delete=models.CASCADE)
+    # track how well the user is doing in particular subtopic, this will primarily be used
+    # to track if the user is ready to move on to the next subtopic.
+    ai_confidence = models.FloatField(
+        default=0.0,
+        help_text="AI's confidence that the user has mastered the subtopic (0-1)"
+    )
+    covered_points = ArrayField(
+        models.CharField(max_length=255),
+        default=list,
+        help_text="List of concepts already covered in this subtopic"
+    )
+    remaining_points = ArrayField(
+        models.CharField(max_length=255),
+        default=list,
+        help_text="List of concepts not yet covered"
+    )
+    # I might track a list of feedbacks if i feel like it in the future. Trying to keep thisngs
+    # simple right now
     status = models.CharField(
         max_length=20,
         choices=SubtopicProgressChoices.choices,
@@ -148,6 +166,26 @@ class SubtopicProgress(models.Model):
 
     def __str__(self):
         return f"{self.user_path.user.email} - {self.subtopic.name} ({self.get_status_display()})"
+
+    @property
+    def is_ready_to_move_on(self):
+        """Check if the user is ready to move on to the next subtopic"""
+        if len(self.remaining_points) == 0 and self.ai_confidence >= 0.8:
+            return True
+        return False
+    
+    @property
+    def subtopic_complete(self):
+        """Check if the subtopic is complete based on progress metrics"""
+        return self.is_ready_to_move_on
+    
+    @property
+    def progress_percentage(self):
+        """Calculate progress percentage based on covered vs total learning objectives"""
+        total_points = len(self.covered_points) + len(self.remaining_points)
+        if total_points == 0:
+            return 0
+        return (len(self.covered_points) / total_points) * 100
 
     @property
     def challenge_success_rate(self):

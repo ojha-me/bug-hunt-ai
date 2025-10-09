@@ -14,9 +14,22 @@ interface LearningPathMessage {
   next_action?: string;
 }
 
+export interface SubtopicProgress {
+  covered_points: string[];
+  remaining_points: string[];
+  ai_confidence: number;
+  progress_percentage: number;
+  challenges_completed: number;
+  challenges_attempted: number;
+  is_ready_to_move_on: boolean;
+}
+
 export const useLearningPathWebSocket = (
   learningTopicId: string,
-  onMessageReceived?: (message: LearningPathMessage) => void
+  onMessageReceived?: (message: LearningPathMessage) => void,
+  handleSubtopicComplete?: () => void,
+  onSubtopicComplete?: () => void,
+  onProgressUpdate?: (progress: SubtopicProgress) => void
 ) => {
   const socketRef = useRef<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -51,7 +64,6 @@ export const useLearningPathWebSocket = (
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log("WebSocket message received:", data);
           
           // Handle different event types
           if (data.type === "typing_start") {
@@ -60,6 +72,21 @@ export const useLearningPathWebSocket = (
           } else if (data.type === "done") {
             // AI finished typing
             setIsTyping(false);
+          } else if (data.type === "subtopic_complete") {
+            // AI detected subtopic completion
+            if (onSubtopicComplete) {
+              onSubtopicComplete();
+            }
+          } else if (data.type === "progress_update") {
+            // Progress update from backend
+            if (onProgressUpdate && data.content) {
+              try {
+                const progressData = JSON.parse(data.content);
+                onProgressUpdate(progressData);
+              } catch (err) {
+                console.error("Failed to parse progress data:", err);
+              }
+            }
           } else if (data.payload) {
             // This is a message (user or AI) - has payload with message data
             if (onMessageReceived) {
@@ -101,16 +128,29 @@ export const useLearningPathWebSocket = (
         socketRef.current = null;
       }
     };
-  }, [learningTopicId, token, onMessageReceived]);
+  }, [learningTopicId, token, onMessageReceived, onSubtopicComplete, onProgressUpdate]);
 
 
   const sendMessage = (message: string, codeSnippet?: string, language?: string) => {
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
       socketRef.current.send(
         JSON.stringify({
+          action: "message",
           message,
           code_snippet: codeSnippet,
           language: language || "python",
+        })
+      );
+    } else {
+      console.error("WebSocket is not connected");
+    }
+  };
+
+  const moveToNextSubtopic = () => {
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.send(
+        JSON.stringify({
+          action: "next_subtopic",
         })
       );
     } else {
@@ -122,5 +162,6 @@ export const useLearningPathWebSocket = (
     isConnected,
     isTyping,
     sendMessage,
+    moveToNextSubtopic,
   };
 };

@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 import uuid
+from django.contrib.postgres.fields import ArrayField
 
 class ConversationTypeChoices(models.TextChoices):
     GENERAL = 'general', 'General Chat'

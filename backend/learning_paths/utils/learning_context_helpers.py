@@ -7,6 +7,8 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 
 
+# This is just an idea at the minute. These were vibecoded, not integrated in the app right now.
+# I might in the future, I might not.
 class LearningContextGenerator:
     """
     Generates rich context for learning path AI interactions
@@ -321,18 +323,18 @@ async def generate_learning_context(user_learning_path: UserLearningPath) -> str
     context = await generator.generate_full_context()
     
     formatted_context = f"""
-Learning Context Summary:
-- Student: {context['learning_profile']['user_email']}
-- Topic: {context['learning_profile']['topic_name']} ({context['learning_profile']['difficulty_level']})
-- Progress: {context['current_progress']['overall_progress_percentage']:.1f}% complete
-- Current Subtopic: {context['current_progress']['current_subtopic']['name'] or 'Not started'}
-- Learning Pattern: {context['performance_patterns']['pattern']}
-- Success Rate: {context['performance_patterns']['overall_success_rate']}%
-- Emotional State: {context['emotional_indicators']['emotional_state']}
-- Recommended Action: {context['next_steps']['action']}
+        Learning Context Summary:
+        - Student: {context['learning_profile']['user_email']}
+        - Topic: {context['learning_profile']['topic_name']} ({context['learning_profile']['difficulty_level']})
+        - Progress: {context['current_progress']['overall_progress_percentage']:.1f}% complete
+        - Current Subtopic: {context['current_progress']['current_subtopic']['name'] or 'Not started'}
+        - Learning Pattern: {context['performance_patterns']['pattern']}
+        - Success Rate: {context['performance_patterns']['overall_success_rate']}%
+        # - Emotional State: {context['emotional_indicators']['emotional_state']}
+        - Recommended Action: {context['next_steps']['action']}
 
-Recent Conversation Tone: {context['conversation_context']['conversation_tone']}
-Struggling Areas: {', '.join(context['performance_patterns']['struggling_areas']) or 'None identified'}
-"""
-    
+        Recent Conversation Tone: {context['conversation_context']['conversation_tone']}
+        Struggling Areas: {', '.join(context['performance_patterns']['struggling_areas']) or 'None identified'}
+        """
+            
     return formatted_context.strip()

@@ -1,4 +1,3 @@
-# ai_core/services/learning_path_service.py
 from google import genai
 from google.genai import types
 from django.conf import settings
@@ -14,6 +13,7 @@ from learning_paths.utils.learning_prompts import (
     ENCOURAGEMENT_PROMPT,
     CONCEPT_EXPLANATION_PROMPT
 )
+from ai_core.models import Message, Summary
 from learning_paths.utils.learning_context_helpers import generate_learning_context
 from asgiref.sync import sync_to_async
 
@@ -139,7 +139,6 @@ class LearningPathTutorAI:
     
     async def generate_response(self, message_content: str, code_snippet: str | None = None, conversation=None) -> str:
         """Generate contextual tutoring response based on learning progress"""
-        from ai_core.models import Message, Summary
         
         # Get conversation context (messages + summary)
         context_from_messages = ""
@@ -167,34 +166,74 @@ class LearningPathTutorAI:
         subtopic_name = current_subtopic.name if current_subtopic else "General Programming"
         topic_name = await sync_to_async(lambda: self.user_learning_path.topic.name)()
         
-        # Build teaching-focused prompt
-        teaching_prompt = f"""{LEARNING_PATH_SYSTEM_PROMPT}
+        # Get SubtopicProgress context
+        progress_context = ""
+        if current_subtopic:
+            subtopic_progress = await sync_to_async(
+                lambda: SubtopicProgress.objects.filter(
+                    user_path=self.user_learning_path,
+                    subtopic=current_subtopic
+                ).first()
+            )()
+            
+            if subtopic_progress:
+                learning_objectives = await sync_to_async(lambda: current_subtopic.learning_objectives)()
+                progress_context = f"""
+            SUBTOPIC PROGRESS TRACKING:
+            - Learning Objectives: {learning_objectives}
+            - Covered Points: {subtopic_progress.covered_points}
+            - Remaining Points: {subtopic_progress.remaining_points}
+            - AI Confidence Level: {subtopic_progress.ai_confidence:.2f} (0.0-1.0 scale)
+            - Challenges Completed: {subtopic_progress.challenges_completed}/{subtopic_progress.challenges_attempted}
+            - Status: {subtopic_progress.status}
+            
+            Note: Track what concepts the student demonstrates understanding of and update covered_points/remaining_points accordingly.
+            Update ai_confidence based on student's demonstrated mastery (0.0 = no understanding, 1.0 = complete mastery).
+            Student is ready to move on when remaining_points is empty and ai_confidence >= 0.8.
+            """
+            else:
+                learning_objectives = await sync_to_async(lambda: current_subtopic.learning_objectives)()
+                progress_context = f"""
+            SUBTOPIC PROGRESS TRACKING:
+            - Learning Objectives: {learning_objectives}
+            - Covered Points: []
+            - Remaining Points: {learning_objectives}
+            - AI Confidence Level: 0.00 (0.0-1.0 scale)
+            - Challenges Completed: 0/0
+            - Status: not_started
+            
+            Note: This is a new subtopic. Initialize remaining_points with all learning objectives.
+            Track what concepts the student demonstrates understanding of and update covered_points/remaining_points accordingly.
+            """
+        
+        teaching_prompt = f"""
+            {LEARNING_PATH_SYSTEM_PROMPT}
+            You are teaching: {topic_name} - {subtopic_name}
 
-You are teaching: {topic_name} - {subtopic_name}
+            {progress_context}
+            
+            {context_from_summary}
 
-TEACHING APPROACH:
-- Be INSTRUCTIONAL and DIRECT (not overly Socratic)
-- ALWAYS provide code examples when teaching programming concepts
-- Explain concepts clearly with practical examples
-- Show working code that students can run and experiment with
-- Use analogies to make complex ideas simple
-- Ask questions ONLY to check understanding, not as primary teaching method
-- Build on previous conversation context
+            RECENT CONVERSATION:
+            {context_from_messages}
 
-{context_from_summary}
+            STUDENT'S MESSAGE: {message_content}
+            {f"STUDENT'S CODE: {code_snippet}" if code_snippet else ""}
 
-RECENT CONVERSATION:
-{context_from_messages}
-
-STUDENT'S MESSAGE: {message_content}
-{f"STUDENT'S CODE: {code_snippet}" if code_snippet else ""}
-
-Respond with JSON containing:
-- "content": Your clear, instructional explanation
-- "code": Working code example (REQUIRED for programming concepts)
-- "language": "python"
-- "type": "explanation"
-- "next_action": What student should try next"""
+            Respond with JSON containing:
+            - "content": Your clear, instructional explanation
+            - "code": Working code example (REQUIRED for programming concepts)
+            - "language": "python"
+            - "type": "explanation"
+            - "next_action": What student should try next
+            - "progress_update": {{
+                "covered_points": [list of concepts student has now demonstrated understanding of],
+                "remaining_points": [list of concepts still to be covered],
+                "ai_confidence": float between 0.0-1.0 indicating mastery level,
+                "notes": "Brief note about student's progress or areas needing attention"
+              }}
+            
+            IMPORTANT: Always include progress_update to track learning progress."""
 
         response = await sync_to_async(self.chat.send_message)(
             config=types.GenerateContentConfig(
@@ -215,12 +254,22 @@ Respond with JSON containing:
         
         try:
             parsed = json.loads(response_text)
+            
+            # Update SubtopicProgress if progress_update is provided
+            subtopic_complete = False
+            if current_subtopic and parsed.get("progress_update"):
+                subtopic_complete = await self._update_subtopic_progress(
+                    current_subtopic,
+                    parsed["progress_update"]
+                )
+            
             return json.dumps({
                 "content": parsed.get("content", response_text),
                 "code_snippet": parsed.get("code"),
                 "language": parsed.get("language", "python"),
                 "type": parsed.get("type", "explanation"),
-                "next_action": parsed.get("next_action")
+                "next_action": parsed.get("next_action"),
+                "subtopic_complete": subtopic_complete
             })
         except json.JSONDecodeError:
             return json.dumps({
@@ -506,6 +555,69 @@ Respond with JSON containing:
                 "type": "conversation"
             })
     
+    async def _update_subtopic_progress(self, current_subtopic, progress_update: dict):
+        """Update SubtopicProgress based on AI's assessment and return completion status"""
+        from django.utils import timezone
+        
+        try:
+            progress, created = await sync_to_async(
+                SubtopicProgress.objects.get_or_create
+            )(
+                user_path=self.user_learning_path,
+                subtopic=current_subtopic,
+                defaults={
+                    'status': 'learning',
+                    'started_at': timezone.now(),
+                    'remaining_points': progress_update.get('remaining_points', [])
+                }
+            )
+            
+            # Update progress fields
+            if 'covered_points' in progress_update:
+                progress.covered_points = progress_update['covered_points']
+            
+            if 'remaining_points' in progress_update:
+                progress.remaining_points = progress_update['remaining_points']
+            
+            if 'ai_confidence' in progress_update:
+                # Ensure ai_confidence is between 0 and 1
+                confidence = float(progress_update['ai_confidence'])
+                progress.ai_confidence = max(0.0, min(1.0, confidence))
+            
+            if 'notes' in progress_update:
+                # Append new notes to existing notes
+                timestamp = timezone.now().strftime("%Y-%m-%d %H:%M")
+                new_note = f"[{timestamp}] {progress_update['notes']}"
+                if progress.notes:
+                    progress.notes = f"{progress.notes}\n{new_note}"
+                else:
+                    progress.notes = new_note
+            
+            # Update status if not already set
+            if progress.status == 'not_started':
+                progress.status = 'learning'
+                if not progress.started_at:
+                    progress.started_at = timezone.now()
+            
+            await sync_to_async(progress.save)()
+            
+            # Check if subtopic is complete using the property
+            is_complete = await sync_to_async(lambda: progress.subtopic_complete)()
+            
+            logger.info(
+                f"Updated progress for {current_subtopic.name}: "
+                f"confidence={progress.ai_confidence:.2f}, "
+                f"covered={len(progress.covered_points)}, "
+                f"remaining={len(progress.remaining_points)}, "
+                f"complete={is_complete}"
+            )
+            
+            return is_complete
+            
+        except Exception as e:
+            logger.error(f"Error updating subtopic progress: {e}")
+            return False
+    
     async def _update_subtopic_progress_from_feedback(self, ai_response: str):
         """Update subtopic progress based on AI feedback analysis"""
         try:
@@ -538,16 +650,78 @@ Respond with JSON containing:
             # AI response wasn't in expected format, continue without updating
             pass
     
+    async def move_to_next_subtopic(self):
+        """Move the user to the next subtopic in the learning path"""
+        from django.utils import timezone
+        
+        current_subtopic = await sync_to_async(lambda: self.user_learning_path.current_subtopic)()
+        
+        if not current_subtopic:
+            return None
+        
+        # Mark current subtopic as completed
+        progress, created = await sync_to_async(
+            SubtopicProgress.objects.get_or_create
+        )(
+            user_path=self.user_learning_path,
+            subtopic=current_subtopic,
+            defaults={'status': 'completed', 'completed_at': timezone.now()}
+        )
+        
+        if not created and progress.status != 'completed':
+            progress.status = 'completed'
+            progress.completed_at = timezone.now()
+            await sync_to_async(progress.save)()
+        
+        # Get next subtopic
+        topic = await sync_to_async(lambda: self.user_learning_path.topic)()
+        next_subtopic = await sync_to_async(
+            lambda: LearningSubtopic.objects.filter(
+                topic=topic,
+                order__gt=current_subtopic.order,
+                is_active=True
+            ).order_by('order').first()
+        )()
+        
+        if next_subtopic:
+            # Update current subtopic
+            self.user_learning_path.current_subtopic = next_subtopic
+            await sync_to_async(self.user_learning_path.save)()
+            
+            # Create progress entry for new subtopic
+            await sync_to_async(
+                SubtopicProgress.objects.get_or_create
+            )(
+                user_path=self.user_learning_path,
+                subtopic=next_subtopic,
+                defaults={'status': 'learning', 'started_at': timezone.now()}
+            )
+            
+            return {
+                'moved': True,
+                'completed_subtopic': current_subtopic.name,
+                'new_subtopic': next_subtopic.name,
+                'new_subtopic_description': next_subtopic.description
+            }
+        else:
+            # No more subtopics - learning path completed!
+            self.user_learning_path.completed_at = timezone.now()
+            self.user_learning_path.is_active = False
+            await sync_to_async(self.user_learning_path.save)()
+            
+            return {
+                'moved': False,
+                'completed_subtopic': current_subtopic.name,
+                'learning_path_completed': True
+            }
+    
     async def generate_summary(self, conversation):
         """
         Generate and save a summary of the learning path conversation.
         Includes learning progress and key concepts covered.
         """
-        from ai_core.models import Message, Summary
-        from learning_paths.utils.learning_context_helpers import generate_learning_context
-        
         # Get learning context for richer summary
-        learning_context = await generate_learning_context(self.user_learning_path)
+        # learning_context = await generate_learning_context(self.user_learning_path)
         
         # Get recent conversation messages
         messages = await sync_to_async(
@@ -556,7 +730,7 @@ Respond with JSON containing:
         
         # Build conversation context
         conversation_text = "\n".join([
-            f"{msg.sender}: {msg.content[:200]}" 
+            f"{msg.sender}: {msg.content}" 
             for msg in reversed(messages)
         ])
         
@@ -566,20 +740,19 @@ Respond with JSON containing:
         topic_name = await sync_to_async(lambda: self.user_learning_path.topic.name)()
         
         summary_prompt = f"""Summarize this learning session focusing on:
-1. Key concepts discussed
-2. Student's understanding level
-3. Progress made
-4. Areas needing more work
+            1. Key concepts discussed
+            2. Student's understanding level
+            3. Progress made
+            4. Areas needing more work
 
-Learning Path Context:
-- Topic: {topic_name}
-- Current Subtopic: {subtopic_name}
-- Learning Context: {learning_context[:500]}
+            Learning Path Context:
+            - Topic: {topic_name}
+            - Current Subtopic: {subtopic_name}
 
-Recent Conversation:
-{conversation_text}
+            Recent Conversation:
+            {conversation_text}
 
-Provide a concise summary (2-3 sentences) that captures the essence of this learning session."""
+            Provide a concise summary (2-3 sentences) that captures the essence of this learning session."""
 
         summary_response = await sync_to_async(self.chat.send_message)(
             config=types.GenerateContentConfig(
@@ -595,5 +768,6 @@ Provide a concise summary (2-3 sentences) that captures the essence of this lear
         await sync_to_async(Summary.objects.create)(
             conversation=conversation,
             content=summary_response.text,
-            last_message=last_message
+            last_message=last_message,
+
         )

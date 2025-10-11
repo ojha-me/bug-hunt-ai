@@ -8,18 +8,38 @@ from users.api_types import (
     LoginParams,
     LogoutParams,
     TokenResponse,
+    UserProfileResponse,
+    UserStatsResponse,
 )
 from django.contrib.auth import authenticate
 from uuid import uuid4
-from datetime import timedelta
+from datetime import timedelta, datetime
 from django.utils import timezone
-from users.models import CustomUser, RefreshToken
+from users.models import CustomUser, RefreshToken, UserActivitySession
 from django.db import IntegrityError
+from django.db.models import Count, Q, Sum, Avg
 from typing import Dict
 from users.utils.ninja import public_post
+from ninja.security import HttpBearer
 import jwt
 
 router = Router()
+
+
+class AuthBearer(HttpBearer):
+    def authenticate(self, request, token):
+        try:
+            payload = decode_jwt(token)
+            if payload.get("type") != "access":
+                return None
+            user_id = payload.get("user_id")
+            user = CustomUser.objects.filter(id=user_id).first()
+            return user
+        except jwt.PyJWTError:
+            return None
+
+
+auth = AuthBearer()
 
 
 @public_post(router, "/login", response={200: TokenResponse, 401: Dict[str, str]})
@@ -141,4 +161,105 @@ def create_user(request, params: CreateUserSchema):
         )
     except IntegrityError:
         return 400, {"error": "User with this email already exists"}
+
+
+@router.get("/profile", response=UserProfileResponse, auth=auth)
+def get_user_profile(request):
+    """
+    Get current user's profile with comprehensive statistics
+    """
+    user = request.auth
+    
+    # Import models here to avoid circular imports
+    from ai_core.models import Conversation, Message
+    from learning_paths.models import UserLearningPath, SubtopicProgress
+    from execution.models import CodeExecutionLog
+    
+    # Calculate statistics
+    total_conversations = Conversation.objects.filter(user=user).count()
+    
+    # Message stats
+    message_stats = Message.objects.filter(conversation__user=user).aggregate(
+        total=Count('id'),
+        sent=Count('id', filter=Q(sender='user')),
+        received=Count('id', filter=Q(sender='ai'))
+    )
+    
+    # Learning path stats
+    learning_paths = UserLearningPath.objects.filter(user=user)
+    learning_paths_enrolled = learning_paths.count()
+    learning_paths_completed = learning_paths.filter(completed_at__isnull=False).count()
+    
+    # Challenge stats across all learning paths
+    challenge_stats = SubtopicProgress.objects.filter(
+        user_path__user=user
+    ).aggregate(
+        completed=Sum('challenges_completed'),
+        attempted=Sum('challenges_attempted')
+    )
+    
+    # Code execution stats
+    execution_stats = CodeExecutionLog.objects.filter(user=user).aggregate(
+        total=Count('id'),
+        successful=Count('id', filter=Q(success=True))
+    )
+    
+    # Activity time stats
+    activity_stats = UserActivitySession.objects.filter(user=user).aggregate(
+        total_time=Sum('duration_seconds'),
+        avg_session=Avg('duration_seconds'),
+        session_count=Count('id')
+    )
+    
+    # Calculate current streak (consecutive days with activity)
+    current_streak = 0
+    if activity_stats['session_count'] and activity_stats['session_count'] > 0:
+        # Get recent sessions ordered by date
+        recent_sessions = UserActivitySession.objects.filter(
+            user=user
+        ).order_by('-started_at').values_list('started_at', flat=True)[:30]
+        
+        if recent_sessions:
+            current_date = timezone.now().date()
+            streak_date = current_date
+            
+            for session_time in recent_sessions:
+                session_date = session_time.date()
+                if session_date == streak_date:
+                    continue
+                elif session_date == streak_date - timedelta(days=1):
+                    current_streak += 1
+                    streak_date = session_date
+                else:
+                    break
+            
+            # Check if there's activity today
+            if recent_sessions[0].date() == current_date:
+                current_streak += 1
+    
+    stats = UserStatsResponse(
+        total_conversations=total_conversations,
+        total_messages=message_stats['total'] or 0,
+        learning_paths_enrolled=learning_paths_enrolled,
+        learning_paths_completed=learning_paths_completed,
+        code_executions=execution_stats['total'] or 0,
+        successful_executions=execution_stats['successful'] or 0,
+        total_time_spent_seconds=activity_stats['total_time'] or 0,
+        average_session_duration_seconds=int(activity_stats['avg_session'] or 0),
+        messages_sent=message_stats['sent'] or 0,
+        messages_received=message_stats['received'] or 0,
+        challenges_completed=challenge_stats['completed'] or 0,
+        challenges_attempted=challenge_stats['attempted'] or 0,
+        current_streak_days=current_streak
+    )
+    
+    return UserProfileResponse(
+        id=str(user.id),
+        email=user.email,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        skill_level=user.skill_level,
+        date_joined=user.date_joined.isoformat(),
+        stats=stats
+    )
 

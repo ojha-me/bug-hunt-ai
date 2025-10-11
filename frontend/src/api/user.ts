@@ -1,4 +1,4 @@
-import type { CreateUserSchema, CreateUserResponse, LoginParams, TokenResponse } from "../types/users/api_types";
+import type { CreateUserSchema, CreateUserResponse, LoginParams, TokenResponse, UserProfileResponse } from "../types/users/api_types";
 import apiClient from "./apiClient";
 
 
@@ -12,4 +12,7 @@ export const loginUser = async (user: LoginParams): Promise<TokenResponse> => {
     return response.data;
 }
 
-    
+export const getUserProfile = async (): Promise<UserProfileResponse> => {
+    const response = await apiClient.get('users/profile');
+    return response.data;
+}

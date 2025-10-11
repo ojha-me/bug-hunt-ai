@@ -34,5 +34,27 @@ class LogoutParams(Schema):
     refresh_token: str
 
 
-    
+class UserStatsResponse(Schema):
+    total_conversations: int
+    total_messages: int
+    learning_paths_enrolled: int
+    learning_paths_completed: int
+    code_executions: int
+    successful_executions: int
+    total_time_spent_seconds: int
+    average_session_duration_seconds: int
+    messages_sent: int
+    messages_received: int
+    challenges_completed: int
+    challenges_attempted: int
+    current_streak_days: int
 
+
+class UserProfileResponse(Schema):
+    id: str
+    email: str
+    first_name: str
+    last_name: str
+    skill_level: str
+    date_joined: str
+    stats: UserStatsResponse

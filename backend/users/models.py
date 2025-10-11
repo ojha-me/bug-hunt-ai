@@ -39,3 +39,24 @@ class RefreshToken(models.Model):
 
     def __str__(self):
         return f"{self.user.email} - {self.jti}"
+
+
+class UserActivitySession(models.Model):
+    """
+    Tracks user activity sessions for time-spent analytics
+    """
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="activity_sessions")
+    started_at = models.DateTimeField(auto_now_add=True)
+    last_activity_at = models.DateTimeField(auto_now=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
+    duration_seconds = models.PositiveIntegerField(default=0, help_text="Total active time in seconds")
+
+    class Meta:
+        ordering = ['-started_at']
+        indexes = [
+            models.Index(fields=['user', '-started_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.email} - {self.started_at}"

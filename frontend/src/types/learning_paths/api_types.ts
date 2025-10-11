@@ -39,7 +39,6 @@ export interface LearningTopicDetailResponse {
   estimated_duration: string;
   is_active: boolean;
   created_at: string;
-  prerequisites?: LearningTopicResponse[];
   subtopics?: LearningSubtopicResponse[];
 }
 export interface LearningTopicResponse {

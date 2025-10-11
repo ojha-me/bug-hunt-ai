@@ -118,9 +118,9 @@ export const Sidebar = () => {
     navigate(`/learning-path/${pathId}`);
   };
 
-  const handleContinueLearning = (conversationId: string, e: React.MouseEvent) => {
+  const handleContinueLearning = (topicId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate(`/conversation/${conversationId}`);
+    navigate(`/learning-path/chat-interface/${topicId}`);
   };
   
   return (
@@ -180,7 +180,7 @@ export const Sidebar = () => {
                     key={path.id} 
                     p="sm" 
                     className="hover:bg-gray-50 cursor-pointer border-b border-gray-100"
-                    onClick={() => handleLearningPathClick(path.id)}
+                    onClick={() => handleLearningPathClick(path.topic.id)}
                     style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}
                   >
                     <Group justify="space-between" align="flex-start">
@@ -207,7 +207,7 @@ export const Sidebar = () => {
                         <Button
                           size="xs"
                           variant="subtle"
-                          onClick={(e) => handleContinueLearning(path.conversation_id, e)}
+                          onClick={(e) => handleContinueLearning(path.topic.id, e)}
                         >
                           <FaPlay size={10} />
                         </Button>

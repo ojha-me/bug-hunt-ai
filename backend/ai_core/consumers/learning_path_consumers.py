@@ -175,6 +175,7 @@ class LearningAIPathChatConsumer(AsyncWebsocketConsumer):
             )()
             
             if subtopic_progress:
+                is_ready = await database_sync_to_async(lambda: subtopic_progress.is_ready_to_move_on)()
                 progress_data = {
                     'covered_points': subtopic_progress.covered_points,
                     'remaining_points': subtopic_progress.remaining_points,
@@ -182,9 +183,13 @@ class LearningAIPathChatConsumer(AsyncWebsocketConsumer):
                     'progress_percentage': await database_sync_to_async(lambda: subtopic_progress.progress_percentage)(),
                     'challenges_completed': subtopic_progress.challenges_completed,
                     'challenges_attempted': subtopic_progress.challenges_attempted,
-                    'is_ready_to_move_on': await database_sync_to_async(lambda: subtopic_progress.is_ready_to_move_on)()
+                    'is_ready_to_move_on': is_ready
                 }
                 await self.broadcast_event("progress_update", json.dumps(progress_data))
+                
+                # Notify frontend if user is ready to move on
+                if is_ready:
+                    await self.broadcast_event("ready_for_next_subtopic", "You're ready to move to the next subtopic!")
         
         # Broadcast AI message
         await self.broadcast_message(ai_message)

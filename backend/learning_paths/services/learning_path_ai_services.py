@@ -1,9 +1,10 @@
 from google import genai
 from google.genai import types
 from django.conf import settings
+from django.utils import timezone
 import json
 import logging
-from learning_paths.models import UserLearningPath, SubtopicProgress
+from learning_paths.models import UserLearningPath, SubtopicProgress, LearningSubtopic
 from learning_paths.utils.learning_prompts import (
     LEARNING_PATH_SYSTEM_PROMPT,
     SUBTOPIC_INTRODUCTION_PROMPT,
@@ -557,7 +558,6 @@ class LearningPathTutorAI:
     
     async def _update_subtopic_progress(self, current_subtopic, progress_update: dict):
         """Update SubtopicProgress based on AI's assessment and return completion status"""
-        from django.utils import timezone
         
         try:
             progress, created = await sync_to_async(
@@ -652,7 +652,6 @@ class LearningPathTutorAI:
     
     async def move_to_next_subtopic(self):
         """Move the user to the next subtopic in the learning path"""
-        from django.utils import timezone
         
         current_subtopic = await sync_to_async(lambda: self.user_learning_path.current_subtopic)()
         
@@ -688,13 +687,21 @@ class LearningPathTutorAI:
             self.user_learning_path.current_subtopic = next_subtopic
             await sync_to_async(self.user_learning_path.save)()
             
-            # Create progress entry for new subtopic
+            # Get learning objectives for the new subtopic
+            learning_objectives = await sync_to_async(lambda: next_subtopic.learning_objectives)()
+            
+            # Create progress entry for new subtopic with initialized remaining_points
             await sync_to_async(
                 SubtopicProgress.objects.get_or_create
             )(
                 user_path=self.user_learning_path,
                 subtopic=next_subtopic,
-                defaults={'status': 'learning', 'started_at': timezone.now()}
+                defaults={
+                    'status': 'learning',
+                    'started_at': timezone.now(),
+                    'remaining_points': learning_objectives,
+                    'covered_points': []
+                }
             )
             
             return {

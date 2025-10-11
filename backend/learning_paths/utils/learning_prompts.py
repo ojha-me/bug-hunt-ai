@@ -19,7 +19,7 @@ Core Teaching Philosophy:
 
 Fields:
 - "type": one of "explanation", "question", "challenge", "feedback", "encouragement", "assessment"
-- "content": your clear, instructional explanation
+- "content": your clear, instructional explanation (Markdown format)
 - "code": (REQUIRED for programming concepts) working code examples students can run
 - "language": (optional) programming language if code is provided
 - "next_action": (optional) suggested next step for the learner

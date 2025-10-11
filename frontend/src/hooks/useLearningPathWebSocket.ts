@@ -26,10 +26,11 @@ export interface SubtopicProgress {
 
 export const useLearningPathWebSocket = (
   learningTopicId: string,
-  onMessageReceived?: (message: LearningPathMessage) => void,
+  handleNewMessage?: (message: LearningPathMessage) => void,
   handleSubtopicComplete?: () => void,
-  onSubtopicComplete?: () => void,
-  onProgressUpdate?: (progress: SubtopicProgress) => void
+  handleProgressUpdate?: (progress: SubtopicProgress) => void,
+  handleReadyForNext?: () => void,
+  handleSubtopicChanged?: (data: { new_subtopic: string; completed_subtopic: string }) => void
 ) => {
   const socketRef = useRef<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -74,23 +75,38 @@ export const useLearningPathWebSocket = (
             setIsTyping(false);
           } else if (data.type === "subtopic_complete") {
             // AI detected subtopic completion
-            if (onSubtopicComplete) {
-              onSubtopicComplete();
+            if (handleSubtopicComplete) {
+              handleSubtopicComplete();
             }
           } else if (data.type === "progress_update") {
             // Progress update from backend
-            if (onProgressUpdate && data.content) {
+            if (handleProgressUpdate && data.content) {
               try {
                 const progressData = JSON.parse(data.content);
-                onProgressUpdate(progressData);
+                handleProgressUpdate(progressData);
               } catch (err) {
                 console.error("Failed to parse progress data:", err);
               }
             }
+          } else if (data.type === "ready_for_next_subtopic") {
+            // User is ready to move to next subtopic
+            if (handleReadyForNext) {
+              handleReadyForNext();
+            }
+          } else if (data.type === "subtopic_changed") {
+            // Subtopic has changed
+            if (handleSubtopicChanged && data.content) {
+              try {
+                const changeData = JSON.parse(data.content);
+                handleSubtopicChanged(changeData);
+              } catch (err) {
+                console.error("Failed to parse subtopic change data:", err);
+              }
+            }
           } else if (data.payload) {
             // This is a message (user or AI) - has payload with message data
-            if (onMessageReceived) {
-              onMessageReceived(data.payload);
+            if (handleNewMessage) {
+              handleNewMessage(data.payload);
             }
           }
         } catch (err) {
@@ -128,7 +144,7 @@ export const useLearningPathWebSocket = (
         socketRef.current = null;
       }
     };
-  }, [learningTopicId, token, onMessageReceived, onSubtopicComplete, onProgressUpdate]);
+  }, [learningTopicId, token, handleNewMessage, handleSubtopicComplete, handleProgressUpdate, handleReadyForNext, handleSubtopicChanged]);
 
 
   const sendMessage = (message: string, codeSnippet?: string, language?: string) => {

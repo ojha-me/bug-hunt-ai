@@ -21,6 +21,7 @@ interface CodeDrawerProps {
   isExecuting: boolean;
   onRunCode: (code: string, language: string) => void;
   onSubmitCode: (code: string, language: string, message?: string) => void;
+  messageId?: string;
 }
 
 export const CodeDrawer = ({
@@ -32,18 +33,70 @@ export const CodeDrawer = ({
   isExecuting,
   onRunCode,
   onSubmitCode,
+  messageId,
 }: CodeDrawerProps) => {
   const theme = useMantineTheme();
   const [currentCode, setCurrentCode] = useState(code);
   const [currentOutput, setCurrentOutput] = useState(executionOutput);
   const [message, setMessage] = useState("");
 
+  // Initialize code from session storage or props when drawer opens
+  useEffect(() => {
+    if (!isOpen) return;
+    if (messageId) {
+      const storedCodeObject = sessionStorage.getItem("codeStorage");
+      if (storedCodeObject) {
+        try {
+          const codeStorage = JSON.parse(storedCodeObject);
+          if (codeStorage[messageId]) {
+            setCurrentCode(codeStorage[messageId]);
+            return;
+          }
+        } catch (e) {
+          console.error("Error parsing code storage", e);
+        }
+      }
+    }
+    setCurrentCode(code);
+  }, [isOpen, code, messageId]);
+
+  const handleCodeChange = (value: string) => {
+    setCurrentCode(value || "");
+    if (!messageId) return;
+    try {
+      const storedCodeObject = sessionStorage.getItem("codeStorage");
+      const codeStorage = storedCodeObject ? JSON.parse(storedCodeObject) : {};
+      codeStorage[messageId] = value || "";
+      sessionStorage.setItem("codeStorage", JSON.stringify(codeStorage));
+    } catch (e) {
+      console.error("Error storing code", e);
+    }
+  };
+
+  const handleReset = () => {
+    const storedCodeObject = sessionStorage.getItem("codeStorage");
+    if (storedCodeObject) {
+      try {
+        const codeStorage = JSON.parse(storedCodeObject);
+        if (messageId) {
+          delete codeStorage[messageId];
+          sessionStorage.setItem("codeStorage", JSON.stringify(codeStorage));
+        } else {
+          sessionStorage.removeItem("codeStorage");
+        }
+      } catch (e) {
+        console.error("Error parsing code storage", e);
+        sessionStorage.removeItem("codeStorage");
+      }
+    }
+    setCurrentCode(code);
+  };
+
   useEffect(() => {
     if (isOpen) {
-        setCurrentCode(code);
-        setCurrentOutput(executionOutput);
+      setCurrentOutput(executionOutput);
     }
-  }, [isOpen, code, executionOutput]);
+  }, [isOpen, executionOutput]);
 
   return (
     <Drawer
@@ -68,7 +121,7 @@ export const CodeDrawer = ({
             height="100%"
             language={language}
             value={currentCode}
-            onChange={(value) => setCurrentCode(value || "")}
+            onChange={(value) => handleCodeChange(value || "")}
             options={{ fontSize: 14, minimap: { enabled: false } }}
           />
         </Box>
@@ -92,6 +145,12 @@ export const CodeDrawer = ({
               loading={isExecuting}
             >
               Submit Code
+            </Button>
+            <Button
+              onClick={handleReset}
+              variant="outline"
+            >
+              Reset Code
             </Button>
           </Group>
         </Box>

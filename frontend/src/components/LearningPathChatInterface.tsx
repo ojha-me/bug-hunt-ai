@@ -25,8 +25,8 @@ import { useParams } from "react-router-dom";
 import { useLearningPathWebSocket, type SubtopicProgress } from "../hooks/useLearningPathWebSocket";
 import { CodeDrawer } from "./CodeDrawer";
 import { runCode } from "../api/execution";
+import ReactMarkdown from "react-markdown";
 
-// Message interface for learning path messages
 interface LearningPathMessage {
   id: string;
   sender: "user" | "ai";
@@ -74,17 +74,24 @@ export const LearningPathChatInterface = () => {
     });
   }, []);
 
-  // State for subtopic completion
   const [showNextSubtopicButton, setShowNextSubtopicButton] = useState(false);
 
-  // Callback when AI detects subtopic completion
   const handleSubtopicComplete = useCallback(() => {
     setShowNextSubtopicButton(true);
   }, []);
 
-  // Callback to handle progress updates
   const handleProgressUpdate = useCallback((progress: SubtopicProgress) => {
     setCurrentProgress(progress);
+  }, []);
+
+  const handleReadyForNext = useCallback(() => {
+    setShowNextSubtopicButton(true);
+  }, []);
+
+  const handleSubtopicChanged = useCallback((data: { new_subtopic: string; completed_subtopic: string }) => {
+    console.log("Subtopic changed:", data);
+    setCurrentProgress(null);
+    setShowNextSubtopicButton(false);
   }, []);
 
   const {
@@ -92,7 +99,14 @@ export const LearningPathChatInterface = () => {
     isTyping,
     sendMessage,
     moveToNextSubtopic,
-  } = useLearningPathWebSocket(learningTopicId!, handleNewMessage, handleSubtopicComplete, undefined, handleProgressUpdate);
+  } = useLearningPathWebSocket(
+    learningTopicId!, 
+    handleNewMessage, 
+    handleSubtopicComplete, 
+    handleProgressUpdate, 
+    handleReadyForNext,
+    handleSubtopicChanged
+  );
 
   // merge the live messages and the historical messages.
   const allMessages = useMemo(() => {
@@ -145,6 +159,7 @@ export const LearningPathChatInterface = () => {
   const [codeDrawerOpen, setCodeDrawerOpen] = useState(false);
   const [currentCode, setCurrentCode] = useState("");
   const [currentLanguage, setCurrentLanguage] = useState("python");
+  const [currentMessageId, setCurrentMessageId] = useState<string | undefined>(undefined);
   const [executionOutput, setExecutionOutput] = useState("");
   const [isExecuting, setIsExecuting] = useState(false);
 
@@ -166,9 +181,10 @@ export const LearningPathChatInterface = () => {
   };
 
   // Handle opening code drawer with AI-provided code
-  const handleOpenCodeDrawer = (code: string, language: string) => {
+  const handleOpenCodeDrawer = (code: string, language: string, messageId: string) => {
     setCurrentCode(code);
     setCurrentLanguage(language);
+    setCurrentMessageId(messageId);
     setExecutionOutput("");
     setCodeDrawerOpen(true);
   };
@@ -314,9 +330,9 @@ export const LearningPathChatInterface = () => {
                     </Group>
                   )}
 
-                  <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
+                  <ReactMarkdown>
                     {msg.content}
-                  </Text>
+                  </ReactMarkdown>
 
                   {msg.code_snippet && (
                     <Box mt="sm">
@@ -339,7 +355,7 @@ export const LearningPathChatInterface = () => {
                         variant="light"
                         leftSection={<RiCodeLine size={14} />}
                         mt="xs"
-                        onClick={() => handleOpenCodeDrawer(msg.code_snippet!, msg.language || "python")}
+                        onClick={() => handleOpenCodeDrawer(msg.code_snippet!, msg.language || "python", msg.id)}
                       >
                         Open in Editor
                       </Button>
@@ -453,23 +469,37 @@ export const LearningPathChatInterface = () => {
       {showNextSubtopicButton && (
         <Box
           style={{
-            borderTop: "1px solid #ddd",
-            padding: "0.75rem",
-            background: "#e8f5e9",
+            borderTop: "2px solid #4caf50",
+            padding: "1rem",
+            background: "linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)",
+            boxShadow: "0 -2px 8px rgba(76, 175, 80, 0.2)",
           }}
         >
-          <Group justify="space-between">
-            <Text size="sm" fw={500}>
-              🎉 Great progress! Ready to move to the next subtopic?
-            </Text>
+          <Group justify="space-between" align="center">
+            <Box>
+              <Text size="md" fw={600} c="green.9">
+                🎉 Congratulations! You're ready!
+              </Text>
+              <Text size="sm" c="green.8" mt={4}>
+                You've mastered this subtopic. Continue to the next one!
+              </Text>
+            </Box>
             <Button
+              size="md"
               color="green"
+              variant="filled"
               onClick={() => {
                 moveToNextSubtopic();
                 setShowNextSubtopicButton(false);
               }}
+              styles={{
+                root: {
+                  fontWeight: 600,
+                  boxShadow: "0 2px 8px rgba(76, 175, 80, 0.3)",
+                }
+              }}
             >
-              Next Subtopic →
+              Next Topic →
             </Button>
           </Group>
         </Box>
@@ -662,7 +692,6 @@ export const LearningPathChatInterface = () => {
         )}
       </Drawer>
 
-      {/* Code Drawer for running and editing code */}
       <CodeDrawer
         isOpen={codeDrawerOpen}
         onClose={() => setCodeDrawerOpen(false)}
@@ -672,6 +701,7 @@ export const LearningPathChatInterface = () => {
         isExecuting={isExecuting}
         onRunCode={handleRunCode}
         onSubmitCode={handleSubmitCode}
+        messageId={currentMessageId}
       />
     </Box>
   );

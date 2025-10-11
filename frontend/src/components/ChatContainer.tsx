@@ -41,7 +41,7 @@ export const ChatContainer = () => {
 
   // State for the Code Drawer
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [activeCode, setActiveCode] = useState<{ content: string; language: string; } | null>(null);
+  const [activeCode, setActiveCode] = useState<{ content: string; language: string; messageId: string; } | null>(null);
   const [executionOutput, setExecutionOutput] = useState<string>("");
   const [isExecuting, setIsExecuting] = useState(false);
 
@@ -139,6 +139,7 @@ export const ChatContainer = () => {
                             setActiveCode({
                               content: msg.code_snippet!,
                               language: msg.language!,
+                              messageId: msg.id,
                             });
                             setExecutionOutput(""); // Clear previous output
                             setIsDrawerOpen(true);
@@ -196,6 +197,7 @@ export const ChatContainer = () => {
         isExecuting={isExecuting}
         onRunCode={handleRunCode}
         onSubmitCode={handleSubmitCode}
+        messageId={activeCode?.messageId}
       />
     </>
   );

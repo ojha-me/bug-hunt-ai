@@ -1,5 +1,5 @@
-import { Button, Stack, ScrollArea, Box, Text, Loader, Modal, Group, TextInput, Divider, Progress, Badge } from "@mantine/core";
-import { FaPlus, FaEdit, FaTrash, FaGraduationCap, FaPlay } from "react-icons/fa";
+import { Button, Stack, ScrollArea, Box, Text, Loader, Modal, Group, TextInput, Divider, Progress, Badge, ActionIcon, Tooltip } from "@mantine/core";
+import { FaPlus, FaEdit, FaTrash, FaGraduationCap, FaPlay, FaChevronLeft, FaChevronRight, FaUser, FaCog } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { getConversations, createConversation, updateConversationTitle, deleteConversation } from "../api/conversation";
 import { userLearningPaths } from "../api/learningPaths";
@@ -8,6 +8,7 @@ import type { ConversationResponse } from "../types/ai_core/api_types";
 import { notifications } from "@mantine/notifications";
 import { useState } from "react";
 import type { UserLearningPathResponse } from "../types/learning_paths/api_types";
+import { useSidebar } from "../contexts/SidebarContext";
 
 export const Sidebar = () => {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ export const Sidebar = () => {
   const [editingConversation, setEditingConversation] = useState<ConversationResponse | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [deletingConversationId, setDeletingConversationId] = useState<string | null>(null);
+  const { isCollapsed, setIsCollapsed } = useSidebar();
   
   const { data: conversations, isLoading } = useQuery<ConversationResponse[]>({
     queryKey: ['conversations'],
@@ -126,42 +128,76 @@ export const Sidebar = () => {
   return (
     <Box 
       style={{
-        width: '300px',
+        width: isCollapsed ? '60px' : '300px',
         height: '100vh',
         borderRight: '1px solid #e9ecef',
         display: 'flex',
         flexDirection: 'column',
-        padding: '1rem',
+        padding: isCollapsed ? '0.5rem' : '1rem',
         position: 'fixed',
         left: 0,
         top: 0,
         backgroundColor: 'white',
-        zIndex: 100
+        zIndex: 100,
+        transition: 'width 0.3s ease, padding 0.3s ease'
       }}
     >
-      <Text size="xl" fw={700} mb="md" style={{ textAlign: 'center' }}>BugHunt</Text>
+      <Group justify="space-between" mb="md">
+        {!isCollapsed && <Text size="xl" fw={700}>BugHunt</Text>}
+        <Tooltip label={isCollapsed ? "Expand" : "Collapse"} position="right">
+          <ActionIcon
+            variant="subtle"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            size="lg"
+          >
+            {isCollapsed ? <FaChevronRight /> : <FaChevronLeft />}
+          </ActionIcon>
+        </Tooltip>
+      </Group>
       
-      <Stack gap="sm" mb="md">
-        
-        <Button 
-          variant="outline"
-          fullWidth 
-          leftSection={<FaPlus />}
-          onClick={() => createConvoMutation.mutate()}
-        >
-          New Chat
-        </Button>
-        <Button 
-          variant="filled"
-          fullWidth 
-          leftSection={<FaGraduationCap />}
-          onClick={() => navigate('/topics')}
-        >
-          Learning Paths
-        </Button>
-      </Stack>
+      {!isCollapsed ? (
+        <Stack gap="sm" mb="md">
+          <Button 
+            variant="outline"
+            fullWidth 
+            leftSection={<FaPlus />}
+            onClick={() => createConvoMutation.mutate()}
+          >
+            New Chat
+          </Button>
+          <Button 
+            variant="filled"
+            fullWidth 
+            leftSection={<FaGraduationCap />}
+            onClick={() => navigate('/topics')}
+          >
+            Learning Paths
+          </Button>
+        </Stack>
+      ) : (
+        <Stack gap="sm" mb="md">
+          <Tooltip label="New Chat" position="right">
+            <ActionIcon
+              variant="outline"
+              size="xl"
+              onClick={() => createConvoMutation.mutate()}
+            >
+              <FaPlus />
+            </ActionIcon>
+          </Tooltip>
+          <Tooltip label="Learning Paths" position="right">
+            <ActionIcon
+              variant="filled"
+              size="xl"
+              onClick={() => navigate('/topics')}
+            >
+              <FaGraduationCap />
+            </ActionIcon>
+          </Tooltip>
+        </Stack>
+      )}
 
-      <Box style={{ flex: 1, overflow: 'hidden' }}>
+      {!isCollapsed && <Box style={{ flex: 1, overflow: 'hidden' }}>
         <Box mb="md">
           <Text size="sm" c="dimmed" mb="xs">Active Learning Paths</Text>
           <ScrollArea style={{ maxHeight: '200px' }}>
@@ -275,6 +311,50 @@ export const Sidebar = () => {
             </Stack>
           </ScrollArea>
         </Box>
+      </Box>}
+
+      {/* Settings Section */}
+      <Box mt="auto" pt="md" style={{ borderTop: '1px solid #e9ecef' }}>
+        {!isCollapsed ? (
+          <Stack gap="xs">
+            <Button
+              variant="light"
+              fullWidth
+              leftSection={<FaUser />}
+              onClick={() => navigate('/profile')}
+            >
+              Profile
+            </Button>
+            <Button
+              variant="subtle"
+              fullWidth
+              leftSection={<FaCog />}
+              c="dimmed"
+            >
+              Settings
+            </Button>
+          </Stack>
+        ) : (
+          <Stack gap="xs">
+            <Tooltip label="Profile" position="right">
+              <ActionIcon
+                variant="light"
+                size="xl"
+                onClick={() => navigate('/profile')}
+              >
+                <FaUser />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="Settings" position="right">
+              <ActionIcon
+                variant="subtle"
+                size="xl"
+              >
+                <FaCog />
+              </ActionIcon>
+            </Tooltip>
+          </Stack>
+        )}
       </Box>
       
       {/* Edit Conversation Modal */}

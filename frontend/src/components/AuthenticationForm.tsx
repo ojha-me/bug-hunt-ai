@@ -8,8 +8,12 @@ import {
     Text,
     Stack,
     TextInput,
+    Container,
+    Title,
+    Box,
+    Divider,
 } from '@mantine/core';
-import type { PaperProps, MantineTheme } from '@mantine/core';
+import type { PaperProps } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { upperFirst, useToggle } from '@mantine/hooks';
 import { createUser, loginUser } from '../api/user';
@@ -18,6 +22,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { setAccessToken } from '../api/apiClient';
 import { notifications } from '@mantine/notifications';
+import { FaBug, FaUserPlus, FaSignInAlt } from 'react-icons/fa';
 
 export function AuthenticationForm(props: PaperProps) {
   const [type, toggle] = useToggle(['login', 'register']);
@@ -98,67 +103,213 @@ export function AuthenticationForm(props: PaperProps) {
     };
   
     return (
-      <Paper radius="md" p="lg" {...props} className='max-w-[420px] mx-auto flex flex-col items-cente' styles={(theme: MantineTheme) => ({
-        root: {
-          border: `2px solid ${theme.colors.dark[4]}`
-        }
-      })}>
-        <Text size="lg" fw={500} className='text-center'>
-          Welcome to BugHunt Ai
-        </Text>
-        <form onSubmit={form.onSubmit(handleSubmit)}>
-          <Stack>
-            {type === 'register' && (
-              <>
-              <TextInput
-                label="First Name"
-                placeholder="Your first name"
-                value={form.values.first_name}
-                {...form.getInputProps('first_name')}
-              />
-              <TextInput
-                label="Last Name"
-                placeholder="Your last name"
-                {...form.getInputProps('last_name')}
-              />
-              </>
-            )}
-  
-            <TextInput
-              required
-              label="Email"
-              placeholder="hello@example.com"
-              {...form.getInputProps('email')}
-            />
-            {
-              type === 'register' && (
-                <Select
-              label="Skill Level"
-              data={[{value: 'beginner', label: 'Beginner'}, {value: 'intermediate', label: 'Intermediate'}, {value: 'advanced', label: 'Advanced'}]}
-              {...form.getInputProps('skill_level')}
-            />
-              )
-            }
-            <PasswordInput
-              required
-              label="Password"
-              placeholder="Your password"
-              {...form.getInputProps('password')}
-            />
-  
-          </Stack>
-  
-          <Group justify="space-between" mt="xl">
-            <Anchor component="button" type="button" c="dimmed" onClick={() => toggle()} size="xs">
-              {type === 'register'
-                ? 'Already have an account? Login'
-                : "Don't have an account? Register"}
-            </Anchor>
-            <Button type="submit" radius="xl">
-              {upperFirst(type)}
-            </Button>
-          </Group>
-        </form>
-      </Paper>
+      <Container size="xs" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Box style={{ width: '100%', maxWidth: 480 }}>
+          <Box style={{ textAlign: 'center', marginBottom: '2rem' }}>
+            <Box style={{ 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              width: 80,
+              height: 80,
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              marginBottom: '1rem',
+              boxShadow: '0 10px 30px rgba(102, 126, 234, 0.3)'
+            }}>
+              <FaBug size={40} color="white" />
+            </Box>
+            <Title order={1} style={{ 
+              fontSize: '2rem', 
+              fontWeight: 700,
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              marginBottom: '0.5rem'
+            }}>
+              BugHunt AI
+            </Title>
+            <Text size="md" c="dimmed">
+              {type === 'login' ? 'Welcome back! Sign in to continue' : 'Create your account to get started'}
+            </Text>
+          </Box>
+
+          <Paper 
+            radius="xl" 
+            p="xl" 
+            shadow="xl"
+            {...props}
+            style={{
+              border: '1px solid #e9ecef',
+              background: 'white'
+            }}
+          >
+            <form onSubmit={form.onSubmit(handleSubmit)}>
+              <Stack gap="md">
+                {type === 'register' && (
+                  <>
+                    <Group grow>
+                      <TextInput
+                        label="First Name"
+                        placeholder="John"
+                        size="md"
+                        radius="md"
+                        {...form.getInputProps('first_name')}
+                        styles={{
+                          input: {
+                            borderColor: '#e9ecef',
+                            '&:focus': {
+                              borderColor: '#667eea'
+                            }
+                          }
+                        }}
+                      />
+                      <TextInput
+                        label="Last Name"
+                        placeholder="Doe"
+                        size="md"
+                        radius="md"
+                        {...form.getInputProps('last_name')}
+                        styles={{
+                          input: {
+                            borderColor: '#e9ecef',
+                            '&:focus': {
+                              borderColor: '#667eea'
+                            }
+                          }
+                        }}
+                      />
+                    </Group>
+                  </>
+                )}
+      
+                <TextInput
+                  required
+                  label="Email"
+                  placeholder="hello@example.com"
+                  size="md"
+                  radius="md"
+                  {...form.getInputProps('email')}
+                  styles={{
+                    input: {
+                      borderColor: '#e9ecef',
+                      '&:focus': {
+                        borderColor: '#667eea'
+                      }
+                    }
+                  }}
+                />
+
+                {type === 'register' && (
+                  <Select
+                    label="Skill Level"
+                    placeholder="Select your skill level"
+                    size="md"
+                    radius="md"
+                    data={[
+                      {value: 'beginner', label: '🌱 Beginner'}, 
+                      {value: 'intermediate', label: '🚀 Intermediate'}, 
+                      {value: 'advanced', label: '⚡ Advanced'}
+                    ]}
+                    {...form.getInputProps('skill_level')}
+                    styles={{
+                      input: {
+                        borderColor: '#e9ecef',
+                        '&:focus': {
+                          borderColor: '#667eea'
+                        }
+                      }
+                    }}
+                  />
+                )}
+
+                <PasswordInput
+                  required
+                  label="Password"
+                  placeholder="••••••••"
+                  size="md"
+                  radius="md"
+                  {...form.getInputProps('password')}
+                  styles={{
+                    input: {
+                      borderColor: '#e9ecef',
+                      '&:focus': {
+                        borderColor: '#667eea'
+                      }
+                    }
+                  }}
+                />
+      
+                <Button 
+                  type="submit" 
+                  size="lg"
+                  radius="md"
+                  fullWidth
+                  mt="md"
+                  leftSection={type === 'register' ? <FaUserPlus size={18} /> : <FaSignInAlt size={18} />}
+                  style={{
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    transition: 'transform 0.2s',
+                  }}
+                  styles={{
+                    root: {
+                      '&:hover': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: '0 10px 30px rgba(102, 126, 234, 0.4)'
+                      }
+                    }
+                  }}
+                >
+                  {upperFirst(type)}
+                </Button>
+              </Stack>
+            </form>
+
+            <Divider my="xl" label="OR" labelPosition="center" />
+
+            <Text ta="center" size="sm">
+              {type === 'register' ? (
+                <>
+                  Already have an account?{' '}
+                  <Anchor 
+                    component="button" 
+                    type="button" 
+                    onClick={() => toggle()}
+                    fw={600}
+                    style={{
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                    }}
+                  >
+                    Sign in
+                  </Anchor>
+                </>
+              ) : (
+                <>
+                  Don't have an account?{' '}
+                  <Anchor 
+                    component="button" 
+                    type="button" 
+                    onClick={() => toggle()}
+                    fw={600}
+                    style={{
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                    }}
+                  >
+                    Sign up
+                  </Anchor>
+                </>
+              )}
+            </Text>
+          </Paper>
+
+          <Text ta="center" size="xs" c="dimmed" mt="xl">
+            By continuing, you agree to our Terms of Service and Privacy Policy
+          </Text>
+        </Box>
+      </Container>
     );
   }

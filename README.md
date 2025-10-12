@@ -15,15 +15,6 @@ Most learners forget code because they don't *use* it deeply enough.
 
 **BugHunt AI makes learning active, engaging, and memorable** through two powerful learning modes:
 
-### **Learning Paths Mode** (Structured Learning Path)
-Follow curated programming courses with progress tracking:
-1. Choose a topic: *"JavaScript Fundamentals"* or *"Python Basics"*
-2. Progress through structured lessons with clear objectives
-3. Learn concepts through interactive explanations and examples
-4. Practice with targeted bug-fixing challenges for each topic
-5. Track your progress and build skills systematically
-6. Master programming step-by-step with AI guidance
-
 ### **General Chat Mode** (Instant Bug Hunting)
 Jump straight into coding challenges and get immediate help:
 1. Ask any question: *"What's a closure in JavaScript?"*
@@ -31,6 +22,18 @@ Jump straight into coding challenges and get immediate help:
 3. Receive instant challenges: *"This function should return 6, but it returns NaN. Find the bug!"*
 4. Fix it, submit, get feedback, and level up
 5. Learn through exploration and immediate problem-solving
+
+### **Learning Paths Mode** (Structured Learning Path)
+Follow curated programming courses with progress tracking:
+1. Tell the AI what you want to learn: *"How to debug in Python?"*
+2. The AI generates a structured lesson plan with clear objectives
+3. Progress through structured lessons with clear objectives
+4. Learn concepts through interactive explanations and examples
+5. The AI keeps track of what you've studied and what you need to study next
+6. After you've covered all necessary points for a subtopic, it will congratulate you and move you to the next subtopic
+7. Track your progress and build skills systematically
+8. Master programming step-by-step with AI guidance
+
 
 It's not just about answers — it's about **thinking like a developer** through both structured learning and hands-on practice.
 
@@ -55,7 +58,7 @@ Every code example appears in a **fully-featured Monaco editor** (same engine as
 Run code safely in a sandboxed Docker container — no setup, no risk. See output instantly without leaving the chat.
 
 ### **AI-Generated Challenges**
-The AI doesn't just teach — it **tests your understanding** with unique, context-aware coding puzzles containing subtle bugs.
+The AI doesn't just teach — it **tests your understanding** with unique, context-aware coding puzzles.
 
 ### **Real-Time Code Review**
 Submit your fix and get:
@@ -66,7 +69,6 @@ Submit your fix and get:
 ### **Dual Learning Modes**
 - **Learning Path Mode**: Structured, goal-oriented learning with progress tracking
 - **General Chat Mode**: Free-form exploration and instant bug-hunting challenges
-- **Seamless Switching**: Move between modes as your learning needs change
 
 ---
 

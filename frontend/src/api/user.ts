@@ -16,3 +16,8 @@ export const getUserProfile = async (): Promise<UserProfileResponse> => {
     const response = await apiClient.get('users/profile');
     return response.data;
 }
+
+export const googleAuth = async (credential: string): Promise<TokenResponse> => {
+    const response = await apiClient.post('users/google-auth', { credential });
+    return response.data;
+}

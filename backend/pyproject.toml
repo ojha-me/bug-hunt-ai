@@ -10,6 +10,7 @@ dependencies = [
     "django-cors-headers>=4.9.0",
     "django-ninja>=1.4.3",
     "docker>=7.1.0",
+    "google-auth>=2.40.0",
     "google-genai>=1.36.0",
     "ninja-schema>=0.14.3",
     "psycopg2-binary>=2.9.10",

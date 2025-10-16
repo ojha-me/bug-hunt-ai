@@ -9,6 +9,12 @@ class SkillLevelChoices(models.TextChoices):
     INTERMEDIATE = 'intermediate', 'Intermediate'
     ADVANCED = 'advanced', 'Advanced'
 
+
+class AuthProviderChoices(models.TextChoices):
+    EMAIL = 'email', 'Email'
+    GOOGLE = 'google', 'Google'
+
+
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     email = models.EmailField(unique=True)
@@ -21,6 +27,13 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     skill_level = models.CharField(
         max_length=20, choices=SkillLevelChoices.choices, default=SkillLevelChoices.BEGINNER
     )
+    
+    # OAuth fields
+    auth_provider = models.CharField(
+        max_length=20, choices=AuthProviderChoices.choices, default=AuthProviderChoices.EMAIL
+    )
+    google_id = models.CharField(max_length=255, null=True, blank=True, unique=True)
+    profile_picture = models.URLField(max_length=500, null=True, blank=True)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['first_name', 'last_name']

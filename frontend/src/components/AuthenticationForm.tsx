@@ -16,13 +16,14 @@ import {
 import type { PaperProps } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { upperFirst, useToggle } from '@mantine/hooks';
-import { createUser, loginUser } from '../api/user';
+import { createUser, loginUser, googleAuth } from '../api/user';
 import type { CreateUserSchema, LoginParams } from '../types/users/api_types';
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { setAccessToken } from '../api/apiClient';
 import { notifications } from '@mantine/notifications';
 import { FaBug, FaUserPlus, FaSignInAlt } from 'react-icons/fa';
+import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
 
 export function AuthenticationForm(props: PaperProps) {
   const [type, toggle] = useToggle(['login', 'register']);
@@ -82,6 +83,40 @@ export function AuthenticationForm(props: PaperProps) {
         });
       },
     });
+
+    const googleAuthMutation = useMutation({
+      mutationFn: googleAuth,
+      onSuccess: (data) => {
+        setAccessToken(data.access_token);
+        notifications.show({
+          title: 'Success!',
+          message: 'You have successfully signed in with Google.',
+          color: 'green',
+        });
+        navigate('/');
+      },
+      onError: (error) => {
+        notifications.show({
+          title: 'Error',
+          message: error.message || 'Google sign-in failed.',
+          color: 'red',
+        });
+      },
+    });
+
+    const handleGoogleSuccess = (credentialResponse: CredentialResponse) => {
+      if (credentialResponse.credential) {
+        googleAuthMutation.mutate(credentialResponse.credential);
+      }
+    };
+
+    const handleGoogleError = () => {
+      notifications.show({
+        title: 'Error',
+        message: 'Google sign-in was cancelled or failed.',
+        color: 'red',
+      });
+    };
 
     const handleSubmit = (values: typeof form.values) => {
       if (type === 'register') {
@@ -266,6 +301,17 @@ export function AuthenticationForm(props: PaperProps) {
             </form>
 
             <Divider my="xl" label="OR" labelPosition="center" />
+
+            <Box style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+                theme="filled_blue"
+                size="large"
+                text={type === 'register' ? 'signup_with' : 'signin_with'}
+                width="100%"
+              />
+            </Box>
 
             <Text ta="center" size="sm">
               {type === 'register' ? (

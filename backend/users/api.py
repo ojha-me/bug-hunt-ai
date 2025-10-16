@@ -10,6 +10,7 @@ from users.api_types import (
     TokenResponse,
     UserProfileResponse,
     UserStatsResponse,
+    GoogleAuthParams,
 )
 from django.contrib.auth import authenticate
 from uuid import uuid4
@@ -22,6 +23,12 @@ from typing import Dict
 from users.utils.ninja import public_post
 from ninja.security import HttpBearer
 import jwt
+from google.oauth2 import id_token
+from google.auth.transport import requests
+from django.conf import settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = Router()
 
@@ -161,6 +168,98 @@ def create_user(request, params: CreateUserSchema):
         )
     except IntegrityError:
         return 400, {"error": "User with this email already exists"}
+
+
+@public_post(router, "/google-auth", response={200: TokenResponse, 400: Dict[str, str], 401: Dict[str, str]})
+def google_auth(request, params: GoogleAuthParams):
+    """
+    Authenticate user with Google OAuth
+    """
+    try:
+        # Verify the Google ID token
+        google_client_id = settings.GOOGLE_OAUTH_CLIENT_ID
+        if not google_client_id:
+            logger.error("GOOGLE_OAUTH_CLIENT_ID not configured")
+            return 400, {"error": "Google OAuth not configured"}
+        
+        idinfo = id_token.verify_oauth2_token(
+            params.credential, 
+            requests.Request(), 
+            google_client_id
+        )
+        
+        # Extract user information from the token
+        google_id = idinfo['sub']
+        email = idinfo.get('email')
+        first_name = idinfo.get('given_name', '')
+        last_name = idinfo.get('family_name', '')
+        profile_picture = idinfo.get('picture', '')
+        
+        if not email:
+            return 400, {"error": "Email not provided by Google"}
+        
+        # Check if user exists with this Google ID
+        user = CustomUser.objects.filter(google_id=google_id).first()
+        
+        if user:
+            # User exists, log them in
+            pass
+        else:
+            # Check if user exists with this email
+            user = CustomUser.objects.filter(email=email).first()
+            
+            if user:
+                # Link Google account to existing user
+                user.google_id = google_id
+                user.auth_provider = 'google'
+                if not user.profile_picture:
+                    user.profile_picture = profile_picture
+                user.save()
+            else:
+                # Create new user
+                user = CustomUser.objects.create(
+                    email=email,
+                    first_name=first_name,
+                    last_name=last_name,
+                    google_id=google_id,
+                    auth_provider='google',
+                    profile_picture=profile_picture,
+                    is_active=True,
+                )
+                # Set unusable password for OAuth users
+                user.set_unusable_password()
+                user.save()
+        
+        # Generate JWT tokens
+        access_token = create_jwt(user.id, "access")
+        jti = uuid4()
+        refresh_token = create_jwt(user.id, "refresh", str(jti))
+        
+        RefreshToken.objects.create(
+            jti=str(jti),
+            user=user,
+            expires_at=timezone.now() + timedelta(days=30),
+            revoked=False,
+        )
+        
+        response_data = TokenResponse(access_token=access_token)
+        response = Response(response_data.dict(), status=200)
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh_token,
+            httponly=True,
+            samesite="strict",
+            max_age=30 * 24 * 60 * 60,
+        )
+        return response
+        
+    except ValueError as e:
+        # Invalid token
+        logger.error(f"Google OAuth error: {str(e)}")
+        return 401, {"error": "Invalid Google token"}
+    except Exception as e:
+        logger.error(f"Unexpected error in Google OAuth: {str(e)}")
+        return 400, {"error": "Authentication failed"}
 
 
 @router.get("/profile", response=UserProfileResponse, auth=auth)

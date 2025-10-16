@@ -158,6 +158,9 @@ CHANNEL_LAYERS = {
 # JWT settings
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 
+# Google OAuth settings
+GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID")
+
 
 # Logging
 LOGGING = {

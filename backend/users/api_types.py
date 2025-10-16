@@ -58,3 +58,7 @@ class UserProfileResponse(Schema):
     skill_level: str
     date_joined: str
     stats: UserStatsResponse
+
+
+class GoogleAuthParams(Schema):
+    credential: str  # Google ID token

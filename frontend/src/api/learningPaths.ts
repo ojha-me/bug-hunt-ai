@@ -34,7 +34,12 @@ export const topicDetails = async (topicId: string) => {
     return response.data;
 };
 
-export const getLearningPathMessages = async (topicId: string) => {
-    const response = await apiClient.get(`/learning-paths/${topicId}/messages`);
+export const getSubtopicMessages = async (topicId: string, subtopicId: string) => {
+    const response = await apiClient.get(`/learning-paths/${topicId}/subtopics/${subtopicId}/messages`);
+    return response.data;
+};
+
+export const skipSubtopic = async (topicId: string, subtopicId: string) => {
+    const response = await apiClient.post(`/learning-paths/${topicId}/subtopics/${subtopicId}/skip`);
     return response.data;
 };

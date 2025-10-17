@@ -7,29 +7,55 @@ from ai_core.utils.conversation_helpers import ConversationService
 from channels.db import database_sync_to_async
 import logging
 import asyncio
-from learning_paths.models import UserLearningPath, SubtopicProgress, SubtopicProgressChoices
+from learning_paths.models import UserLearningPath, SubtopicProgress, SubtopicProgressChoices, LearningSubtopic
 from learning_paths.services.learning_path_ai_services import LearningPathTutorAI
 from django.utils import timezone
+from ai_core.models import Conversation, ConversationTypeChoices
+
 logger = logging.getLogger('ai_core.consumers')
 
 
 class LearningAIPathChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.learning_topic_id = uuid.UUID(self.scope['url_route']['kwargs']['learning_topic_id'])
-        user_learning_path = await database_sync_to_async(
-            lambda: UserLearningPath.objects.get(topic=self.learning_topic_id)
-        )()
-        self.user_learning_path = user_learning_path
-
-        conversation = await database_sync_to_async(lambda: user_learning_path.conversation)()
-        
-        self.conversation = conversation
+        self.subtopic_id = uuid.UUID(self.scope['url_route']['kwargs']['subtopic_id'])
         
         try:
             self.user = await authenticate_user(self.scope)
         except ValueError:
             await self.close(code=4001)
             return
+        
+        user_learning_path = await database_sync_to_async(
+            lambda: UserLearningPath.objects.get(topic=self.learning_topic_id, user=self.user)
+        )()
+        self.user_learning_path = user_learning_path
+        
+        def get_or_create_progress():
+            subtopic = LearningSubtopic.objects.get(id=self.subtopic_id)
+            progress, created = SubtopicProgress.objects.get_or_create(
+                user_path=user_learning_path,
+                subtopic=subtopic,
+                defaults={
+                    'status': SubtopicProgressChoices.LEARNING,
+                    'started_at': timezone.now(),
+                    'remaining_points': subtopic.learning_objectives,
+                    'covered_points': []
+                }
+            )
+            
+            if not progress.conversation:
+                conversation = Conversation.objects.create(
+                    user=self.user,
+                    title=f"{user_learning_path.topic.name} - {subtopic.name}",
+                    conversation_type=ConversationTypeChoices.LEARNING_PATH
+                )
+                progress.conversation = conversation
+                progress.save()
+            
+            return progress, progress.conversation, subtopic
+        
+        self.subtopic_progress, self.conversation, self.subtopic = await database_sync_to_async(get_or_create_progress)()
         
         self.room_group_name = f"conversation_{self.conversation.id}"
         await self.channel_layer.group_add(
@@ -42,15 +68,10 @@ class LearningAIPathChatConsumer(AsyncWebsocketConsumer):
         await self.accept()
 
         # check the message count if 0 send a greeting message.
-        message_count = await database_sync_to_async(lambda: conversation.messages.count())()
+        message_count = await database_sync_to_async(lambda: self.conversation.messages.count())()
         if message_count == 0:
             topic_name = await database_sync_to_async(lambda: self.user_learning_path.topic.name)()
-            subtopic_name = await database_sync_to_async(lambda: self.user_learning_path.current_subtopic.name)()
-            
-            # Get learning objectives to initialize remaining_points
-            learning_objectives = await database_sync_to_async(
-                lambda: self.user_learning_path.current_subtopic.learning_objectives
-            )()
+            subtopic_name = await database_sync_to_async(lambda: self.subtopic.name)()
             
             greeting_data = await self.ai_service.generate_greeting_message(topic_name=topic_name, subtopic_name=subtopic_name)
             greeting_content = greeting_data.get('greeting_message', 'Welcome to your learning journey!')
@@ -62,18 +83,6 @@ class LearningAIPathChatConsumer(AsyncWebsocketConsumer):
                 content=greeting_content,
                 message_type=MessageTypeChoices.CONVERSATION
             )
-
-            # Initialize SubtopicProgress with learning objectives as remaining_points
-            await database_sync_to_async(
-            lambda: SubtopicProgress.objects.create(
-                user_path=self.user_learning_path,
-                subtopic=self.user_learning_path.current_subtopic,
-                status=SubtopicProgressChoices.LEARNING,
-                started_at=timezone.now(),
-                remaining_points=learning_objectives,
-                covered_points=[]
-            )
-            )()
             
             # Broadcast the greeting message
             await self.broadcast_message(greeting_message)
@@ -118,7 +127,7 @@ class LearningAIPathChatConsumer(AsyncWebsocketConsumer):
         await self.broadcast_event("typing_start")
 
         # Short natural delay to simulate human-like pause
-        await asyncio.sleep(1)
+        await asyncio.sleep(3)
 
         # Generate AI response using learning path tutor
         ai_response_data = await self.ai_service.generate_response(
@@ -157,46 +166,39 @@ class LearningAIPathChatConsumer(AsyncWebsocketConsumer):
             language=ai_language,
             message_type=ai_message_type
         )
-
-        # Generate summary of the learning session
-        await self.ai_service.generate_summary(self.conversation)
-
-        # Tell the frontend the AI is done typing
+        
+        # Broadcast AI message FIRST
+        await self.broadcast_message(ai_message)
+        
+        # THEN tell the frontend the AI is done typing
         await self.broadcast_event("done")
 
-        # Get current progress data to send to frontend
-        current_subtopic = await database_sync_to_async(lambda: self.user_learning_path.current_subtopic)()
-        if current_subtopic:
-            subtopic_progress = await database_sync_to_async(
-                lambda: SubtopicProgress.objects.filter(
-                    user_path=self.user_learning_path,
-                    subtopic=current_subtopic
-                ).first()
-            )()
-            
-            if subtopic_progress:
-                is_ready = await database_sync_to_async(lambda: subtopic_progress.is_ready_to_move_on)()
-                progress_data = {
-                    'covered_points': subtopic_progress.covered_points,
-                    'remaining_points': subtopic_progress.remaining_points,
-                    'ai_confidence': subtopic_progress.ai_confidence,
-                    'progress_percentage': await database_sync_to_async(lambda: subtopic_progress.progress_percentage)(),
-                    'challenges_completed': subtopic_progress.challenges_completed,
-                    'challenges_attempted': subtopic_progress.challenges_attempted,
-                    'is_ready_to_move_on': is_ready
-                }
-                await self.broadcast_event("progress_update", json.dumps(progress_data))
-                
-                # Notify frontend if user is ready to move on
-                if is_ready:
-                    await self.broadcast_event("ready_for_next_subtopic", "You're ready to move to the next subtopic!")
+        subtopic_progress = await database_sync_to_async(
+            lambda: SubtopicProgress.objects.get(id=self.subtopic_progress.id)
+        )()
         
-        # Broadcast AI message
-        await self.broadcast_message(ai_message)
+        is_ready = await database_sync_to_async(lambda: subtopic_progress.is_ready_to_move_on)()
+        progress_data = {
+            'covered_points': subtopic_progress.covered_points,
+            'remaining_points': subtopic_progress.remaining_points,
+            'ai_confidence': subtopic_progress.ai_confidence,
+            'progress_percentage': await database_sync_to_async(lambda: subtopic_progress.progress_percentage)(),
+            'challenges_completed': subtopic_progress.challenges_completed,
+            'challenges_attempted': subtopic_progress.challenges_attempted,
+            'is_ready_to_move_on': is_ready
+        }
+        await self.broadcast_event("progress_update", json.dumps(progress_data))
+        
+        # Notify frontend if user is ready to move on
+        if is_ready:
+            await self.broadcast_event("ready_for_next_subtopic", "You're ready to move to the next subtopic!")
         
         # Check if AI detected subtopic completion
         if subtopic_complete:
             await self.broadcast_event("subtopic_complete", "The AI has detected you've mastered this subtopic!")
+
+        # Generate summary of the learning session (async, doesn't block)
+        await self.ai_service.generate_summary(self.conversation)
 
     async def handle_next_subtopic(self):
         """Handle moving to the next subtopic"""

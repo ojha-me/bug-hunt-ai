@@ -26,6 +26,7 @@ export interface SubtopicProgress {
 
 export const useLearningPathWebSocket = (
   learningTopicId: string,
+  subtopicId: string,
   handleNewMessage?: (message: LearningPathMessage) => void,
   handleSubtopicComplete?: () => void,
   handleProgressUpdate?: (progress: SubtopicProgress) => void,
@@ -41,8 +42,8 @@ export const useLearningPathWebSocket = (
   const token = getAccessToken();
 
   useEffect(() => {
-    if (!token) {
-      console.error("No access token found");
+    if (!token || !subtopicId) {
+      console.error("No access token or subtopic ID found");
       return;
     }
 
@@ -50,7 +51,7 @@ export const useLearningPathWebSocket = (
     const wsPath = "/ws";
     const wsProtocol = apiBase.startsWith("https") ? "wss://" : "ws://";
     const urlWithoutProtocol = apiBase.replace(/^https?:\/\//, "").replace(/\/$/, "");
-    const wsUrl = `${wsProtocol}${urlWithoutProtocol}${wsPath}/learning-path/${learningTopicId}/?token=${token}`;
+    const wsUrl = `${wsProtocol}${urlWithoutProtocol}${wsPath}/learning-path/${learningTopicId}/subtopic/${subtopicId}/?token=${token}`;
     
     const connect = () => {
       const ws = new WebSocket(wsUrl);
@@ -144,7 +145,7 @@ export const useLearningPathWebSocket = (
         socketRef.current = null;
       }
     };
-  }, [learningTopicId, token, handleNewMessage, handleSubtopicComplete, handleProgressUpdate, handleReadyForNext, handleSubtopicChanged]);
+  }, [learningTopicId, subtopicId, token, handleNewMessage, handleSubtopicComplete, handleProgressUpdate, handleReadyForNext, handleSubtopicChanged]);
 
 
   const sendMessage = (message: string, codeSnippet?: string, language?: string) => {

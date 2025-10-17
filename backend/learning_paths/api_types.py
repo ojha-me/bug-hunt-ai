@@ -42,6 +42,7 @@ class LearningSubtopicResponse(Schema):
 class SubtopicProgressResponse(Schema):
     id: UUID
     subtopic: LearningSubtopicResponse
+    conversation_id: Optional[UUID]
     status: str
     started_at: Optional[datetime]
     completed_at: Optional[datetime]

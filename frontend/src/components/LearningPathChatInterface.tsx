@@ -16,11 +16,12 @@ import {
   Alert,
   Progress,
   Card,
+  Paper,
 } from "@mantine/core";
-import { RiMenuLine, RiLightbulbLine, RiCheckLine, RiCodeLine } from "react-icons/ri";
-import { useQuery } from "@tanstack/react-query";
-import type { LearningTopicDetailResponse } from "../types/learning_paths/api_types";
-import { topicDetails, getLearningPathMessages } from "../api/learningPaths";
+import { RiMenuLine, RiLightbulbLine, RiCheckLine, RiCodeLine, RiSkipForwardLine, RiArrowRightLine } from "react-icons/ri";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { LearningTopicDetailResponse, UserLearningPathResponse } from "../types/learning_paths/api_types";
+import { topicDetails, getSubtopicMessages, userLearningPaths, skipSubtopic } from "../api/learningPaths";
 import { useParams } from "react-router-dom";
 import { useLearningPathWebSocket, type SubtopicProgress } from "../hooks/useLearningPathWebSocket";
 import { CodeDrawer } from "./CodeDrawer";
@@ -39,21 +40,44 @@ interface LearningPathMessage {
 }
 
 export const LearningPathChatInterface = () => {
-
+  const queryClient = useQueryClient();
   const { learningTopicId } = useParams<{ learningTopicId: string }>();
+  const [currentSubtopicId, setCurrentSubtopicId] = useState<string | null>(null);
 
   const { data: learningPathDetail, isLoading } =
     useQuery<LearningTopicDetailResponse>({
-      queryKey: ["user-learning-paths", learningTopicId],
+      queryKey: ["learning-topic-detail", learningTopicId],
       queryFn: () => topicDetails(learningTopicId!),
       enabled: !!learningTopicId,
     });
   
-  // Fetch historical messages from the database
-  const { data: historicalMessages } = useQuery({
-    queryKey: ["learning-path-messages", learningTopicId],
-    queryFn: () => getLearningPathMessages(learningTopicId!),
+  // Fetch user's learning path progress
+  const { data: userLearningPathData } = useQuery<UserLearningPathResponse[]>({
+    queryKey: ["user-learning-paths", learningTopicId],
+    queryFn: () => userLearningPaths(learningTopicId),
     enabled: !!learningTopicId,
+  });
+
+  const userLearningPath = userLearningPathData?.[0];
+
+  // Set initial subtopic from user's current progress
+  useEffect(() => {
+    if (userLearningPath?.current_subtopic && !currentSubtopicId) {
+      setCurrentSubtopicId(userLearningPath.current_subtopic.id);
+    }
+  }, [userLearningPath, currentSubtopicId]);
+
+  // Clear live messages when switching subtopics
+  useEffect(() => {
+    setLiveMessages([]);
+    setCurrentProgress(null);
+  }, [currentSubtopicId]);
+  
+  // Fetch historical messages from the database for current subtopic
+  const { data: historicalMessages } = useQuery({
+    queryKey: ["subtopic-messages", learningTopicId, currentSubtopicId],
+    queryFn: () => getSubtopicMessages(learningTopicId!, currentSubtopicId!),
+    enabled: !!learningTopicId && !!currentSubtopicId,
   });
 
   // State for live messages from WebSocket
@@ -70,6 +94,13 @@ export const LearningPathChatInterface = () => {
       if (exists) {
         return prev;
       }
+      if (message.sender === "user") {
+        const filtered = prev.filter(m => 
+          !(m.sender === "user" && m.id.startsWith("temp-") && m.content === message.content)
+        );
+        return [...filtered, message];
+      }
+      
       return [...prev, message];
     });
   }, []);
@@ -101,12 +132,38 @@ export const LearningPathChatInterface = () => {
     moveToNextSubtopic,
   } = useLearningPathWebSocket(
     learningTopicId!, 
+    currentSubtopicId!,
     handleNewMessage, 
     handleSubtopicComplete, 
     handleProgressUpdate, 
     handleReadyForNext,
     handleSubtopicChanged
   );
+
+  // Skip subtopic mutation
+  const skipMutation = useMutation({
+    mutationFn: ({ topicId, subtopicId }: { topicId: string; subtopicId: string }) =>
+      skipSubtopic(topicId, subtopicId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user-learning-paths", learningTopicId] });
+      // Move to next subtopic
+      const currentSubtopic = userLearningPath?.progress.find(p => p.subtopic.id === currentSubtopicId);
+      if (currentSubtopic) {
+        const nextSubtopic = userLearningPath?.progress.find(
+          p => p.subtopic.order > currentSubtopic.subtopic.order
+        );
+        if (nextSubtopic) {
+          setCurrentSubtopicId(nextSubtopic.subtopic.id);
+        }
+      }
+    },
+  });
+
+  const handleSkipSubtopic = () => {
+    if (currentSubtopicId && learningTopicId) {
+      skipMutation.mutate({ topicId: learningTopicId, subtopicId: currentSubtopicId });
+    }
+  };
 
   // merge the live messages and the historical messages.
   const allMessages = useMemo(() => {
@@ -165,7 +222,17 @@ export const LearningPathChatInterface = () => {
 
   // Handle sending messages
   const handleSendMessage = () => {
-    if (!message.trim() || !isConnected) return;
+    if (!message.trim() || !isConnected || !currentSubtopicId) {
+      return;
+    }
+    
+    const userMessage: LearningPathMessage = {
+      id: `temp-${Date.now()}`,
+      sender: "user",
+      content: message,
+      timestamp: new Date().toISOString(),
+    };
+    setLiveMessages((prev) => [...prev, userMessage]);
     
     sendMessage(message);
     setMessage("");
@@ -210,10 +277,10 @@ export const LearningPathChatInterface = () => {
   };
 
 
-  // Auto-scroll to latest message
+  // Auto-scroll to latest message or when typing indicator changes
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [allMessages]);
+  }, [allMessages, isTyping]);
 
   // Show code input for challenges
   useEffect(() => {
@@ -505,7 +572,6 @@ export const LearningPathChatInterface = () => {
         </Box>
       )}
 
-      {/* Regular Input Section */}
       <Box
         style={{
           borderTop: "1px solid #ddd",
@@ -532,6 +598,15 @@ export const LearningPathChatInterface = () => {
             onClick={handleSendMessage}
           >
             Send
+          </Button>
+          <Button
+            variant="light"
+            color="orange"
+            leftSection={<RiSkipForwardLine size={16} />}
+            onClick={handleSkipSubtopic}
+            disabled={skipMutation.isPending}
+          >
+            Skip Topic
           </Button>
         </Group>
       </Box>
@@ -642,28 +717,34 @@ export const LearningPathChatInterface = () => {
             <ScrollArea h="40vh">
               <Stack gap="xs">
                 {learningPathDetail?.subtopics?.map((sub) => {
-                  const isActive = false;
-                  const isCompleted = false;
+                  const progressItem = userLearningPath?.progress.find(p => p.subtopic.id === sub.id);
+                  const isActive = currentSubtopicId === sub.id;
+                  const isCompleted = progressItem?.status === 'completed';
+                  const isSkipped = progressItem?.status === 'skipped';
                   
                   return (
-                    <Box
+                    <Paper
                       key={sub.id}
                       p="sm"
+                      withBorder
                       style={{
-                        borderRadius: "8px",
                         backgroundColor: isActive
                           ? "#e3f2fd"
                           : isCompleted
                           ? "#e8f5e8"
+                          : isSkipped
+                          ? "#fff3e0"
                           : "transparent",
-                        border: isActive
-                          ? "1px solid #90caf9"
+                        borderColor: isActive
+                          ? "#90caf9"
                           : isCompleted
-                          ? "1px solid #81c784"
-                          : "1px solid transparent",
-                        transition: "background-color 0.2s",
+                          ? "#81c784"
+                          : isSkipped
+                          ? "#ffb74d"
+                          : "#e0e0e0",
                         cursor: "pointer",
                       }}
+                      onClick={() => setCurrentSubtopicId(sub.id)}
                     >
                       <Group justify="space-between">
                         <Box style={{ flex: 1 }}>
@@ -675,15 +756,31 @@ export const LearningPathChatInterface = () => {
                           )}
                         </Box>
                         {isCompleted && (
-                          <RiCheckLine color="green" size={16} />
+                          <Badge size="xs" color="green" leftSection={<RiCheckLine size={12} />}>
+                            Completed
+                          </Badge>
+                        )}
+                        {isSkipped && (
+                          <Badge size="xs" color="orange">
+                            Skipped
+                          </Badge>
                         )}
                         {isActive && (
                           <Badge size="xs" color="blue">
                             Current
                           </Badge>
                         )}
+                        {progressItem?.conversation_id && !isActive && (
+                          <ActionIcon
+                            size="sm"
+                            variant="light"
+                            color="blue"
+                          >
+                            <RiArrowRightLine size={14} />
+                          </ActionIcon>
+                        )}
                       </Group>
-                    </Box>
+                    </Paper>
                   );
                 })}
               </Stack>

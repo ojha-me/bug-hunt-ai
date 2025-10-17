@@ -164,6 +164,7 @@ def get_user_learning_paths(request: HttpRequest, topic_id: Optional[UUID] = Non
                     estimated_duration=progress.subtopic.estimated_duration,
                     is_active=progress.subtopic.is_active
                 ),
+                conversation_id=progress.conversation.id if progress.conversation else None,
                 status=progress.status,
                 started_at=progress.started_at,
                 completed_at=progress.completed_at,
@@ -286,9 +287,9 @@ def enroll_in_learning_path(request: HttpRequest, topic_id: UUID):
     return 200, None
 
 
-@get(router, "/{topic_id}/messages", response={200: List[Dict], 401: Dict[str, str], 404: Dict[str, str]})
-def get_learning_path_messages(request: HttpRequest, topic_id: UUID):
-    """Get all messages for a learning path conversation"""
+@get(router, "/{topic_id}/subtopics/{subtopic_id}/messages", response={200: List[Dict], 401: Dict[str, str], 404: Dict[str, str]})
+def get_subtopic_messages(request: HttpRequest, topic_id: UUID, subtopic_id: UUID):
+    """Get all messages for a specific subtopic conversation"""
     import json as json_module
     
     # Get the user's learning path for this topic
@@ -299,8 +300,19 @@ def get_learning_path_messages(request: HttpRequest, topic_id: UUID):
         is_active=True
     )
     
+    # Get the subtopic progress
+    subtopic_progress = get_object_or_404(
+        SubtopicProgress,
+        user_path=learning_path,
+        subtopic_id=subtopic_id
+    )
+    
+    # If no conversation exists yet, return empty list
+    if not subtopic_progress.conversation:
+        return []
+    
     # Get all messages from the associated conversation
-    messages = learning_path.conversation.messages.all().order_by('created_at')
+    messages = subtopic_progress.conversation.messages.all().order_by('created_at')
     
     # Format messages for response
     message_list = []
@@ -334,6 +346,57 @@ def get_learning_path_messages(request: HttpRequest, topic_id: UUID):
         message_list.append(message_data)
     
     return message_list
+
+@post(router, "/{topic_id}/subtopics/{subtopic_id}/skip", response={200: UserLearningPathResponse, 401: Dict[str, str], 404: Dict[str, str]})
+def skip_subtopic(request: HttpRequest, topic_id: UUID, subtopic_id: UUID):
+    """Skip a subtopic and move to the next one"""
+    # Get the user's learning path
+    learning_path = get_object_or_404(
+        UserLearningPath,
+        topic_id=topic_id,
+        user=request.user,
+        is_active=True
+    )
+    
+    # Get the subtopic progress
+    subtopic_progress = get_object_or_404(
+        SubtopicProgress,
+        user_path=learning_path,
+        subtopic_id=subtopic_id
+    )
+    
+    # Mark as skipped
+    subtopic_progress.status = SubtopicProgressChoices.SKIPPED
+    subtopic_progress.completed_at = timezone.now()
+    subtopic_progress.save()
+    
+    # Move to next subtopic
+    next_subtopic = learning_path.topic.subtopics.filter(
+        is_active=True,
+        order__gt=subtopic_progress.subtopic.order
+    ).order_by('order').first()
+    
+    if next_subtopic:
+        learning_path.current_subtopic = next_subtopic
+        learning_path.save()
+        
+        # Create or get progress for next subtopic
+        next_progress, created = SubtopicProgress.objects.get_or_create(
+            user_path=learning_path,
+            subtopic=next_subtopic,
+            defaults={'status': SubtopicProgressChoices.LEARNING, 'started_at': timezone.now()}
+        )
+        if not created and next_progress.status == SubtopicProgressChoices.NOT_STARTED:
+            next_progress.status = SubtopicProgressChoices.LEARNING
+            next_progress.started_at = timezone.now()
+            next_progress.save()
+    else:
+        # All subtopics completed/skipped
+        learning_path.completed_at = timezone.now()
+        learning_path.save()
+    
+    return get_learning_path_response(learning_path)
+
 
 @put(router, "/{path_id}/progress", response={200: UserLearningPathResponse, 401: Dict[str, str], 404: Dict[str, str]})
 def update_progress(request: HttpRequest, path_id: UUID, data: UpdateProgressRequest):
@@ -405,6 +468,7 @@ def get_learning_path_response(path: UserLearningPath) -> UserLearningPathRespon
                 estimated_duration=progress.subtopic.estimated_duration,
                 is_active=progress.subtopic.is_active
             ),
+            conversation_id=progress.conversation.id if progress.conversation else None,
             status=progress.status,
             started_at=progress.started_at,
             completed_at=progress.completed_at,

@@ -131,6 +131,13 @@ class SubtopicProgress(models.Model):
         on_delete=models.CASCADE
     )
     subtopic = models.ForeignKey(LearningSubtopic, on_delete=models.CASCADE)
+    conversation = models.OneToOneField(
+        'ai_core.Conversation',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        help_text="The conversation associated with this subtopic"
+    )
     # track how well the user is doing in particular subtopic, this will primarily be used
     # to track if the user is ready to move on to the next subtopic.
     ai_confidence = models.FloatField(

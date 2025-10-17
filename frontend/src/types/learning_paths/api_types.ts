@@ -59,6 +59,7 @@ export interface StartSubtopicRequest {
 export interface SubtopicProgressResponse {
   id: string;
   subtopic: LearningSubtopicResponse;
+  conversation_id: string | null;
   status: string;
   started_at: string | null;
   completed_at: string | null;

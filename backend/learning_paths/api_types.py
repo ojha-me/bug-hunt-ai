@@ -92,5 +92,27 @@ class CompleteSubtopicRequest(Schema):
     notes: Optional[str] = ""
 
 
+class ExploreBranchResponse(Schema):
+    id: UUID
+    message_id: UUID
+    selection_start: int
+    selection_end: int
+    selection_text: str
+    branch_conversation_id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+class MessageNoteResponse(Schema):
+    id: UUID
+    message_id: UUID
+    selection_start: int
+    selection_end: int
+    selection_text: str
+    content: str
+    created_at: datetime
+    updated_at: datetime
+
+
 # Update the forward reference
 LearningTopicResponse.model_rebuild()

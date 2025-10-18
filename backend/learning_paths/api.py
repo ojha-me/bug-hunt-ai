@@ -16,7 +16,9 @@ from .models import (
     LearningTopic, 
     UserLearningPath, 
     SubtopicProgress,
-    SubtopicProgressChoices
+    SubtopicProgressChoices,
+    ExploreBranch,
+    MessageNote
 )
 from .api_types import (
     LearningTopicResponse,
@@ -26,8 +28,10 @@ from .api_types import (
     SubtopicProgressResponse,
     CreateLearningPathRequest,
     UpdateProgressRequest,
+    ExploreBranchResponse,
+    MessageNoteResponse,
 )
-from ai_core.models import Conversation, ConversationTypeChoices
+from ai_core.models import Conversation, ConversationTypeChoices, Message
 
 logger = logging.getLogger('learning_paths.api')
 
@@ -206,62 +210,6 @@ def get_user_learning_paths(request: HttpRequest, topic_id: Optional[UUID] = Non
         ))
     
     return response
-
-
-# @post(router, "/create", response={200: UserLearningPathResponse, 401: Dict[str, str], 404: Dict[str, str]})
-# def create_learning_path(request: HttpRequest, data: CreateLearningPathRequest):
-#     """Create a new learning path for a user"""
-#     topic = get_object_or_404(LearningTopic, id=data.topic_id, is_active=True)
-    
-#     # Check if user already has an active path for this topic
-#     existing_path = UserLearningPath.objects.filter(
-#         user=request.user,
-#         topic=topic,
-#         is_active=True
-#     ).first()
-    
-#     if existing_path:
-#         return 400, {"error": "User already has an active learning path for this topic"}
-    
-#     # Create conversation for this learning path
-#     conversation = Conversation.objects.create(
-#         user=request.user,
-#         title=f"Learning: {topic.name}",
-#         conversation_type=ConversationTypeChoices.LEARNING_PATH
-#     )
-    
-#     # Get first subtopic
-#     first_subtopic = topic.subtopics.filter(is_active=True).order_by('order').first()
-    
-#     # Create learning path
-#     learning_path = UserLearningPath.objects.create(
-#         user=request.user,
-#         topic=topic,
-#         conversation=conversation,
-#         current_subtopic=first_subtopic
-#     )
-    
-#     # Create progress entries for all subtopics
-#     subtopics = topic.subtopics.filter(is_active=True).order_by('order')
-#     for subtopic in subtopics:
-#         SubtopicProgress.objects.create(
-#             user_path=learning_path,
-#             subtopic=subtopic,
-#             status=SubtopicProgressChoices.NOT_STARTED
-#         )
-    
-#     # Start the first subtopic if it exists
-#     if first_subtopic:
-#         first_progress = SubtopicProgress.objects.get(
-#             user_path=learning_path,
-#             subtopic=first_subtopic
-#         )
-#         first_progress.status = SubtopicProgressChoices.LEARNING
-#         first_progress.started_at = timezone.now()
-#         first_progress.save()
-    
-#     # Return the created learning path
-#     return get_learning_path_response(learning_path)
 
 
 @post(router, "/enroll", response={200: None, 401: Dict[str, str], 404: Dict[str, str]})
@@ -508,3 +456,63 @@ def get_learning_path_response(path: UserLearningPath) -> UserLearningPathRespon
         is_active=path.is_active,
         progress=progress_data
     )
+
+
+
+@get(router, "/messages/{message_id}/branches", response={200: List[ExploreBranchResponse], 401: Dict[str, str], 404: Dict[str, str]})
+def get_explore_branches(request: HttpRequest, message_id: UUID):
+    """Get all exploration branches for a message"""
+    from ai_core.models import Message
+    
+    # Verify message exists and belongs to user's conversation
+    message = get_object_or_404(Message, id=message_id)
+    if message.conversation.user != request.user:
+        return 401, {"error": "Unauthorized"}
+    
+    # Get all branches for this message
+    branches = ExploreBranch.objects.filter(
+        message=message,
+        user=request.user
+    ).select_related('branch_conversation')
+    
+    return [
+        ExploreBranchResponse(
+            id=branch.id,
+            message_id=branch.message.id,
+            selection_start=branch.selection_start,
+            selection_end=branch.selection_end,
+            selection_text=branch.selection_text,
+            branch_conversation_id=branch.branch_conversation.id,
+            created_at=branch.created_at,
+            updated_at=branch.updated_at
+        )
+        for branch in branches
+    ]
+
+
+@get(router, "/messages/{message_id}/notes", response={200: List[MessageNoteResponse], 401: Dict[str, str], 404: Dict[str, str]})
+def get_message_notes(request: HttpRequest, message_id: UUID):
+    """Get all notes for a message"""
+    
+    message = get_object_or_404(Message, id=message_id)
+    if message.conversation.user != request.user:
+        return 401, {"error": "Unauthorized"}
+    
+    notes = MessageNote.objects.filter(
+        message=message,
+        user=request.user
+    )
+    
+    return [
+        MessageNoteResponse(
+            id=note.id,
+            message_id=note.message.id,
+            selection_start=note.selection_start,
+            selection_end=note.selection_end,
+            selection_text=note.selection_text,
+            content=note.content,
+            created_at=note.created_at,
+            updated_at=note.updated_at
+        )
+        for note in notes
+    ]

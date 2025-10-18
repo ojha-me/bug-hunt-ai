@@ -200,3 +200,53 @@ class SubtopicProgress(models.Model):
         if self.challenges_attempted == 0:
             return 0
         return (self.challenges_completed / self.challenges_attempted) * 100
+    
+
+class TextSelectionMixin(models.Model):
+    """Reusable mixin for text selections in messages."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    message = models.ForeignKey(
+        'ai_core.Message',
+        on_delete=models.CASCADE,
+        related_name="%(class)ss"
+    )
+    selection_start = models.IntegerField()
+    selection_end = models.IntegerField()
+    selection_text = models.TextField()
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+
+    def get_highlight_info(self):
+        """Data used by frontend to render the highlight."""
+        return {
+            "id": str(self.id),
+            "message_id": str(self.message_id),
+            "start": self.selection_start,
+            "end": self.selection_end,
+            "text": self.selection_text,
+            "type": self.__class__.__name__.lower(),
+        }
+
+class ExploreBranch(TextSelectionMixin):
+    """Exploration branch starting from a message highlight."""
+    branch_conversation = models.OneToOneField(
+        'ai_core.Conversation',
+        on_delete=models.CASCADE,
+        related_name='explore_branch'
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class MessageNote(TextSelectionMixin):
+    """User note on a message highlight."""
+    content = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+    

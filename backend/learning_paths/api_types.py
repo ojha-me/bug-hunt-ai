@@ -114,5 +114,17 @@ class MessageNoteResponse(Schema):
     updated_at: datetime
 
 
+class CreateMessageNoteRequest(Schema):
+    message_id: UUID
+    selection_start: int
+    selection_end: int
+    selection_text: str
+    content: str
+
+
+class UpdateMessageNoteRequest(Schema):
+    content: str
+
+
 # Update the forward reference
 LearningTopicResponse.model_rebuild()

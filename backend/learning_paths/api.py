@@ -30,6 +30,8 @@ from .api_types import (
     UpdateProgressRequest,
     ExploreBranchResponse,
     MessageNoteResponse,
+    CreateMessageNoteRequest,
+    UpdateMessageNoteRequest,
 )
 from ai_core.models import Conversation, ConversationTypeChoices, Message
 
@@ -516,3 +518,68 @@ def get_message_notes(request: HttpRequest, message_id: UUID):
         )
         for note in notes
     ]
+
+
+@post(router, "/notes/create", response={200: MessageNoteResponse, 401: Dict[str, str], 404: Dict[str, str]})
+def create_message_note(request: HttpRequest, data: CreateMessageNoteRequest):
+    """Create a new note for a message"""
+    
+    message = get_object_or_404(Message, id=data.message_id)
+    if message.conversation.user != request.user:
+        return 401, {"error": "Unauthorized"}
+    
+    note = MessageNote.objects.create(
+        message=message,
+        user=request.user,
+        selection_start=data.selection_start,
+        selection_end=data.selection_end,
+        selection_text=data.selection_text,
+        content=data.content
+    )
+    
+    return MessageNoteResponse(
+        id=note.id,
+        message_id=note.message.id,
+        selection_start=note.selection_start,
+        selection_end=note.selection_end,
+        selection_text=note.selection_text,
+        content=note.content,
+        created_at=note.created_at,
+        updated_at=note.updated_at
+    )
+
+
+@post(router, "/notes/{note_id}/edit", response={200: MessageNoteResponse, 401: Dict[str, str], 404: Dict[str, str]})
+def edit_message_note(request: HttpRequest, note_id: UUID, data: UpdateMessageNoteRequest):
+    """Edit an existing note"""
+    
+    note = get_object_or_404(MessageNote, id=note_id)
+    if note.user != request.user:
+        return 401, {"error": "Unauthorized"}
+    
+    note.content = data.content
+    note.save()
+    
+    return MessageNoteResponse(
+        id=note.id,
+        message_id=note.message.id,
+        selection_start=note.selection_start,
+        selection_end=note.selection_end,
+        selection_text=note.selection_text,
+        content=note.content,
+        created_at=note.created_at,
+        updated_at=note.updated_at
+    )
+
+
+@delete(router, "/notes/{note_id}", response={200: Dict[str, str], 401: Dict[str, str], 404: Dict[str, str]})
+def delete_message_note(request: HttpRequest, note_id: UUID):
+    """Delete a note"""
+    
+    note = get_object_or_404(MessageNote, id=note_id)
+    if note.user != request.user:
+        return 401, {"error": "Unauthorized"}
+    
+    note.delete()
+    
+    return {"message": "Note deleted successfully"}

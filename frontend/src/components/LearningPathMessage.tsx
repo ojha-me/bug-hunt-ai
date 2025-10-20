@@ -1,7 +1,7 @@
 import { Box, Group, Text, Badge, Button, Modal, Textarea, Stack, ActionIcon } from "@mantine/core";
 import { RiCodeLine, RiLightbulbLine, RiStickyNoteLine, RiDeleteBinLine, RiEditLine } from "react-icons/ri";
 import ReactMarkdown from "react-markdown";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createMessageNote, getMessageNotes, updateMessageNote, deleteMessageNote } from "../api/learningPaths";
 import type { MessageNoteResponse } from "../types/learning_paths/api_types";
@@ -49,6 +49,8 @@ export const LearningPathMessage = ({
     queryFn: () => getMessageNotes(id),
     enabled: !!id && !id.startsWith("temp-"),
   });
+
+  console.log(notes,"herna de notes k chha")
 
   const createNoteMutation = useMutation({
     mutationFn: createMessageNote,
@@ -151,7 +153,7 @@ export const LearningPathMessage = ({
     return () => document.removeEventListener("click", handleClickOutside);
   }, [contextMenu, noteModalOpen, viewNoteModalOpen]);
 
-  const handleHighlightClick = (e: React.MouseEvent) => {
+  const handleHighlightClick = useCallback((e: Event) => {
     const target = e.target as HTMLElement;
     const noteElement = target.closest("[data-note-id]");
     
@@ -170,56 +172,97 @@ export const LearningPathMessage = ({
         console.log("Note not found in notes array");
       }
     }
-  };
+  }, [notes]);
 
   // Render content with highlighted notes
   const renderContentWithHighlights = () => {
+    // Always render the full markdown content
+    const renderedContent = <ReactMarkdown>{content}</ReactMarkdown>;
+    
     if (notes.length === 0) {
-      return <ReactMarkdown>{content}</ReactMarkdown>;
+      return renderedContent;
     }
 
-    const sortedNotes = [...notes].sort((a, b) => a.selection_start - b.selection_start);
-    const parts: React.ReactNode[] = [];
-    let lastIndex = 0;
+    // After rendering, we'll use a ref callback to add highlights to the DOM
+    return renderedContent;
+  };
 
-    sortedNotes.forEach((note, idx) => {
-      if (note.selection_start > lastIndex) {
-        const beforeText = content.substring(lastIndex, note.selection_start);
-        parts.push(
-          <span key={`text-${idx}`}>{beforeText}</span>
-        );
+  // Add highlights after markdown is rendered
+  useEffect(() => {
+    const el = markdownRef.current;
+    if (!el || notes.length === 0) return;
+
+    // Remove existing highlights
+    el.querySelectorAll('.note-highlight').forEach(highlight => {
+      const parent = highlight.parentNode;
+      if (parent) {
+        parent.replaceChild(document.createTextNode(highlight.textContent || ''), highlight);
+        parent.normalize(); // Merge adjacent text nodes
       }
-
-      const highlightedText = content.substring(note.selection_start, note.selection_end);
-      parts.push(
-        <mark
-          key={`note-${note.id}`}
-          data-note-id={note.id}
-          onClick={handleHighlightClick}
-          style={{
-            backgroundColor: "#fff9db",
-            borderBottom: "2px solid #ffd43b",
-            cursor: "pointer",
-            padding: "2px 0",
-          }}
-          title={`Note: ${note.content.substring(0, 50)}${note.content.length > 50 ? '...' : ''}`}
-        >
-          {highlightedText}
-        </mark>
-      );
-
-      lastIndex = note.selection_end;
     });
 
-    if (lastIndex < content.length) {
-      const remainingText = content.substring(lastIndex);
-      parts.push(
-        <span key="text-end">{remainingText}</span>
+    // Add new highlights
+    notes.forEach(note => {
+      const walker = document.createTreeWalker(
+        el,
+        NodeFilter.SHOW_TEXT,
+        null
       );
-    }
 
-    return <>{parts}</>;
-  };
+      let currentNode;
+      let charCount = 0;
+      const nodesToHighlight: Array<{node: Text, start: number, end: number}> = [];
+
+      // Find text nodes that contain the selection
+      while ((currentNode = walker.nextNode())) {
+        const nodeText = currentNode.textContent || '';
+        const nodeStart = charCount;
+        const nodeEnd = charCount + nodeText.length;
+
+        // Check if this node intersects with the note selection
+        if (nodeEnd > note.selection_start && nodeStart < note.selection_end) {
+          const highlightStart = Math.max(0, note.selection_start - nodeStart);
+          const highlightEnd = Math.min(nodeText.length, note.selection_end - nodeStart);
+          
+          nodesToHighlight.push({
+            node: currentNode as Text,
+            start: highlightStart,
+            end: highlightEnd
+          });
+        }
+
+        charCount += nodeText.length;
+      }
+
+      // Apply highlights
+      nodesToHighlight.forEach(({ node, start, end }) => {
+        const text = node.textContent || '';
+        const before = text.substring(0, start);
+        const highlighted = text.substring(start, end);
+        const after = text.substring(end);
+
+        const fragment = document.createDocumentFragment();
+        
+        if (before) fragment.appendChild(document.createTextNode(before));
+        
+        const mark = document.createElement('mark');
+        mark.className = 'note-highlight';
+        mark.setAttribute('data-note-id', note.id);
+        mark.style.backgroundColor = '#fff9db';
+        mark.style.borderBottom = '2px solid #ffd43b';
+        mark.style.cursor = 'pointer';
+        mark.style.padding = '2px 0';
+        mark.title = `Note: ${note.content.substring(0, 50)}${note.content.length > 50 ? '...' : ''}`;
+        mark.textContent = highlighted;
+        mark.addEventListener('click', handleHighlightClick);
+        fragment.appendChild(mark);
+        
+        if (after) fragment.appendChild(document.createTextNode(after));
+
+        node.parentNode?.replaceChild(fragment, node);
+      });
+    });
+  }, [notes, content, handleHighlightClick]);
 
   return (
     <Box

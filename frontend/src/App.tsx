@@ -8,6 +8,7 @@ import { TopicSelection } from "./components/TopicSelection";
 import {PathDetails} from "./components/PathDetails";
 import LearningPathChatInterface from "./components/LearningPathChatInterface";
 import { UserProfile } from "./components/UserProfile";
+import { NotesView } from "./pages/NotesView";
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
           <Route path="/learning-path/:pathId" element={<PathDetails />} />
           <Route path="/conversation/:conversationId" element={<ChatContainer />} />
           <Route path="/learning-path/chat-interface/:learningTopicId" element={<LearningPathChatInterface />} />
+          <Route path="/notes" element={<NotesView />} />
           <Route path="/profile" element={<UserProfile />} />
         </Route>
       </Route>

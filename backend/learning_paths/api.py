@@ -520,6 +520,33 @@ def get_message_notes(request: HttpRequest, message_id: UUID):
     ]
 
 
+@get(router, "/notes/all", response={200: List[MessageNoteResponse], 401: Dict[str, str], 500: Dict[str, str]})
+def get_all_user_notes(request: HttpRequest):
+    """Get all notes for the authenticated user across all learning paths"""
+    
+    try:
+        notes = MessageNote.objects.filter(
+            user=request.user
+        ).select_related('message').order_by('-created_at')
+        
+        return [
+            MessageNoteResponse(
+                id=note.id,
+                message_id=note.message.id,
+                selection_start=note.selection_start,
+                selection_end=note.selection_end,
+                selection_text=note.selection_text,
+                content=note.content,
+                created_at=note.created_at,
+                updated_at=note.updated_at
+            )
+            for note in notes
+        ]
+    except Exception as e:
+        logger.error(f"Error fetching user notes: {e}")
+        return 500, {"error": str(e)}
+
+
 @post(router, "/notes/create", response={200: MessageNoteResponse, 401: Dict[str, str], 404: Dict[str, str]})
 def create_message_note(request: HttpRequest, data: CreateMessageNoteRequest):
     """Create a new note for a message"""

@@ -1,5 +1,6 @@
 import { Button, Stack, ScrollArea, Box, Text, Loader, Modal, Group, TextInput, Divider, Progress, Badge, ActionIcon, Tooltip } from "@mantine/core";
 import { FaPlus, FaEdit, FaTrash, FaGraduationCap, FaPlay, FaChevronLeft, FaChevronRight, FaUser, FaCog } from "react-icons/fa";
+import { RiStickyNoteLine } from "react-icons/ri";
 import { useNavigate } from "react-router-dom";
 import { getConversations, createConversation, updateConversationTitle, deleteConversation } from "../api/conversation";
 import { userLearningPaths } from "../api/learningPaths";
@@ -173,6 +174,14 @@ export const Sidebar = () => {
           >
             Learning Paths
           </Button>
+          <Button 
+            variant="light"
+            fullWidth 
+            leftSection={<RiStickyNoteLine />}
+            onClick={() => navigate('/notes')}
+          >
+            My Notes
+          </Button>
         </Stack>
       ) : (
         <Stack gap="sm" mb="md">
@@ -192,6 +201,15 @@ export const Sidebar = () => {
               onClick={() => navigate('/topics')}
             >
               <FaGraduationCap />
+            </ActionIcon>
+          </Tooltip>
+          <Tooltip label="My Notes" position="right">
+            <ActionIcon
+              variant="light"
+              size="xl"
+              onClick={() => navigate('/notes')}
+            >
+              <RiStickyNoteLine />
             </ActionIcon>
           </Tooltip>
         </Stack>

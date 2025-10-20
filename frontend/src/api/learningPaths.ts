@@ -80,3 +80,11 @@ export const deleteMessageNote = async (noteId: string): Promise<{ message: stri
     const response = await apiClient.delete(`/learning-paths/notes/${noteId}`);
     return response.data;
 };
+
+/**
+ * Get all notes for the authenticated user
+ */
+export const getAllUserNotes = async (): Promise<MessageNoteResponse[]> => {
+    const response = await apiClient.get('/learning-paths/notes/all');
+    return response.data;
+};

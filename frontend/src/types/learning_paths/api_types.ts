@@ -14,6 +14,23 @@ export interface CompleteSubtopicRequest {
 export interface CreateLearningPathRequest {
   topic_id: string;
 }
+export interface CreateMessageNoteRequest {
+  message_id: string;
+  selection_start: number;
+  selection_end: number;
+  selection_text: string;
+  content: string;
+}
+export interface ExploreBranchResponse {
+  id: string;
+  message_id: string;
+  selection_start: number;
+  selection_end: number;
+  selection_text: string;
+  branch_conversation_id: string;
+  created_at: string;
+  updated_at: string;
+}
 export interface GenerateTopicPathRequest {
   topic_name: string;
   user_level: string;
@@ -52,6 +69,16 @@ export interface LearningTopicResponse {
   subtopics_count: number | null;
   prerequisites?: LearningTopicResponse[];
 }
+export interface MessageNoteResponse {
+  id: string;
+  message_id: string;
+  selection_start: number;
+  selection_end: number;
+  selection_text: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
 export interface Schema {}
 export interface StartSubtopicRequest {
   subtopic_id: string;
@@ -67,6 +94,9 @@ export interface SubtopicProgressResponse {
   challenges_attempted: number;
   challenge_success_rate: number;
   notes: string;
+}
+export interface UpdateMessageNoteRequest {
+  content: string;
 }
 export interface UpdateProgressRequest {
   subtopic_id: string;

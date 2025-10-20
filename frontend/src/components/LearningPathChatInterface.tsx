@@ -18,15 +18,15 @@ import {
   Card,
   Paper,
 } from "@mantine/core";
-import { RiMenuLine, RiLightbulbLine, RiCheckLine, RiCodeLine, RiSkipForwardLine, RiArrowRightLine } from "react-icons/ri";
+import { RiMenuLine, RiCheckLine, RiSkipForwardLine, RiArrowRightLine } from "react-icons/ri";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { LearningTopicDetailResponse, UserLearningPathResponse } from "../types/learning_paths/api_types";
 import { topicDetails, getSubtopicMessages, userLearningPaths, skipSubtopic } from "../api/learningPaths";
 import { useParams } from "react-router-dom";
 import { useLearningPathWebSocket, type SubtopicProgress } from "../hooks/useLearningPathWebSocket";
 import { CodeDrawer } from "./CodeDrawer";
+import { LearningPathMessage as MessageComponent } from "./LearningPathMessage";
 import { runCode } from "../api/execution";
-import ReactMarkdown from "react-markdown";
 
 interface LearningPathMessage {
   id: string;
@@ -367,100 +367,20 @@ export const LearningPathChatInterface = () => {
             )}
 
             {allMessages.map((msg: LearningPathMessage) => (
-              <Box
+              <MessageComponent
                 key={msg.id}
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: msg.sender === "user" ? "flex-end" : "flex-start",
-                }}
-              >
-                <Box
-                  p="sm"
-                  style={{
-                    backgroundColor: msg.sender === "user" ? "#e3f2fd" : "#f5f5f5",
-                    borderRadius: "12px",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                    maxWidth: "70%",
-                    position: "relative",
-                  }}
-                >
-                  {/* Message type indicator for AI messages */}
-                  {msg.sender === "ai" && msg.type && (
-                    <Group gap="xs" mb="xs">
-                      <Text size="xs">
-                        {""}
-                      </Text>
-                      <Badge size="xs" variant="light">
-                        {msg.type}
-                      </Badge>
-                    </Group>
-                  )}
-
-                  <ReactMarkdown>
-                    {msg.content}
-                  </ReactMarkdown>
-
-                  {msg.code_snippet && (
-                    <Box mt="sm">
-                      <Box
-                        p="sm"
-                        style={{
-                          backgroundColor: "#f8f9fa",
-                          borderRadius: "8px",
-                          fontFamily: "monospace",
-                          fontSize: "12px",
-                          border: "1px solid #e9ecef",
-                        }}
-                      >
-                        <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
-                          {msg.code_snippet}
-                        </pre>
-                      </Box>
-                      <Button
-                        size="xs"
-                        variant="light"
-                        leftSection={<RiCodeLine size={14} />}
-                        mt="xs"
-                        onClick={() => handleOpenCodeDrawer(msg.code_snippet!, msg.language || "python", msg.id)}
-                      >
-                        Open in Editor
-                      </Button>
-                    </Box>
-                  )}
-
-                  {/* Next action suggestion */}
-                  {msg.next_action && (
-                    <Text size="xs" c="dimmed" mt="xs" style={{ fontStyle: "italic" }}>
-                      💡 {msg.next_action}
-                    </Text>
-                  )}
-                </Box>
-
-                <Group gap="xs" mt="xs">
-                  <Text
-                    size="xs"
-                    c="dimmed"
-                    ta={msg.sender === "user" ? "right" : "left"}
-                  >
-                    {new Date(msg.timestamp).toLocaleTimeString()}
-                  </Text>
-
-                  {/* Action buttons for AI messages */}
-                  {msg.sender === "ai" && msg.type === "challenge" && (
-                    <Button
-                      size="xs"
-                      variant="light"
-                      leftSection={<RiLightbulbLine size={12} />}
-                    >
-                      Hint
-                    </Button>
-                  )}
-                </Group>
-              </Box>
+                id={msg.id}
+                sender={msg.sender}
+                content={msg.content}
+                code_snippet={msg.code_snippet}
+                language={msg.language}
+                timestamp={msg.timestamp}
+                type={msg.type}
+                next_action={msg.next_action}
+                onOpenCodeDrawer={handleOpenCodeDrawer}
+              />
             ))}
 
-            {/* Typing indicator */}
             {isTyping && (
               <Box
                 style={{
@@ -491,7 +411,6 @@ export const LearningPathChatInterface = () => {
         )}
       </Box>
 
-      {/* Code Input Section (shown for challenges) */}
       {showCodeInput && (
         <Box
           style={{

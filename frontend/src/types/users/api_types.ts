@@ -27,6 +27,9 @@ export interface CreateUserSchema {
   password: string;
   skill_level: SkillLevelChoices;
 }
+export interface GoogleAuthParams {
+  credential: string;
+}
 export interface LoginParams {
   email: string;
   password: string;

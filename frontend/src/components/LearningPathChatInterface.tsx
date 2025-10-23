@@ -17,6 +17,7 @@ import {
   Progress,
   Card,
   Paper,
+  Textarea,
 } from "@mantine/core";
 import { RiMenuLine, RiCheckLine, RiSkipForwardLine, RiArrowRightLine } from "react-icons/ri";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -499,16 +500,19 @@ export const LearningPathChatInterface = () => {
         }}
       >
         <Group gap="sm" style={{ width: "100%" }}>
-          <TextInput
+          <Textarea
             placeholder="Type your message..."
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={(e) => setMessage(e.currentTarget.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 handleSendMessage();
               }
             }}
+            autosize
+            minRows={1}
+            maxRows={6}
             style={{ flex: 1 }}
             disabled={!isConnected}
           />

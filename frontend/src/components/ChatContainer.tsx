@@ -2,12 +2,12 @@ import { useParams } from "react-router-dom";
 import {
   Box,
   Text,
-  TextInput,
   Button,
   Stack,
   Group,
   Alert,
   Loader,
+  Textarea,
 } from "@mantine/core";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { FaExclamationCircle } from "react-icons/fa";
@@ -174,13 +174,16 @@ export const ChatContainer = () => {
         {/* Input Area */}
         <Box style={{ borderTop: "1px solid #ddd", paddingTop: "0.5rem", background: "#fff" }}>
           <Group gap="sm" style={{ width: "100%" }}>
-            <TextInput
+            <Textarea
               placeholder="Type your message..."
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
+              onChange={(e) => setMessage(e.currentTarget.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
               style={{ flex: 1 }}
               disabled={!isConnected || isTyping}
+              autosize
+              minRows={2}
+              maxRows={6}
             />
             <Button onClick={handleSendMessage} disabled={!isConnected || !message.trim() || isTyping}>
               Send

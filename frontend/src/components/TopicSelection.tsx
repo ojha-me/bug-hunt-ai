@@ -16,7 +16,8 @@ import {
   Progress,
   Divider,
   Loader,
-  Modal
+  Modal,
+  Textarea
 } from '@mantine/core';
 import { FaSearch, FaClock, FaGraduationCap, FaPlay, FaCheck, FaPlus } from 'react-icons/fa';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -285,12 +286,15 @@ export const TopicSelection = () => {
         <Text size="sm" mb="md">
           Tell us what you want to learn and our AI tutor will create a personalized learning path for you.
         </Text>
-        <TextInput
+        <Textarea
           label="Learning Topic"
           placeholder="e.g., React hooks, Python data structures, JavaScript algorithms"
           value={learningTopic}
-          onChange={(e) => setLearningTopic(e.target.value)}
+          onChange={(e) => setLearningTopic(e.currentTarget.value)}
           mb="md"
+          autosize
+          minRows={2}
+          maxRows={6}
         />
         <Group justify="flex-end">
           <Button 

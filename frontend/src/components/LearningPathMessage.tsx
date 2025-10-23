@@ -44,13 +44,17 @@ export const LearningPathMessage = ({
   const [viewNoteModalOpen, setViewNoteModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
 
+  // Fetch notes for this message with caching
+  // Disabled for temp- messages (frontend-generated IDs before backend saves)
+  // staleTime: prevents refetching for 10 minutes (treats data as fresh)
+  // gcTime: keeps cached data in memory for 15 minutes after component unmounts
   const { data: notes = [] } = useQuery<MessageNoteResponse[]>({
     queryKey: ["message-notes", id],
     queryFn: () => getMessageNotes(id),
     enabled: !!id && !id.startsWith("temp-"),
+    staleTime: 10 * 60 * 1000, // 10 minutes - data stays fresh
+    gcTime: 15 * 60 * 1000, // 15 minutes - cache garbage collection time
   });
-
-  console.log(notes,"herna de notes k chha")
 
   const createNoteMutation = useMutation({
     mutationFn: createMessageNote,
@@ -280,6 +284,7 @@ export const LearningPathMessage = ({
           boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
           maxWidth: "70%",
           position: "relative",
+          overflowX: "auto",
         }}
       >
         {sender === "ai" && type && (

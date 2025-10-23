@@ -19,7 +19,7 @@ import {
   Paper,
   Textarea,
 } from "@mantine/core";
-import { RiMenuLine, RiCheckLine, RiSkipForwardLine, RiArrowRightLine } from "react-icons/ri";
+import { RiMenuLine, RiCheckLine, RiSkipForwardLine, RiArrowRightLine, RiCodeLine } from "react-icons/ri";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { LearningTopicDetailResponse, UserLearningPathResponse } from "../types/learning_paths/api_types";
 import { topicDetails, getSubtopicMessages, userLearningPaths, skipSubtopic } from "../api/learningPaths";
@@ -253,6 +253,37 @@ export const LearningPathChatInterface = () => {
     setCurrentCode(code);
     setCurrentLanguage(language);
     setCurrentMessageId(messageId);
+    setExecutionOutput("");
+    setCodeDrawerOpen(true);
+  };
+
+  // Handle manually opening code drawer
+  const handleManualOpenCodeDrawer = () => {
+    // Check if there's already a manual code session in storage
+    const MANUAL_CODE_KEY = "manual-code-session";
+    let manualCodeId = sessionStorage.getItem(MANUAL_CODE_KEY);
+    
+    if (!manualCodeId) {
+      // Generate a UUID for manual code sessions to enable persistence
+      manualCodeId = `manual-${crypto.randomUUID()}`;
+      sessionStorage.setItem(MANUAL_CODE_KEY, manualCodeId);
+    }
+    
+    // Try to load existing code from storage
+    const storedCodeObject = sessionStorage.getItem("codeStorage");
+    let existingCode = "";
+    if (storedCodeObject) {
+      try {
+        const codeStorage = JSON.parse(storedCodeObject);
+        existingCode = codeStorage[manualCodeId] || "";
+      } catch (e) {
+        console.error("Error parsing code storage", e);
+      }
+    }
+    
+    setCurrentCode(existingCode);
+    setCurrentLanguage("python");
+    setCurrentMessageId(manualCodeId);
     setExecutionOutput("");
     setCodeDrawerOpen(true);
   };
@@ -521,6 +552,15 @@ export const LearningPathChatInterface = () => {
             onClick={handleSendMessage}
           >
             Send
+          </Button>
+          <Button
+            variant="light"
+            color="blue"
+            leftSection={<RiCodeLine size={16} />}
+            onClick={handleManualOpenCodeDrawer}
+            title="Open code editor"
+          >
+            Code
           </Button>
           <Button
             variant="light"

@@ -78,6 +78,10 @@ export interface MessageNoteResponse {
   content: string;
   created_at: string;
   updated_at: string;
+  learning_path_id?: string | null;
+  learning_path_name?: string | null;
+  subtopic_id?: string | null;
+  subtopic_name?: string | null;
 }
 export interface Schema {}
 export interface StartSubtopicRequest {

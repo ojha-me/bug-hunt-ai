@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Container,
   Title,
@@ -13,84 +14,61 @@ import {
   Center,
   Paper,
   Box,
-  Modal,
-  Textarea,
-  Button,
 } from "@mantine/core";
-import { RiSearchLine, RiDeleteBinLine, RiEditLine, RiStickyNoteLine } from "react-icons/ri";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getAllUserNotes, updateMessageNote, deleteMessageNote } from "../api/learningPaths";
+import { RiSearchLine, RiStickyNoteLine, RiBookOpenLine, RiArrowRightLine } from "react-icons/ri";
+import { useQuery } from "@tanstack/react-query";
+import { getAllUserNotes } from "../api/learningPaths";
 import type { MessageNoteResponse } from "../types/learning_paths/api_types";
 
 export const NotesView = () => {
-  const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
-  const [editingNote, setEditingNote] = useState<MessageNoteResponse | null>(null);
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [editContent, setEditContent] = useState("");
 
   const { data: notes = [], isLoading } = useQuery<MessageNoteResponse[]>({
     queryKey: ["all-user-notes"],
     queryFn: getAllUserNotes,
   });
 
-  const updateNoteMutation = useMutation({
-    mutationFn: ({ noteId, content }: { noteId: string; content: string }) =>
-      updateMessageNote(noteId, { content }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["all-user-notes"] });
-      setEditModalOpen(false);
-      setEditingNote(null);
-      setEditContent("");
-    },
-  });
-
-  const deleteNoteMutation = useMutation({
-    mutationFn: deleteMessageNote,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["all-user-notes"] });
-    },
-  });
-
-  const filteredNotes = notes.filter((note) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      note.content.toLowerCase().includes(query) ||
-      note.selection_text.toLowerCase().includes(query)
-    );
-  });
-
-  const handleEditClick = (note: MessageNoteResponse) => {
-    setEditingNote(note);
-    setEditContent(note.content);
-    setEditModalOpen(true);
-  };
-
-  const handleSaveEdit = () => {
-    if (editingNote && editContent.trim()) {
-      updateNoteMutation.mutate({
-        noteId: editingNote.id,
-        content: editContent,
-      });
-    }
-  };
-
-  const handleDeleteClick = (noteId: string) => {
-    if (window.confirm("Are you sure you want to delete this note?")) {
-      deleteNoteMutation.mutate(noteId);
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
+  const filteredNotes = useMemo(() => {
+    return notes.filter((note) => {
+      const query = searchQuery.toLowerCase();
+      return (
+        note.content.toLowerCase().includes(query) ||
+        note.selection_text.toLowerCase().includes(query) ||
+        (note.learning_path_name && note.learning_path_name.toLowerCase().includes(query)) ||
+        (note.subtopic_name && note.subtopic_name.toLowerCase().includes(query))
+      );
     });
-  };
+  }, [notes, searchQuery]);
+
+  // Group notes by learning path only
+  const groupedNotes = useMemo(() => {
+    const groups: Record<string, {
+      learningPathId: string | null;
+      learningPathName: string;
+      noteCount: number;
+      subtopicCount: number;
+    }> = {};
+
+    filteredNotes.forEach((note) => {
+      const pathKey = note.learning_path_id || 'general';
+      const pathName = note.learning_path_name || 'General Notes';
+
+      if (!groups[pathKey]) {
+        groups[pathKey] = {
+          learningPathId: note.learning_path_id || null,
+          learningPathName: pathName,
+          noteCount: 0,
+          subtopicCount: 0,
+        };
+      }
+
+      groups[pathKey].noteCount++;
+    });
+
+    return groups;
+  }, [filteredNotes]);
+
 
   if (isLoading) {
     return (
@@ -127,7 +105,7 @@ export const NotesView = () => {
           />
         </Box>
 
-        {/* Notes List */}
+        {/* Learning Paths Overview */}
         {filteredNotes.length === 0 ? (
           <Paper p="xl" radius="md" withBorder>
             <Center>
@@ -144,128 +122,67 @@ export const NotesView = () => {
           </Paper>
         ) : (
           <Stack gap="md">
-            {filteredNotes.map((note) => (
-              <Card key={note.id} shadow="sm" padding="lg" radius="md" withBorder>
-                <Stack gap="sm">
-                  {/* Note Header */}
-                  <Group justify="space-between" align="flex-start">
-                    <Box style={{ flex: 1 }}>
-                      <Text size="xs" c="dimmed" mb={4}>
-                        Highlighted Text:
-                      </Text>
-                      <Paper
-                        p="xs"
-                        bg="yellow.0"
-                        style={{
-                          borderLeft: "3px solid #ffd43b",
-                          fontStyle: "italic",
-                        }}
-                      >
-                        <Text size="sm">"{note.selection_text}"</Text>
-                      </Paper>
+            {Object.entries(groupedNotes).map(([pathKey, pathGroup]) => (
+              <Card
+                key={pathKey}
+                shadow="sm"
+                padding="lg"
+                radius="md"
+                withBorder
+                style={{ 
+                  cursor: pathGroup.learningPathId ? "pointer" : "default",
+                  transition: "transform 0.2s, box-shadow 0.2s"
+                }}
+                onMouseEnter={(e) => {
+                  if (pathGroup.learningPathId) {
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                    e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.1)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "";
+                }}
+                onClick={() => pathGroup.learningPathId && navigate(`/learning-path/${pathGroup.learningPathId}/notes`)}
+              >
+                <Group justify="space-between" align="center">
+                  <Group gap="md">
+                    <Box
+                      style={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: "8px",
+                        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <RiBookOpenLine size={24} color="white" />
                     </Box>
-                    <Group gap="xs">
-                      <ActionIcon
-                        variant="light"
-                        color="blue"
-                        onClick={() => handleEditClick(note)}
-                        title="Edit note"
-                      >
-                        <RiEditLine size={18} />
-                      </ActionIcon>
-                      <ActionIcon
-                        variant="light"
-                        color="red"
-                        onClick={() => handleDeleteClick(note.id)}
-                        loading={deleteNoteMutation.isPending}
-                        title="Delete note"
-                      >
-                        <RiDeleteBinLine size={18} />
-                      </ActionIcon>
-                    </Group>
-                  </Group>
-
-                  {/* Note Content */}
-                  <Box>
-                    <Text size="xs" c="dimmed" mb={4}>
-                      Your Note:
-                    </Text>
-                    <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
-                      {note.content}
-                    </Text>
-                  </Box>
-
-                  {/* Note Footer */}
-                  <Group justify="space-between" mt="xs">
-                    <Text size="xs" c="dimmed">
-                      Created: {formatDate(note.created_at)}
-                    </Text>
-                    {note.updated_at !== note.created_at && (
-                      <Text size="xs" c="dimmed">
-                        Updated: {formatDate(note.updated_at)}
+                    <div>
+                      <Title order={3}>{pathGroup.learningPathName}</Title>
+                      <Text size="sm" c="dimmed">
+                        Click to view all notes for this learning path
                       </Text>
+                    </div>
+                  </Group>
+                  <Group gap="md">
+                    <Badge size="lg" variant="light" color="blue">
+                      {pathGroup.noteCount} {pathGroup.noteCount === 1 ? "note" : "notes"}
+                    </Badge>
+                    {pathGroup.learningPathId && (
+                      <ActionIcon variant="subtle" size="lg">
+                        <RiArrowRightLine size={20} />
+                      </ActionIcon>
                     )}
                   </Group>
-                </Stack>
+                </Group>
               </Card>
             ))}
           </Stack>
         )}
       </Stack>
-
-      {/* Edit Modal */}
-      <Modal
-        opened={editModalOpen}
-        onClose={() => {
-          setEditModalOpen(false);
-          setEditingNote(null);
-          setEditContent("");
-        }}
-        title="Edit Note"
-        size="lg"
-      >
-        <Stack gap="md">
-          {editingNote && (
-            <Paper p="sm" bg="yellow.0" style={{ borderLeft: "3px solid #ffd43b" }}>
-              <Text size="xs" c="dimmed" mb={4}>
-                Highlighted Text:
-              </Text>
-              <Text size="sm" style={{ fontStyle: "italic" }}>
-                "{editingNote.selection_text}"
-              </Text>
-            </Paper>
-          )}
-
-          <Textarea
-            label="Your Note"
-            placeholder="Write your note here..."
-            value={editContent}
-            onChange={(e) => setEditContent(e.currentTarget.value)}
-            minRows={4}
-            autosize
-          />
-
-          <Group justify="flex-end">
-            <Button
-              variant="subtle"
-              onClick={() => {
-                setEditModalOpen(false);
-                setEditingNote(null);
-                setEditContent("");
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveEdit}
-              loading={updateNoteMutation.isPending}
-              disabled={!editContent.trim()}
-            >
-              Save Changes
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
     </Container>
   );
 };

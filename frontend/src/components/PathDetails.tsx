@@ -23,6 +23,7 @@ import {
 } from '../api/learningPaths';
 import type { LearningTopicDetailResponse, UserLearningPathResponse } from '../types/learning_paths/api_types';
 import { FaPlay } from 'react-icons/fa';
+import { RiStickyNoteLine } from 'react-icons/ri';
 import { notifications } from '@mantine/notifications';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -131,17 +132,26 @@ const handleStartLearning = () => {
             {learningPathDetail.is_active ? "Active" : "Inactive"}
           </Badge>
         </Group>
-        {
-            userLearningPath?.length === 0 && (
-                <Button
-                mt="md"
-                leftSection={<FaPlay size={16} />}
-                onClick={()=>handleEnroll()}
-                >
-                Enroll
+        
+        <Group mt="md">
+          {userLearningPath?.length === 0 && (
+            <Button
+              leftSection={<FaPlay size={16} />}
+              onClick={()=>handleEnroll()}
+            >
+              Enroll
             </Button>
-            )
-        }
+          )}
+          {userLearningPath && userLearningPath.length > 0 && (
+            <Button
+              variant="light"
+              leftSection={<RiStickyNoteLine size={16} />}
+              onClick={() => navigate(`/learning-path/${pathId}/notes`)}
+            >
+              View Notes
+            </Button>
+          )}
+        </Group>
       </Paper>
 
       <Divider my="xl" />

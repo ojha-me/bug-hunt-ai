@@ -14,6 +14,7 @@ import asyncio
 
 from .models import (
     LearningTopic, 
+    LearningSubtopic,
     UserLearningPath, 
     SubtopicProgress,
     SubtopicProgressChoices,
@@ -39,6 +40,51 @@ logger = logging.getLogger('learning_paths.api')
 
 router = Router(tags=["learning_paths"])
 
+
+def get_note_learning_context(note: MessageNote) -> dict:
+    """
+    Extract learning path and subtopic information from a note.
+    Returns a dict with learning_path_id, learning_path_name, subtopic_id, subtopic_name.
+    """
+    try:
+        conversation = note.message.conversation
+        
+        # Check if this conversation is part of a learning path
+        if hasattr(conversation, 'userlearningpath'):
+            learning_path = conversation.userlearningpath
+            return {
+                'learning_path_id': learning_path.id,
+                'learning_path_name': learning_path.topic.name,
+                'subtopic_id': None,
+                'subtopic_name': None
+            }
+        
+        # Check if this conversation is part of a subtopic progress
+        if hasattr(conversation, 'subtopicprogress'):
+            subtopic_progress = conversation.subtopicprogress
+            learning_path = subtopic_progress.user_path
+            return {
+                'learning_path_id': learning_path.id,
+                'learning_path_name': learning_path.topic.name,
+                'subtopic_id': subtopic_progress.subtopic.id,
+                'subtopic_name': subtopic_progress.subtopic.name
+            }
+        
+        # Not part of any learning path
+        return {
+            'learning_path_id': None,
+            'learning_path_name': None,
+            'subtopic_id': None,
+            'subtopic_name': None
+        }
+    except Exception as e:
+        logger.error(f"Error extracting learning context for note {note.id}: {e}")
+        return {
+            'learning_path_id': None,
+            'learning_path_name': None,
+            'subtopic_id': None,
+            'subtopic_name': None
+        }
 
 
 @post(router, "/generate-learning-path", response={200: LearningTopicResponse})
@@ -505,8 +551,10 @@ def get_message_notes(request: HttpRequest, message_id: UUID):
         user=request.user
     )
     
-    return [
-        MessageNoteResponse(
+    result = []
+    for note in notes:
+        context = get_note_learning_context(note)
+        result.append(MessageNoteResponse(
             id=note.id,
             message_id=note.message.id,
             selection_start=note.selection_start,
@@ -514,10 +562,14 @@ def get_message_notes(request: HttpRequest, message_id: UUID):
             selection_text=note.selection_text,
             content=note.content,
             created_at=note.created_at,
-            updated_at=note.updated_at
-        )
-        for note in notes
-    ]
+            updated_at=note.updated_at,
+            learning_path_id=context['learning_path_id'],
+            learning_path_name=context['learning_path_name'],
+            subtopic_id=context['subtopic_id'],
+            subtopic_name=context['subtopic_name']
+        ))
+    
+    return result
 
 
 @get(router, "/notes/all", response={200: List[MessageNoteResponse], 401: Dict[str, str], 500: Dict[str, str]})
@@ -527,10 +579,16 @@ def get_all_user_notes(request: HttpRequest):
     try:
         notes = MessageNote.objects.filter(
             user=request.user
-        ).select_related('message').order_by('-created_at')
+        ).select_related(
+            'message__conversation__userlearningpath__topic',
+            'message__conversation__subtopicprogress__subtopic',
+            'message__conversation__subtopicprogress__user_path__topic'
+        ).order_by('-created_at')
         
-        return [
-            MessageNoteResponse(
+        result = []
+        for note in notes:
+            context = get_note_learning_context(note)
+            result.append(MessageNoteResponse(
                 id=note.id,
                 message_id=note.message.id,
                 selection_start=note.selection_start,
@@ -538,10 +596,14 @@ def get_all_user_notes(request: HttpRequest):
                 selection_text=note.selection_text,
                 content=note.content,
                 created_at=note.created_at,
-                updated_at=note.updated_at
-            )
-            for note in notes
-        ]
+                updated_at=note.updated_at,
+                learning_path_id=context['learning_path_id'],
+                learning_path_name=context['learning_path_name'],
+                subtopic_id=context['subtopic_id'],
+                subtopic_name=context['subtopic_name']
+            ))
+        
+        return result
     except Exception as e:
         logger.error(f"Error fetching user notes: {e}")
         return 500, {"error": str(e)}
@@ -564,6 +626,7 @@ def create_message_note(request: HttpRequest, data: CreateMessageNoteRequest):
         content=data.content
     )
     
+    context = get_note_learning_context(note)
     return MessageNoteResponse(
         id=note.id,
         message_id=note.message.id,
@@ -572,7 +635,11 @@ def create_message_note(request: HttpRequest, data: CreateMessageNoteRequest):
         selection_text=note.selection_text,
         content=note.content,
         created_at=note.created_at,
-        updated_at=note.updated_at
+        updated_at=note.updated_at,
+        learning_path_id=context['learning_path_id'],
+        learning_path_name=context['learning_path_name'],
+        subtopic_id=context['subtopic_id'],
+        subtopic_name=context['subtopic_name']
     )
 
 
@@ -587,6 +654,7 @@ def edit_message_note(request: HttpRequest, note_id: UUID, data: UpdateMessageNo
     note.content = data.content
     note.save()
     
+    context = get_note_learning_context(note)
     return MessageNoteResponse(
         id=note.id,
         message_id=note.message.id,
@@ -595,7 +663,11 @@ def edit_message_note(request: HttpRequest, note_id: UUID, data: UpdateMessageNo
         selection_text=note.selection_text,
         content=note.content,
         created_at=note.created_at,
-        updated_at=note.updated_at
+        updated_at=note.updated_at,
+        learning_path_id=context['learning_path_id'],
+        learning_path_name=context['learning_path_name'],
+        subtopic_id=context['subtopic_id'],
+        subtopic_name=context['subtopic_name']
     )
 
 

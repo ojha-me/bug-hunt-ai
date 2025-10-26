@@ -112,6 +112,11 @@ class MessageNoteResponse(Schema):
     content: str
     created_at: datetime
     updated_at: datetime
+    # Learning path context
+    learning_path_id: Optional[UUID] = None
+    learning_path_name: Optional[str] = None
+    subtopic_id: Optional[UUID] = None
+    subtopic_name: Optional[str] = None
 
 
 class CreateMessageNoteRequest(Schema):

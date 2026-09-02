@@ -40,6 +40,8 @@ INSTALLED_APPS = [
     'execution',
     'billing',
     'learning_paths',
+    'system_design',
+    'revision',
 ]
 
 MIDDLEWARE = [
@@ -144,8 +146,8 @@ ASGI_APPLICATION = 'bug_hunt_project.asgi.application'
 AUTH_USER_MODEL = 'users.CustomUser'
 
 
-# Load Gemini API key from environment variable
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# Load Groq API key from environment variable
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 
 CHANNEL_LAYERS = {

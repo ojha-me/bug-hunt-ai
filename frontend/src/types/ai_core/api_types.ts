@@ -7,11 +7,31 @@
 
 export type MessageLanguageChoices = "python" | "javascript" | "typescript";
 
+export type ConversationTypeChoices = "general" | "learning_path" | "system_design" | "system_design_learning";
+
+export type ComponentType = "input" | "default" | "output";
+
+export interface ReactFlowDiagram {
+  nodes: {
+    id: string;
+    type?: ComponentType;
+    position: { x: number; y: number };
+    data: { label: string };
+  }[];
+  edges: {
+    id: string;
+    source: string;
+    target: string;
+    label?: string;
+  }[];
+}
+
 export interface ConversationResponse {
   id: string;
   title: string;
   created_at: string;
   last_active_at: string;
+  conversation_type?: ConversationTypeChoices | null;
   messages: MessageResponse[] | null;
 }
 export interface MessageResponse {
@@ -21,10 +41,12 @@ export interface MessageResponse {
   code_snippet: string | null;
   language: MessageLanguageChoices | null;
   timestamp: string;
+  diagram?: ReactFlowDiagram | null;
 }
 export interface CreateConversationSchema {
   id: string;
   title: string;
+  conversation_type?: ConversationTypeChoices;
 }
 export interface Schema {}
 export interface UpdateConversationTitleSchema {

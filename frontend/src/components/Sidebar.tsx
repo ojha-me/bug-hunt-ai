@@ -1,14 +1,16 @@
 import { Button, Stack, ScrollArea, Box, Text, Loader, Modal, Group, TextInput, Divider, Progress, Badge, ActionIcon, Tooltip } from "@mantine/core";
-import { FaPlus, FaEdit, FaTrash, FaGraduationCap, FaPlay, FaChevronLeft, FaChevronRight, FaUser, FaCog } from "react-icons/fa";
+import { FaPlus, FaEdit, FaTrash, FaGraduationCap, FaPlay, FaChevronLeft, FaChevronRight, FaUser, FaCog, FaProjectDiagram, FaCode, FaBook, FaRedoAlt } from "react-icons/fa";
 import { RiStickyNoteLine } from "react-icons/ri";
 import { useNavigate } from "react-router-dom";
 import { getConversations, createConversation, updateConversationTitle, deleteConversation } from "../api/conversation";
 import { userLearningPaths } from "../api/learningPaths";
+import { getUserSDCourses } from "../api/systemDesign";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ConversationResponse } from "../types/ai_core/api_types";
 import { notifications } from "@mantine/notifications";
 import { useState } from "react";
 import type { UserLearningPathResponse } from "../types/learning_paths/api_types";
+import type { UserSDCourseResponse } from "../types/system_design/api_types";
 import { useSidebar } from "../contexts/SidebarContext";
 
 export const Sidebar = () => {
@@ -27,6 +29,11 @@ export const Sidebar = () => {
   const { data: learningPaths, isLoading: pathsLoading } = useQuery<UserLearningPathResponse[]>({
     queryKey: ['learning-paths'],
     queryFn: () => userLearningPaths()
+  });
+
+  const { data: sdCourses, isLoading: sdCoursesLoading } = useQuery<UserSDCourseResponse[]>({
+    queryKey: ['sd-user-courses'],
+    queryFn: () => getUserSDCourses()
   });
   
   const createConvoMutation = useMutation({
@@ -90,8 +97,16 @@ export const Sidebar = () => {
     },
   });
 
-  const handleConversationClick = (conversationId: string) => {
-    navigate(`/conversation/${conversationId}`);
+  const handleSystemDesignClick = () => {
+    navigate(`/system-design/courses`);
+  };
+
+  const handleConversationClick = (conversation: ConversationResponse) => {
+    if (conversation.conversation_type === "system_design") {
+      navigate(`/system-design/${conversation.id}`);
+    } else {
+      navigate(`/conversation/${conversation.id}`);
+    }
   };
   
   const handleEditClick = (conversation: ConversationResponse, e: React.MouseEvent) => {
@@ -174,6 +189,42 @@ export const Sidebar = () => {
           >
             Learning Paths
           </Button>
+<Button
+            variant="filled"
+            color="violet"
+            fullWidth
+            leftSection={<FaProjectDiagram />}
+            onClick={handleSystemDesignClick}
+          >
+            System Design
+          </Button>
+          <Button
+            variant="filled"
+            color="teal"
+            fullWidth
+            leftSection={<FaCode />}
+            onClick={() => navigate('/challenges')}
+          >
+            Coding Problems
+          </Button>
+          <Button
+            variant="light"
+            color="grape"
+            fullWidth
+            leftSection={<FaBook />}
+            onClick={() => navigate('/system-design/case-studies')}
+          >
+            SD Case Studies
+          </Button>
+          <Button
+            variant="light"
+            color="indigo"
+            fullWidth
+            leftSection={<FaRedoAlt />}
+            onClick={() => navigate('/revision')}
+          >
+            Review
+          </Button>
           <Button 
             variant="light"
             fullWidth 
@@ -201,6 +252,46 @@ export const Sidebar = () => {
               onClick={() => navigate('/topics')}
             >
               <FaGraduationCap />
+            </ActionIcon>
+          </Tooltip>
+          <Tooltip label="System Design Courses" position="right">
+            <ActionIcon
+              variant="filled"
+              color="violet"
+              size="xl"
+              onClick={handleSystemDesignClick}
+            >
+              <FaProjectDiagram />
+            </ActionIcon>
+          </Tooltip>
+          <Tooltip label="Coding Problems" position="right">
+            <ActionIcon
+              variant="filled"
+              color="teal"
+              size="xl"
+              onClick={() => navigate('/challenges')}
+            >
+              <FaCode />
+            </ActionIcon>
+          </Tooltip>
+          <Tooltip label="SD Case Studies" position="right">
+            <ActionIcon
+              variant="light"
+              color="grape"
+              size="xl"
+              onClick={() => navigate('/system-design/case-studies')}
+            >
+              <FaBook />
+            </ActionIcon>
+          </Tooltip>
+          <Tooltip label="Review Queue" position="right">
+            <ActionIcon
+              variant="light"
+              color="indigo"
+              size="xl"
+              onClick={() => navigate('/revision')}
+            >
+              <FaRedoAlt />
             </ActionIcon>
           </Tooltip>
           <Tooltip label="My Notes" position="right">
@@ -281,6 +372,62 @@ export const Sidebar = () => {
 
         <Divider mb="md" />
 
+        {/* System Design Courses Section */}
+        <Box mb="md">
+          <Group justify="space-between" mb="xs">
+            <Text size="sm" c="dimmed">System Design</Text>
+            <FaProjectDiagram size={12} className="cursor-pointer text-gray-500 hover:text-violet-500" onClick={() => navigate('/system-design/courses')} />
+          </Group>
+          <ScrollArea style={{ maxHeight: '160px' }}>
+            <Stack gap={0}>
+              {sdCoursesLoading ? (
+                <Box ta="center" pt="sm">
+                  <Loader size="sm" />
+                </Box>
+              ) : !sdCourses?.length ? (
+                <Text size="xs" c="dimmed" ta="center" py="sm">
+                  No courses yet
+                </Text>
+              ) : (
+                sdCourses.map((uc) => (
+                  <Box
+                    key={uc.id}
+                    p="sm"
+                    className="hover:bg-gray-50 cursor-pointer border-b border-gray-100"
+                    onClick={() => navigate(`/system-design/learn/${uc.course.id}`)}
+                    style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}
+                  >
+                    <Group justify="space-between" align="flex-start">
+                      <Text size="sm" lineClamp={1} fw={500}>
+                        {uc.course.name}
+                      </Text>
+                      <Badge
+                        size="xs"
+                        color={uc.is_completed ? 'green' : 'violet'}
+                        variant="light"
+                      >
+                        {uc.is_completed ? 'Done' : `${Math.round(uc.progress_percentage)}%`}
+                      </Badge>
+                    </Group>
+                    {uc.current_lesson && !uc.is_completed && (
+                      <Text size="xs" c="dimmed" lineClamp={1}>
+                        {uc.current_lesson.name}
+                      </Text>
+                    )}
+                    <Progress
+                      value={uc.progress_percentage}
+                      size="xs"
+                      color={uc.is_completed ? 'green' : 'violet'}
+                    />
+                  </Box>
+                ))
+              )}
+            </Stack>
+          </ScrollArea>
+        </Box>
+
+        <Divider mb="md" />
+
         {/* Regular Conversations Section */}
         <Box>
           <Text size="sm" c="dimmed" mb="xs">Recent Conversations</Text>
@@ -297,12 +444,13 @@ export const Sidebar = () => {
               ) : (
                 conversations
                   .filter(conv => !learningPaths?.some(path => path.conversation_id === conv.id))
+                  .filter(conv => conv.conversation_type !== "system_design_learning")
                   .map((conv) => (
                     <Box 
                       key={conv.id} 
                       p="sm" 
                       className="hover:bg-gray-50 cursor-pointer border-b border-gray-100"
-                      onClick={() => handleConversationClick(conv.id)}
+                      onClick={() => handleConversationClick(conv)}
                       style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                     >
                       <Box style={{ flex: 1, minWidth: 0 }}>

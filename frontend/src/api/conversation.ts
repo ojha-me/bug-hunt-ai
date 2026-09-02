@@ -1,4 +1,4 @@
-import type { ConversationResponse, CreateConversationSchema, UpdateConversationTitleSchema } from "../types/ai_core/api_types";
+import type { ConversationResponse, UpdateConversationTitleSchema } from "../types/ai_core/api_types";
 import apiClient from "./apiClient"
 
 
@@ -13,8 +13,8 @@ export const getConversation = async (conversationId: string): Promise<Conversat
 };
 
 
-export const createConversation = async (): Promise<ConversationResponse> => {
-    const response = await apiClient.post('/conversation/create-conversation');
+export const createConversation = async (conversation_type?: ConversationResponse["conversation_type"]): Promise<ConversationResponse> => {
+    const response = await apiClient.post('/conversation/create-conversation', { conversation_type: conversation_type || "general" });
     return response.data;
 };
 

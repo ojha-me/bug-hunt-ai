@@ -1,6 +1,7 @@
 import { Box, Group, Text, Badge, Button, Modal, Textarea, Stack, ActionIcon } from "@mantine/core";
-import { RiCodeLine, RiLightbulbLine, RiStickyNoteLine, RiDeleteBinLine, RiEditLine } from "react-icons/ri";
+import { RiLightbulbLine, RiStickyNoteLine, RiDeleteBinLine, RiEditLine, RiExpandDiagonalLine } from "react-icons/ri";
 import ReactMarkdown from "react-markdown";
+import Editor from "@monaco-editor/react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createMessageNote, getMessageNotes, updateMessageNote, deleteMessageNote } from "../api/learningPaths";
@@ -16,6 +17,7 @@ interface LearningPathMessageProps {
   type?: "explanation" | "question" | "challenge" | "feedback" | "encouragement" | "assessment";
   next_action?: string;
   onOpenCodeDrawer?: (code: string, language: string, messageId: string) => void;
+  onHint?: () => void;
 }
 
 export const LearningPathMessage = ({
@@ -28,6 +30,7 @@ export const LearningPathMessage = ({
   type,
   next_action,
   onOpenCodeDrawer,
+  onHint,
 }: LearningPathMessageProps) => {
 
   const queryClient = useQueryClient();
@@ -307,30 +310,45 @@ export const LearningPathMessage = ({
 
 
         {code_snippet && (
-          <Box mt="sm">
+          <Box w="100%" mt="sm">
+            <Group justify="space-between" mb={4}>
+              <Text size="xs" fw={600} c="dimmed">
+                {language === "python" ? "🐍 Python" : language || "Code"}
+              </Text>
+              {onOpenCodeDrawer && (
+                <Button
+                  size="compact-xs"
+                  variant="subtle"
+                  rightSection={<RiExpandDiagonalLine size={13} />}
+                  onClick={() => onOpenCodeDrawer(code_snippet, language || "python", id)}
+                >
+                  Open in Editor
+                </Button>
+              )}
+            </Group>
             <Box
-              p="sm"
               style={{
-                backgroundColor: "#f8f9fa",
-                borderRadius: "8px",
-                fontFamily: "monospace",
-                fontSize: "12px",
                 border: "1px solid #e9ecef",
+                borderRadius: "8px",
+                overflow: "hidden",
               }}
+              p={0}
             >
-              <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>{code_snippet}</pre>
+              <Editor
+                height="180px"
+                language={language || "python"}
+                value={code_snippet}
+                options={{
+                  readOnly: true,
+                  fontSize: 13,
+                  minimap: { enabled: false },
+                  scrollBeyondLastLine: false,
+                  wordWrap: "on",
+                  domReadOnly: true,
+                  contextmenu: false,
+                }}
+              />
             </Box>
-            {onOpenCodeDrawer && (
-              <Button
-                size="xs"
-                variant="light"
-                leftSection={<RiCodeLine size={14} />}
-                mt="xs"
-                onClick={() => onOpenCodeDrawer(code_snippet, language || "python", id)}
-              >
-                Open in Editor
-              </Button>
-            )}
           </Box>
         )}
 
@@ -347,7 +365,7 @@ export const LearningPathMessage = ({
         </Text>
 
         {sender === "ai" && type === "challenge" && (
-          <Button size="xs" variant="light" leftSection={<RiLightbulbLine size={12} />}>
+          <Button size="xs" variant="light" leftSection={<RiLightbulbLine size={12} />} onClick={onHint}>
             Hint
           </Button>
         )}

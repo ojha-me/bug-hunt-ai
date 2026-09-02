@@ -1,6 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { ChatContainer } from "./components/ChatContainer";
-import { Box } from "@mantine/core";
 import { Layout } from "./components/Layout";
 import { AuthenticationForm } from "./components/AuthenticationForm";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -8,8 +7,17 @@ import { TopicSelection } from "./components/TopicSelection";
 import {PathDetails} from "./components/PathDetails";
 import LearningPathChatInterface from "./components/LearningPathChatInterface";
 import { UserProfile } from "./components/UserProfile";
+import { SystemDesignRoom } from "./components/SystemDesignRoom";
+import { SDLearningRoom } from "./components/SDLearningRoom";
+import { SDCoursesPage } from "./components/SDCoursesPage";
+import { SDCaseStudiesPage } from "./components/SDCaseStudiesPage";
+import { SDCaseStudyDetailPage } from "./components/SDCaseStudyDetailPage";
 import { NotesView } from "./pages/NotesView";
 import { LearningPathNotesView } from "./pages/LearningPathNotesView";
+import { ProblemsPage } from "./components/ProblemsPage";
+import { ProblemSolverPage } from "./components/ProblemSolverPage";
+import { DashboardPage } from "./components/DashboardPage";
+import { RevisionPage } from "./components/RevisionPage";
 
 export default function App() {
   return (
@@ -20,12 +28,20 @@ export default function App() {
         <Route element={<Layout />}>
           <Route
             path="/"
-            element={<Box p="md">Welcome to BugHunt AI! Start a new learning path or continue a conversation.</Box>}
+            element={<DashboardPage />}
           />
           <Route path="/topics" element={<TopicSelection />} />
           <Route path="/learning-path/:pathId" element={<PathDetails />} />
           <Route path="/conversation/:conversationId" element={<ChatContainer />} />
+          <Route path="/system-design/:conversationId" element={<SystemDesignRoom />} />
+          <Route path="/system-design/courses" element={<SDCoursesPage />} />
+          <Route path="/system-design/learn/:courseId" element={<SDLearningRoom />} />
+          <Route path="/system-design/case-studies" element={<SDCaseStudiesPage />} />
+          <Route path="/system-design/case-studies/:caseStudyId" element={<SDCaseStudyDetailPage />} />
           <Route path="/learning-path/chat-interface/:learningTopicId" element={<LearningPathChatInterface />} />
+          <Route path="/challenges" element={<ProblemsPage />} />
+          <Route path="/challenges/:problemId" element={<ProblemSolverPage />} />
+          <Route path="/revision" element={<RevisionPage />} />
           <Route path="/notes" element={<NotesView />} />
           <Route path="/learning-path/:pathId/notes" element={<LearningPathNotesView />} />
           <Route path="/profile" element={<UserProfile />} />

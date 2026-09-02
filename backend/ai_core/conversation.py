@@ -1,4 +1,4 @@
-from uuid import UUID
+from uuid import UUID, uuid4
 from ninja import Router
 from ai_core.models import Conversation
 from ai_core.api_types import ConversationResponse, MessageResponse, CreateConversationSchema, UpdateConversationTitleSchema
@@ -22,6 +22,7 @@ def get_conversations(request: HttpRequest):
             title=conversation.title,
             created_at=conversation.created_at,
             last_active_at=conversation.last_active_at,
+            conversation_type=conversation.conversation_type,
             messages=[
                 MessageResponse(
                     id=message.id,
@@ -29,7 +30,8 @@ def get_conversations(request: HttpRequest):
                     content=message.content,
                     code_snippet=message.code_snippet,
                     timestamp=message.created_at,
-                    language=message.language if message.language else None
+                    language=message.language if message.language else None,
+                    diagram=message.diagram
                 )
                 for message in conversation.messages.all()
             ] or []
@@ -51,6 +53,7 @@ def get_conversation(request: HttpRequest, conversation_id: UUID):
         title=conversation.title,
         created_at=conversation.created_at,
         last_active_at=conversation.last_active_at,
+        conversation_type=conversation.conversation_type,
         messages=[
             MessageResponse(
                 id=message.id,
@@ -58,7 +61,8 @@ def get_conversation(request: HttpRequest, conversation_id: UUID):
                 content=message.content,
                 code_snippet=message.code_snippet,
                 timestamp=message.created_at,
-                language=message.language if message.language else None
+                language=message.language if message.language else None,
+                diagram=message.diagram
             )
             for message in conversation.messages.all()
         ]
@@ -67,13 +71,23 @@ def get_conversation(request: HttpRequest, conversation_id: UUID):
 
 
 @post(router, "create-conversation", response={200: ConversationResponse, 401: Dict[str, str]})
-def create_conversation(request: HttpRequest):
-    conversation = Conversation.objects.create(user=request.user, title="New Conversation")
+def create_conversation(request: HttpRequest, params: CreateConversationSchema = None):
+    from ai_core.models import ConversationTypeChoices
+    conversation_type = getattr(params, 'conversation_type', None) or ConversationTypeChoices.GENERAL
+    conversation_id = getattr(params, 'id', None) or uuid4()
+    title = getattr(params, 'title', None) or "New Conversation"
+    conversation = Conversation.objects.create(
+        user=request.user,
+        id=conversation_id,
+        title=title,
+        conversation_type=conversation_type,
+    )
     response = ConversationResponse(
         id=conversation.id,
         title=conversation.title,
         created_at=conversation.created_at,
         last_active_at=conversation.last_active_at,
+        conversation_type=conversation.conversation_type,
         messages=[]
     )
     return response
@@ -89,6 +103,7 @@ def update_conversation_title(request: HttpRequest, params: UpdateConversationTi
         title=conversation.title,
         created_at=conversation.created_at,
         last_active_at=conversation.last_active_at,
+        conversation_type=conversation.conversation_type,
         messages=[
             MessageResponse(
                 id=message.id,
@@ -96,7 +111,8 @@ def update_conversation_title(request: HttpRequest, params: UpdateConversationTi
                 content=message.content,
                 code_snippet=message.code_snippet,
                 timestamp=message.created_at,
-                language=message.language if message.language else None
+                language=message.language if message.language else None,
+                diagram=message.diagram
             )
             for message in conversation.messages.all()
         ]

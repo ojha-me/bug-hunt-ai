@@ -28,6 +28,7 @@ import { useLearningPathWebSocket, type SubtopicProgress } from "../hooks/useLea
 import { CodeDrawer } from "./CodeDrawer";
 import { LearningPathMessage as MessageComponent } from "./LearningPathMessage";
 import { runCode } from "../api/execution";
+import type { TestCaseInput, TestCaseResult } from "../types/execution/api_types";
 
 interface LearningPathMessage {
   id: string;
@@ -220,6 +221,9 @@ export const LearningPathChatInterface = () => {
   const [currentMessageId, setCurrentMessageId] = useState<string | undefined>(undefined);
   const [executionOutput, setExecutionOutput] = useState("");
   const [isExecuting, setIsExecuting] = useState(false);
+  const [testResults, setTestResults] = useState<TestCaseResult[] | null>(null);
+  const [testSummary, setTestSummary] = useState<{ passed: number; total: number; all_passed: boolean } | null>(null);
+  const [isTesting, setIsTesting] = useState(false);
 
   // Handle sending messages
   const handleSendMessage = () => {
@@ -298,6 +302,22 @@ export const LearningPathChatInterface = () => {
       setExecutionOutput(`Error: ${error}`);
     } finally {
       setIsExecuting(false);
+    }
+  };
+
+  const handleRunTests = async (code: string, language: string, testCases: TestCaseInput[]) => {
+    setIsTesting(true);
+    setTestResults(null);
+    try {
+      const result = await runCode({ code, language, test_cases: testCases });
+      setTestResults(result.test_results ?? null);
+      setTestSummary(result.summary ?? null);
+      setExecutionOutput(result.output || result.error || "No output");
+    } catch (error) {
+      setTestSummary(null);
+      setExecutionOutput(`Error: ${error}`);
+    } finally {
+      setIsTesting(false);
     }
   };
 
@@ -382,6 +402,7 @@ export const LearningPathChatInterface = () => {
       <Box
         style={{
           flex: 1,
+          minHeight: 0,
           overflowY: "auto",
           padding: "1rem",
         }}
@@ -410,6 +431,7 @@ export const LearningPathChatInterface = () => {
                 type={msg.type}
                 next_action={msg.next_action}
                 onOpenCodeDrawer={handleOpenCodeDrawer}
+                onHint={() => sendMessage("Give me a hint for the current challenge.", undefined, undefined)}
               />
             ))}
 
@@ -528,9 +550,10 @@ export const LearningPathChatInterface = () => {
           borderTop: "1px solid #ddd",
           padding: "0.5rem",
           background: "#fff",
+          flexShrink: 0,
         }}
       >
-        <Group gap="sm" style={{ width: "100%" }}>
+        <Group gap="sm" style={{ width: "100%" }} align="flex-end">
           <Textarea
             placeholder="Type your message..."
             value={message}
@@ -543,7 +566,7 @@ export const LearningPathChatInterface = () => {
             }}
             autosize
             minRows={1}
-            maxRows={6}
+            maxRows={8}
             style={{ flex: 1 }}
             disabled={!isConnected}
           />
@@ -762,6 +785,10 @@ export const LearningPathChatInterface = () => {
         onRunCode={handleRunCode}
         onSubmitCode={handleSubmitCode}
         messageId={currentMessageId}
+        onRunTests={handleRunTests}
+        testResults={testResults}
+        testSummary={testSummary}
+        isTesting={isTesting}
       />
     </Box>
   );

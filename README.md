@@ -4,7 +4,7 @@
 > Traditional coding tutorials are passive. You read. You watch. Then you struggle. You get bored. You get the fake sense of achievement but you've hardly learnt anything.  
 > **BugHunt AI flips the script.** Learn by doing — either through structured learning journeys or instant bug-hunting challenges with an AI tutor who gives you broken code and guides you to fix it.
 
-[![Tech Stack](https://img.shields.io/badge/Tech-Django%20%2B%20React%20%2B%20Gemini-blue)](tech)
+[![Tech Stack](https://img.shields.io/badge/Tech-Django%20%2B%20React%20%2B%20Groq-blue)](tech)
 [![Status](https://img.shields.io/badge/Status-Beta-green)](status)
 
 ---
@@ -49,7 +49,7 @@ It's not just about answers — it's about **thinking like a developer** through
 - **Prerequisites System**: Logical learning progression with topic dependencies
 
 ### **Conversational Learning**
-Chat with a Gemini-powered AI tutor that adapts to your level and guides you through concepts with real code.
+Chat with a Groq-powered (qwen/qwen3.8-27b) AI tutor that adapts to your level and guides you through concepts with real code.
 
 ### **Interactive Code Snippets**
 Every code example appears in a **fully-featured Monaco editor** (same engine as VS Code) — editable, syntax-highlighted, and ready to run.
@@ -122,7 +122,7 @@ Submit your fix and get:
 |------------|-----------|
 | **Frontend** | React, TypeScript, Vite, Mantine UI, Monaco Editor |
 | **Backend**  | Python, Django, Django Ninja (API), Django Channels (WebSockets) |
-| **AI Engine** | Google Gemini API (for explanations, challenges, and code review) |
+| **AI Engine** | Groq API — `qwen/qwen3.8-27b` (for explanations, challenges, and code review) |
 | **Code Execution** | Docker containers (sandboxed, secure, per-session isolation) |
 | **Auth**     | JWT authentication |
 | **Tooling**  | `uv` (Python package manager), `yarn` (frontend) |

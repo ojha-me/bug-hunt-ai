@@ -19,6 +19,7 @@ import { useQuery } from "@tanstack/react-query";
 import { CodeDrawer } from "./CodeDrawer";
 import { RiCodeBoxLine } from "react-icons/ri";
 import { runCode } from "../api/execution";
+import type { TestCaseInput, TestCaseResult } from "../types/execution/api_types";
 
 export const ChatContainer = () => {
   const { conversationId } = useParams<{ conversationId: string }>();
@@ -44,6 +45,9 @@ export const ChatContainer = () => {
   const [activeCode, setActiveCode] = useState<{ content: string; language: string; messageId: string; } | null>(null);
   const [executionOutput, setExecutionOutput] = useState<string>("");
   const [isExecuting, setIsExecuting] = useState(false);
+  const [testResults, setTestResults] = useState<TestCaseResult[] | null>(null);
+  const [testSummary, setTestSummary] = useState<{ passed: number; total: number; all_passed: boolean } | null>(null);
+  const [isTesting, setIsTesting] = useState(false);
 
   const allMessages = useMemo(() => {
     if (!conversation?.messages) 
@@ -70,24 +74,40 @@ export const ChatContainer = () => {
     setIsExecuting(true);
     setExecutionOutput("");
     try {
-      const response = await runCode({ code, language });
-      console.log(response,"herna mann lagyo")
+      const response = await runCode({ code, language, conversation_id: conversationId });
       const fullOutput = response.output ? response.output : `Error: ${response.error}`;
       setExecutionOutput(fullOutput);
     } catch (e) {
       if (typeof e === "string") {
         setExecutionOutput(e.toUpperCase());
-    } else if (e instanceof Error) {
+      } else if (e instanceof Error) {
         setExecutionOutput(e.message);
-    }
+      }
     } finally {
       setIsExecuting(false);
     }
   };
 
+  const handleRunTests = async (code: string, language: string, testCases: TestCaseInput[]) => {
+    setIsTesting(true);
+    setTestResults(null);
+    try {
+      const response = await runCode({ code, language, test_cases: testCases, conversation_id: conversationId });
+      setTestResults(response.test_results ?? null);
+      setTestSummary(response.summary ?? null);
+      setExecutionOutput(response.output);
+    } catch (e) {
+      setTestSummary(null);
+      if (e instanceof Error) {
+        setExecutionOutput(e.message);
+      }
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
 
   const handleSubmitCode = async (code: string, language: string, message?: string) => {
-    console.log("herna mann lagyo,",code,language)
     if (isConnected) {
       sendMessage({
         message: message || "",
@@ -96,6 +116,31 @@ export const ChatContainer = () => {
       });
       setIsDrawerOpen(false);
     }
+  };
+
+  // Open a fresh code editor for the user to write/run their own code
+  const handleManualOpenCodeDrawer = () => {
+    const MANUAL_CODE_KEY = "manual-code-session";
+    let manualCodeId = sessionStorage.getItem(MANUAL_CODE_KEY);
+    if (!manualCodeId) {
+      manualCodeId = `manual-${crypto.randomUUID()}`;
+      sessionStorage.setItem(MANUAL_CODE_KEY, manualCodeId);
+    }
+
+    let existingCode = "";
+    const storedCodeObject = sessionStorage.getItem("codeStorage");
+    if (storedCodeObject) {
+      try {
+        const codeStorage = JSON.parse(storedCodeObject);
+        existingCode = codeStorage[manualCodeId] || "";
+      } catch (e) {
+        console.error("Error parsing code storage", e);
+      }
+    }
+
+    setActiveCode({ content: existingCode, language: "python", messageId: manualCodeId });
+    setExecutionOutput("");
+    setIsDrawerOpen(true);
   };
 
   // Auto-scroll to bottom
@@ -120,7 +165,7 @@ export const ChatContainer = () => {
           </Alert>
         )}
 
-        <Box style={{ flex: 1, overflowY: "auto", paddingBottom: "1rem" }}>
+        <Box style={{ flex: 1, minHeight: 0, overflowY: "auto", paddingBottom: "1rem" }}>
           {allMessages.length === 0 && !isTyping ? (
             <Text c="dimmed" ta="center" pt="xl">Start a new conversation</Text>
           ) : (
@@ -172,19 +217,34 @@ export const ChatContainer = () => {
         </Box>
 
         {/* Input Area */}
-        <Box style={{ borderTop: "1px solid #ddd", paddingTop: "0.5rem", background: "#fff" }}>
-          <Group gap="sm" style={{ width: "100%" }}>
+        <Box style={{ borderTop: "1px solid #ddd", paddingTop: "0.5rem", paddingBottom: "0.5rem", background: "#fff", flexShrink: 0 }}>
+          <Group gap="sm" style={{ width: "100%" }} align="flex-end">
             <Textarea
               placeholder="Type your message..."
               value={message}
               onChange={(e) => setMessage(e.currentTarget.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
               style={{ flex: 1 }}
               disabled={!isConnected || isTyping}
               autosize
               minRows={2}
-              maxRows={6}
+              maxRows={8}
             />
+            <Button
+              variant="light"
+              color="blue"
+              disabled={!isConnected || isTyping}
+              leftSection={<RiCodeBoxLine size={16} />}
+              onClick={handleManualOpenCodeDrawer}
+              title="Open code editor"
+            >
+              Code
+            </Button>
             <Button onClick={handleSendMessage} disabled={!isConnected || !message.trim() || isTyping}>
               Send
             </Button>
@@ -201,6 +261,10 @@ export const ChatContainer = () => {
         onRunCode={handleRunCode}
         onSubmitCode={handleSubmitCode}
         messageId={activeCode?.messageId}
+        onRunTests={handleRunTests}
+        testResults={testResults}
+        testSummary={testSummary}
+        isTesting={isTesting}
       />
     </>
   );

@@ -296,15 +296,13 @@ def get_subtopic_messages(request: HttpRequest, topic_id: UUID, subtopic_id: UUI
         is_active=True
     )
     
-    # Get the subtopic progress
-    subtopic_progress = get_object_or_404(
-        SubtopicProgress,
+    # If no progress exists yet for this subtopic, there are no messages to show
+    subtopic_progress = SubtopicProgress.objects.filter(
         user_path=learning_path,
         subtopic_id=subtopic_id
-    )
+    ).first()
     
-    # If no conversation exists yet, return empty list
-    if not subtopic_progress.conversation:
+    if not subtopic_progress or not subtopic_progress.conversation:
         return []
     
     # Get all messages from the associated conversation

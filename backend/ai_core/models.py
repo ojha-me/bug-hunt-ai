@@ -6,6 +6,8 @@ from django.contrib.postgres.fields import ArrayField
 class ConversationTypeChoices(models.TextChoices):
     GENERAL = 'general', 'General Chat'
     LEARNING_PATH = 'learning_path', 'Structured Learning Path'
+    SYSTEM_DESIGN = 'system_design', 'System Design'
+    SYSTEM_DESIGN_LEARNING = 'system_design_learning', 'System Design Learning'
 
 class Conversation(models.Model):
     """
@@ -15,7 +17,7 @@ class Conversation(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     title = models.CharField(max_length=255, blank=True)
     conversation_type = models.CharField(
-        max_length=20,
+        max_length=32,
         choices=ConversationTypeChoices.choices,
         default=ConversationTypeChoices.GENERAL,
         help_text="Type of conversation - general chat or structured learning"
@@ -56,6 +58,9 @@ class Message(models.Model):
     code_snippet = models.TextField(blank=True, null=True)
     language = models.CharField(choices=MessageLanguageChoices.choices, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    # Optional diagram for system design messages. Shape:
+    # {"nodes": [ReactFlowNode...], "edges": [ReactFlowEdge...]}
+    diagram = models.JSONField(blank=True, null=True)
 
     message_type = models.CharField(choices=MessageTypeChoices.choices, max_length=50, blank=True, null=True)
 

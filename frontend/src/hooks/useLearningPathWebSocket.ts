@@ -47,7 +47,7 @@ export const useLearningPathWebSocket = (
       return;
     }
 
-    const apiBase = import.meta.env.VITE_WS_BASE;
+    const apiBase = import.meta.env.VITE_WS_BASE || window.location.origin;
     const wsPath = "/ws";
     const wsProtocol = apiBase.startsWith("https") ? "wss://" : "ws://";
     const urlWithoutProtocol = apiBase.replace(/^https?:\/\//, "").replace(/\/$/, "");

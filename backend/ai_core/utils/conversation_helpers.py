@@ -24,7 +24,7 @@ class ConversationService:
 
     @staticmethod
     @database_sync_to_async
-    def save_ai_message(conversation, content):
+    def save_ai_message(conversation, content, diagram=None):
         message_type = ''
         code_snippet = ''
         language = ''
@@ -43,24 +43,26 @@ class ConversationService:
             content=content_text,
             code_snippet=code_snippet,
             language=language,
-            message_type=message_type or MessageTypeChoices.CONVERSATION
+            message_type=message_type or MessageTypeChoices.CONVERSATION,
+            diagram=diagram
         )
 
     @staticmethod
     @database_sync_to_async
-    def save_user_message(conversation, content, code_snippet=None, language=None ):
+    def save_user_message(conversation, content, code_snippet=None, language=None, diagram=None):
         return Message.objects.create(
             conversation=conversation,
             sender=MessageSenderChoices.USER,
             content=content,
             code_snippet=code_snippet,
             language=language,
-            message_type=MessageTypeChoices.CONVERSATION
+            message_type=MessageTypeChoices.CONVERSATION,
+            diagram=diagram
         )
 
     @staticmethod
     @database_sync_to_async
-    def save_message(conversation, content, sender, message_type, code_snippet=None, language=None):
+    def save_message(conversation, content, sender, message_type, code_snippet=None, language=None, diagram=None):
         """
         Generic method to save messages from either AI or user
         """
@@ -70,7 +72,8 @@ class ConversationService:
             content=content,
             code_snippet=code_snippet,
             language=language,
-            message_type=message_type
+            message_type=message_type,
+            diagram=diagram
         )
 
     @staticmethod

@@ -1,0 +1,40 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: bughunt_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - bughunt_postgres_data:/var/lib/postgresql/data/
+    env_file:
+      - ./.env.db
+    restart: always
+
+  backend:
+    build: ./backend
+    container_name: bughunt_backend
+    ports:
+      - "8003:8000"
+    volumes:
+      - ./backend:/app
+      - /app/.venv
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: /app/.venv/bin/python -m daphne -b 0.0.0.0 -p 8000 bug_hunt_project.asgi:application
+    env_file:
+      - ./.env.db
+      - ./backend/.env
+    depends_on:
+      - db
+    restart: always
+
+  frontend:
+    build: ./frontend
+    container_name: bughunt_frontend
+    ports:
+      - "5175:80"
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  bughunt_postgres_data:

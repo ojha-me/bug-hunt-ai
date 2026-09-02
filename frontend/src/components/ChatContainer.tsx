@@ -8,25 +8,29 @@ import {
   Alert,
   Loader,
   Textarea,
+  Badge,
+  UnstyledButton,
 } from "@mantine/core";
 import { useState, useMemo, useEffect, useRef } from "react";
-import { FaExclamationCircle } from "react-icons/fa";
+import { FaExclamationCircle, FaArrowLeft } from "react-icons/fa";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { getConversation } from "../api/conversation";
 import type { ConversationResponse } from "../types/ai_core/api_types";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 
 import { CodeDrawer } from "./CodeDrawer";
 import { RiCodeBoxLine } from "react-icons/ri";
 import { runCode } from "../api/execution";
 import type { TestCaseInput, TestCaseResult } from "../types/execution/api_types";
+import { ChatBubble, EmptyState, ChatSkeleton } from "./ui";
 
 export const ChatContainer = () => {
   const { conversationId } = useParams<{ conversationId: string }>();
+  const navigate = useNavigate();
   const [message, setMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // WebSocket and historical data fetching
   const {
     messages: liveMessages,
     sendMessage,
@@ -34,15 +38,14 @@ export const ChatContainer = () => {
     isTyping,
   } = useWebSocket(conversationId!);
 
-  const { data: conversation } = useQuery<ConversationResponse>({
+  const { data: conversation, isLoading } = useQuery<ConversationResponse>({
     queryKey: ["conversation", conversationId],
     queryFn: () => getConversation(conversationId!),
     enabled: !!conversationId,
   });
 
-  // State for the Code Drawer
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [activeCode, setActiveCode] = useState<{ content: string; language: string; messageId: string; } | null>(null);
+  const [activeCode, setActiveCode] = useState<{ content: string; language: string; messageId: string } | null>(null);
   const [executionOutput, setExecutionOutput] = useState<string>("");
   const [isExecuting, setIsExecuting] = useState(false);
   const [testResults, setTestResults] = useState<TestCaseResult[] | null>(null);
@@ -50,12 +53,11 @@ export const ChatContainer = () => {
   const [isTesting, setIsTesting] = useState(false);
 
   const allMessages = useMemo(() => {
-    if (!conversation?.messages) 
-    {
-      return []
+    if (!conversation?.messages) {
+      return [];
     }
-    const messageIds = new Set(conversation?.messages.map(m => m.id));
-    const uniqueLiveMessages = liveMessages.filter(m => !messageIds.has(m.id));
+    const messageIds = new Set(conversation?.messages.map((m) => m.id));
+    const uniqueLiveMessages = liveMessages.filter((m) => !messageIds.has(m.id));
 
     const history = conversation?.messages ?? [];
     return [...history, ...uniqueLiveMessages].sort(
@@ -106,7 +108,6 @@ export const ChatContainer = () => {
     }
   };
 
-
   const handleSubmitCode = async (code: string, language: string, message?: string) => {
     if (isConnected) {
       sendMessage({
@@ -118,7 +119,6 @@ export const ChatContainer = () => {
     }
   };
 
-  // Open a fresh code editor for the user to write/run their own code
   const handleManualOpenCodeDrawer = () => {
     const MANUAL_CODE_KEY = "manual-code-session";
     let manualCodeId = sessionStorage.getItem(MANUAL_CODE_KEY);
@@ -143,7 +143,6 @@ export const ChatContainer = () => {
     setIsDrawerOpen(true);
   };
 
-  // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [allMessages, isTyping]);
@@ -151,74 +150,132 @@ export const ChatContainer = () => {
   return (
     <>
       <Box
-        p="md"
         style={{
           height: "100vh",
           display: "flex",
           flexDirection: "column",
-          background: "#f9f9f9",
+          background: "var(--app-bg)",
         }}
       >
+        <Box
+          px={{ base: "md", md: "lg" }}
+          py="sm"
+          style={{
+            flexShrink: 0,
+            background: "var(--app-surface)",
+            borderBottom: "1px solid var(--app-line)",
+          }}
+        >
+          <Group justify="space-between" wrap="nowrap">
+            <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
+              <ActionIconBack onNavigate={() => navigate("/")} />
+              <Box style={{ minWidth: 0 }}>
+                <Text fw={650} size="md" lineClamp={1}>
+                  {conversation?.title || "New conversation"}
+                </Text>
+                <Text size="xs" c="dimmed">
+                  General chat
+                </Text>
+              </Box>
+            </Group>
+            <Group gap="xs" wrap="nowrap">
+              {!isConnected && (
+                <Badge size="sm" color="red" variant="light" leftSection={<FaExclamationCircle size={10} />}>
+                  reconnecting
+                </Badge>
+              )}
+              <Button
+                variant="light"
+                leftSection={<RiCodeBoxLine size={16} />}
+                onClick={handleManualOpenCodeDrawer}
+                title="Open code editor"
+              >
+                Code
+              </Button>
+            </Group>
+          </Group>
+        </Box>
+
         {!isConnected && (
-          <Alert icon={<FaExclamationCircle size={16} />} title="Connection Lost" color="red" mb="md">
+          <Alert icon={<FaExclamationCircle size={16} />} title="Connection Lost" color="red" mx="lg" mt="md" mb="xs">
             Trying to reconnect to the server...
           </Alert>
         )}
 
-        <Box style={{ flex: 1, minHeight: 0, overflowY: "auto", paddingBottom: "1rem" }}>
-          {allMessages.length === 0 && !isTyping ? (
-            <Text c="dimmed" ta="center" pt="xl">Start a new conversation</Text>
+        <Box style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "1rem 0" }}>
+          {isLoading ? (
+            <ChatSkeleton />
+          ) : allMessages.length === 0 && !isTyping ? (
+            <EmptyState
+              icon={<RiCodeBoxLine />}
+              iconColor="indigo"
+              title="Start the conversation"
+              description="Chat with your AI tutor. Use the Code editor to write, run, and submit python code alongside your messages."
+            />
           ) : (
-            <Stack gap="sm">
+            <Stack gap="md" px={{ base: "md", md: "lg" }} className="app-stagger">
               {allMessages.map((msg) => (
                 <Box key={msg.id} style={{ display: "flex", flexDirection: "column", alignItems: msg.sender === "user" ? "flex-end" : "flex-start" }}>
-                  <Box p="sm" style={{ backgroundColor: msg.sender === "user" ? "#e3f2fd" : "#f5f5f5", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", maxWidth: "70%" }}>
+                  <ChatBubble sender={msg.sender as "user" | "ai"}>
                     {msg.code_snippet && msg.language ? (
                       <Stack gap="xs">
-                        {msg.content && <Text size="sm">{msg.content}</Text>}
+                        {msg.content && (
+                          <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
+                            {msg.content}
+                          </Text>
+                        )}
                         <Button
-                          variant="light"
+                          variant="subtle"
                           size="xs"
-                          leftSection={<RiCodeBoxLine size={16} />}
+                          color="indigo"
+                          leftSection={<RiCodeBoxLine size={14} />}
                           onClick={() => {
                             setActiveCode({
                               content: msg.code_snippet!,
                               language: msg.language!,
                               messageId: msg.id,
                             });
-                            setExecutionOutput(""); // Clear previous output
+                            setExecutionOutput("");
                             setIsDrawerOpen(true);
                           }}
                         >
-                          View & Run Code ({msg.language})
+                          View &amp; Run Code ({msg.language})
                         </Button>
                       </Stack>
                     ) : (
-                      <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>{msg.content}</Text>
+                      <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
+                        {msg.content}
+                      </Text>
                     )}
-
-                  </Box>
-                  <Text size="xs" c="dimmed" ta={msg.sender === "user" ? "right" : "left"} style={{ marginTop: "2px" }}>
+                  </ChatBubble>
+                  <Text size="xs" c="dimmed" mt={4}>
                     {new Date(msg.timestamp).toLocaleTimeString()}
                   </Text>
                 </Box>
               ))}
 
               {isTyping && (
-                <Group gap="xs" style={{ alignSelf: 'flex-start' }}>
-                  <Box p="sm" style={{ backgroundColor: "#f5f5f5", borderRadius: "12px" }}>
+                <Box style={{ display: "flex" }}>
+                  <ChatBubble sender="ai">
                     <Loader size="sm" type="dots" />
-                  </Box>
-                </Group>
+                  </ChatBubble>
+                </Box>
               )}
               <div ref={messagesEndRef} />
             </Stack>
           )}
         </Box>
 
-        {/* Input Area */}
-        <Box style={{ borderTop: "1px solid #ddd", paddingTop: "0.5rem", paddingBottom: "0.5rem", background: "#fff", flexShrink: 0 }}>
-          <Group gap="sm" style={{ width: "100%" }} align="flex-end">
+        <Box
+          p="sm"
+          px={{ base: "md", md: "lg" }}
+          style={{
+            borderTop: "1px solid var(--app-line)",
+            background: "var(--app-surface)",
+            flexShrink: 0,
+          }}
+        >
+          <Group gap="sm" align="flex-end" wrap="nowrap">
             <Textarea
               placeholder="Type your message..."
               value={message}
@@ -232,19 +289,9 @@ export const ChatContainer = () => {
               style={{ flex: 1 }}
               disabled={!isConnected || isTyping}
               autosize
-              minRows={2}
+              minRows={1}
               maxRows={8}
             />
-            <Button
-              variant="light"
-              color="blue"
-              disabled={!isConnected || isTyping}
-              leftSection={<RiCodeBoxLine size={16} />}
-              onClick={handleManualOpenCodeDrawer}
-              title="Open code editor"
-            >
-              Code
-            </Button>
             <Button onClick={handleSendMessage} disabled={!isConnected || !message.trim() || isTyping}>
               Send
             </Button>
@@ -269,3 +316,23 @@ export const ChatContainer = () => {
     </>
   );
 };
+
+const ActionIconBack = ({ onNavigate }: { onNavigate: () => void }) => (
+  <UnstyledButton
+    aria-label="Back"
+    onClick={onNavigate}
+    style={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      width: 34,
+      height: 34,
+      borderRadius: "var(--mantine-radius-md)",
+      color: "var(--mantine-color-dimmed)",
+      flexShrink: 0,
+    }}
+    className="nav-item"
+  >
+    <FaArrowLeft size={15} />
+  </UnstyledButton>
+);

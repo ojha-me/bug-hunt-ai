@@ -1,18 +1,15 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  Container,
   Text,
   Button,
-  Stack,
-  Center,
-  Loader,
+  Skeleton,
   Paper,
   Group,
   Title,
   Badge,
   Divider,
   Accordion,
-  List
+  List,
 } from '@mantine/core';
 
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -26,6 +23,7 @@ import { FaPlay } from 'react-icons/fa';
 import { RiStickyNoteLine } from 'react-icons/ri';
 import { notifications } from '@mantine/notifications';
 import { useQueryClient } from '@tanstack/react-query';
+import { Page, EmptyState } from './ui';
 
 export const PathDetails = () => {
   const { pathId } = useParams<{ pathId: string }>();
@@ -84,31 +82,30 @@ const handleStartLearning = () => {
 
   if (isLoading) {
     return (
-      <Center h="50vh">
-        <Stack align="center">
-          <Loader size="lg" />
-          <Text>Loading learning path...</Text>
-        </Stack>
-      </Center>
+      <Page>
+        <Skeleton height={120} radius="lg" />
+        <Skeleton height={140} radius="lg" mt="lg" />
+        <Skeleton height={120} radius="lg" mt="lg" />
+      </Page>
     );
   }
 
   if (!learningPathDetail) {
     return (
-      <Container size="md" py="xl">
-        <Center>
-          <Stack align="center">
-            <Text size="lg">Learning path not found</Text>
+      <Page>
+        <EmptyState
+          title="Learning path not found"
+          action={
             <Button onClick={() => navigate('/topics')}>
               Browse Topics
             </Button>
-          </Stack>
-        </Center>
-      </Container>
+          }
+        />
+      </Page>
     );
   }
   return (
-    <Container size="md" py="xl">
+    <Page>
       <Paper p="xl" radius="lg" shadow="sm" withBorder>
         <Group justify="space-between" align="flex-start">
           <div>
@@ -202,6 +199,6 @@ const handleStartLearning = () => {
           </Accordion.Item>
         ))}
       </Accordion>
-    </Container>
+    </Page>
   );
 };

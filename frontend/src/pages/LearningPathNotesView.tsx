@@ -1,8 +1,6 @@
 import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  Container,
-  Title,
   Text,
   TextInput,
   Card,
@@ -10,9 +8,6 @@ import {
   Group,
   Badge,
   ActionIcon,
-  Loader,
-  Center,
-  Paper,
   Box,
   Modal,
   Textarea,
@@ -20,10 +15,12 @@ import {
   Accordion,
   Breadcrumbs,
   Anchor,
+  Skeleton,
 } from "@mantine/core";
 import { RiSearchLine, RiDeleteBinLine, RiEditLine, RiStickyNoteLine, RiFileListLine, RiArrowLeftLine } from "react-icons/ri";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getAllUserNotes, updateMessageNote, deleteMessageNote, topicDetails } from "../api/learningPaths";
+import { Page, EmptyState } from "../components/ui";
 import type { MessageNoteResponse, LearningTopicDetailResponse } from "../types/learning_paths/api_types";
 
 export const LearningPathNotesView = () => {
@@ -142,14 +139,17 @@ export const LearningPathNotesView = () => {
 
   if (isLoading) {
     return (
-      <Center style={{ height: "100vh" }}>
-        <Loader size="lg" />
-      </Center>
+      <Page>
+        <Skeleton height={40} width={260} radius="md" />
+        <Skeleton height={44} radius="md" mt="lg" />
+        <Skeleton height={120} radius="lg" mt="lg" />
+        <Skeleton height={120} radius="lg" mt="md" />
+      </Page>
     );
   }
 
   return (
-    <Container size="lg" py="xl">
+    <Page>
       <Stack gap="lg">
         {/* Breadcrumbs */}
         <Breadcrumbs>
@@ -172,7 +172,7 @@ export const LearningPathNotesView = () => {
                   <RiArrowLeftLine size={20} />
                 </ActionIcon>
                 <div>
-                  <Title order={1}>{learningPathDetail?.name || "Learning Path"}</Title>
+                  <Text fw={650} size="lg">{learningPathDetail?.name || "Learning Path"}</Text>
                   <Text c="dimmed" size="sm">
                     Notes for this learning path
                   </Text>
@@ -196,19 +196,12 @@ export const LearningPathNotesView = () => {
 
         {/* Notes List - Grouped by Subtopic */}
         {filteredNotes.length === 0 ? (
-          <Paper p="xl" radius="md" withBorder>
-            <Center>
-              <Stack align="center" gap="sm">
-                <RiStickyNoteLine size={48} style={{ opacity: 0.3 }} />
-                <Text c="dimmed" size="lg">
-                  {searchQuery ? "No notes found matching your search" : "No notes yet for this learning path"}
-                </Text>
-                <Text c="dimmed" size="sm">
-                  {!searchQuery && "Start taking notes by highlighting text in your learning conversations"}
-                </Text>
-              </Stack>
-            </Center>
-          </Paper>
+          <EmptyState
+            icon={<RiStickyNoteLine />}
+            iconColor="gray"
+            title={searchQuery ? "No notes found matching your search" : "No notes yet for this learning path"}
+            description={!searchQuery ? "Start taking notes by highlighting text in your learning conversations" : undefined}
+          />
         ) : (
           <Accordion variant="separated" radius="md" defaultValue={Object.keys(groupedNotes)[0]}>
             {Object.entries(groupedNotes).map(([subtopicKey, subtopicGroup]) => (
@@ -232,16 +225,9 @@ export const LearningPathNotesView = () => {
                               <Text size="xs" c="dimmed" mb={4}>
                                 Highlighted Text:
                               </Text>
-                              <Paper
-                                p="xs"
-                                bg="yellow.0"
-                                style={{
-                                  borderLeft: "3px solid #ffd43b",
-                                  fontStyle: "italic",
-                                }}
-                              >
+                              <div className="note-highlight" style={{ fontStyle: "italic" }}>
                                 <Text size="sm">"{note.selection_text}"</Text>
-                              </Paper>
+                              </div>
                             </Box>
                             <Group gap="xs">
                               <ActionIcon
@@ -309,14 +295,14 @@ export const LearningPathNotesView = () => {
       >
         <Stack gap="md">
           {editingNote && (
-            <Paper p="sm" bg="yellow.0" style={{ borderLeft: "3px solid #ffd43b" }}>
+            <div className="note-highlight">
               <Text size="xs" c="dimmed" mb={4}>
                 Highlighted Text:
               </Text>
               <Text size="sm" style={{ fontStyle: "italic" }}>
                 "{editingNote.selection_text}"
               </Text>
-            </Paper>
+            </div>
           )}
 
           <Textarea
@@ -349,6 +335,6 @@ export const LearningPathNotesView = () => {
           </Group>
         </Stack>
       </Modal>
-    </Container>
+    </Page>
   );
 };

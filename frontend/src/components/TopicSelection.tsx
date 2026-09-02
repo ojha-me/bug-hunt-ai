@@ -1,7 +1,5 @@
 import { useState } from 'react';
 import {
-  Container,
-  Title,
   Text,
   Grid,
   Card,
@@ -9,15 +7,14 @@ import {
   Button,
   Group,
   Stack,
-  Center,
   TextInput,
   Select,
   Box,
   Progress,
   Divider,
-  Loader,
   Modal,
-  Textarea
+  Textarea,
+  Skeleton
 } from '@mantine/core';
 import { FaSearch, FaClock, FaGraduationCap, FaPlay, FaCheck, FaPlus } from 'react-icons/fa';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -28,6 +25,7 @@ import {
   allTopics,
   generateLearningPath
 } from '../api/learningPaths';
+import { Page, PageHeader, EmptyState } from './ui';
 import type { LearningTopicResponse, UserLearningPathResponse } from '../types/learning_paths/api_types';
 
 export const TopicSelection = () => {
@@ -63,7 +61,7 @@ export const TopicSelection = () => {
       setIsLearningModalOpen(false);
       setLearningTopic('');
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       notifications.show({
         title: 'Error',
         message: error.message || 'An unexpected error occurred. Please try again.',
@@ -89,36 +87,39 @@ export const TopicSelection = () => {
 
   if (topicsLoading) {
     return (
-      <Center h="50vh">
-        <Stack align="center">
-          <Loader size="lg" />
-          <Text>Loading learning topics...</Text>
-        </Stack>
-      </Center>
+      <Page>
+        <PageHeader
+          title="Choose Your Learning Path"
+          subtitle="Select a topic to start your structured learning journey."
+        />
+        <Grid>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Grid.Col key={i} span={{ base: 12, md: 6, lg: 4 }}>
+              <Skeleton h={260} radius="lg" />
+            </Grid.Col>
+          ))}
+        </Grid>
+      </Page>
     );
   }
 
   return (
-    <Container size="xl" py="xl">
+    <Page>
       <Stack gap="xl">
         {/* Header */}
-        <Box ta="center">
-          <Title order={1} mb="md">
-            Choose Your Learning Path
-          </Title>
-          <Text size="lg" c="dimmed" maw={600} mx="auto">
-            Select a topic to start your structured learning journey. Each path includes 
-            interactive lessons, hands-on coding practice, and bug-fixing challenges.
-          </Text>
-          <Button 
-            variant="filled"
-            mt="md"
-            leftSection={<FaPlus />}
-            onClick={() => setIsLearningModalOpen(true)}
-          >
-            Create New Learning Path
-          </Button>
-        </Box>
+        <PageHeader
+          title="Choose Your Learning Path"
+          subtitle="Each path includes interactive lessons, hands-on coding practice, and bug-fixing challenges."
+          right={
+            <Button
+              variant="filled"
+              leftSection={<FaPlus />}
+              onClick={() => setIsLearningModalOpen(true)}
+            >
+              Create New Learning Path
+            </Button>
+          }
+        />
 
         {/* Filters */}
         <Group justify="center" gap="md">
@@ -143,7 +144,7 @@ export const TopicSelection = () => {
         </Group>
 
         {/* Topics Grid */}
-        <Grid>
+        <Grid className="app-stagger">
           {filteredTopics.map((topic) => {
             const userPath = getUserPathForTopic(topic.id);
             const isStarted = !!userPath;
@@ -152,11 +153,11 @@ export const TopicSelection = () => {
             return (
               <Grid.Col key={topic.id} span={{ base: 12, md: 6, lg: 4 }}>
                 <Card 
-                  shadow="sm" 
-                  padding="lg" 
-                  radius="md" 
+                  p="lg"
+                  radius="lg"
                   withBorder 
                   h="100%"
+                  className="app-hover-lift"
                   style={{ 
                     display: 'flex', 
                     flexDirection: 'column',
@@ -197,9 +198,9 @@ export const TopicSelection = () => {
                     </Group>
 
                     {/* Content */}
-                    <Title order={3} size="h4">
+                    <Text fw={650} size="lg">
                       {topic.name}
-                    </Title>
+                    </Text>
                     
                     <Text size="sm" c="dimmed" style={{ flex: 1 }}>
                       {topic.description}
@@ -263,14 +264,10 @@ export const TopicSelection = () => {
         </Grid>
 
         {filteredTopics.length === 0 && (
-          <Center py="xl">
-            <Stack align="center">
-              <Text size="lg" c="dimmed">No topics found</Text>
-              <Text size="sm" c="dimmed">
-                Try adjusting your search or filter criteria
-              </Text>
-            </Stack>
-          </Center>
+          <EmptyState
+            title="No topics found"
+            description="Try adjusting your search or filter criteria"
+          />
         )}
       </Stack>
       {/* Create Learning Path Modal */}
@@ -317,6 +314,6 @@ export const TopicSelection = () => {
           </Button>
         </Group>
       </Modal>
-    </Container>
+    </Page>
   );
 };

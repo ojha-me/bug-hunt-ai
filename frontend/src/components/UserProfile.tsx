@@ -1,6 +1,7 @@
-import { Container, Paper, Title, Text, Stack, Group, Badge, Divider, Box, Avatar, Button, Loader, Center } from '@mantine/core';
+import { Container, Paper, Title, Text, Stack, Group, Badge, Divider, Box, Avatar, Button, Loader, Center, useMantineColorScheme } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { FaUser, FaChartLine, FaComments, FaGraduationCap, FaSignOutAlt } from 'react-icons/fa';
+import { RiSunLine, RiMoonLine } from 'react-icons/ri';
 import { useNavigate } from 'react-router-dom';
 import { setAccessToken } from '../api/apiClient';
 import { notifications } from '@mantine/notifications';
@@ -8,6 +9,7 @@ import { getUserProfile } from '../api/user';
 
 export const UserProfile = () => {
   const navigate = useNavigate();
+  const { colorScheme, setColorScheme } = useMantineColorScheme();
   
   const { data: profile, isLoading } = useQuery({
     queryKey: ['user-profile'],
@@ -69,7 +71,7 @@ export const UserProfile = () => {
               radius="xl"
               color="violet"
               style={{
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                background: 'var(--brand-gradient)',
               }}
             >
               <FaUser size={32} />
@@ -92,14 +94,23 @@ export const UserProfile = () => {
               </Badge>
             </Box>
           </Group>
-          <Button
-            color="red"
-            variant="light"
-            leftSection={<FaSignOutAlt />}
-            onClick={handleLogout}
-          >
-            Logout
-          </Button>
+          <Group gap="sm">
+            <Button
+              variant="default"
+              leftSection={colorScheme === "dark" ? <RiSunLine size={14} /> : <RiMoonLine size={14} />}
+              onClick={() => setColorScheme(colorScheme === "dark" ? "light" : "dark")}
+            >
+              {colorScheme === "dark" ? "Light mode" : "Dark mode"}
+            </Button>
+            <Button
+              color="red"
+              variant="light"
+              leftSection={<FaSignOutAlt />}
+              onClick={handleLogout}
+            >
+              Logout
+            </Button>
+          </Group>
         </Group>
 
         <Divider my="xl" />
@@ -121,7 +132,7 @@ export const UserProfile = () => {
                       width: 40,
                       height: 40,
                       borderRadius: '8px',
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      background: 'var(--brand-gradient)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',

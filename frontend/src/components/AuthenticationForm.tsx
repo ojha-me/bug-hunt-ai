@@ -24,6 +24,7 @@ import { setAccessToken } from '../api/apiClient';
 import { notifications } from '@mantine/notifications';
 import { FaBug, FaUserPlus, FaSignInAlt } from 'react-icons/fa';
 import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
+import { brandGradient } from '../theme';
 
 export function AuthenticationForm(props: PaperProps) {
   const [type, toggle] = useToggle(['login', 'register']);
@@ -35,7 +36,7 @@ export function AuthenticationForm(props: PaperProps) {
       password: '',
       skill_level: 'beginner',
     },
-  
+
       validate: {
         email: (val) => (/^\S+@\S+$/.test(val) ? null : 'Invalid email'),
         password: (val) => (val.length <= 6 ? 'Password should include at least 6 characters' : null),
@@ -148,16 +149,16 @@ export function AuthenticationForm(props: PaperProps) {
               width: 80,
               height: 80,
               borderRadius: '50%',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              background: brandGradient,
               marginBottom: '1rem',
-              boxShadow: '0 10px 30px rgba(102, 126, 234, 0.3)'
+              boxShadow: '0 10px 30px rgba(15, 118, 110, 0.35)'
             }}>
               <FaBug size={40} color="white" />
             </Box>
             <Title order={1} style={{ 
               fontSize: '2rem', 
               fontWeight: 700,
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              background: brandGradient,
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               marginBottom: '0.5rem'
@@ -175,8 +176,8 @@ export function AuthenticationForm(props: PaperProps) {
             shadow="xl"
             {...props}
             style={{
-              border: '1px solid #e9ecef',
-              background: 'white'
+              border: '1px solid var(--app-line)',
+              background: 'var(--app-surface)',
             }}
           >
             <form onSubmit={form.onSubmit(handleSubmit)}>
@@ -190,14 +191,6 @@ export function AuthenticationForm(props: PaperProps) {
                         size="md"
                         radius="md"
                         {...form.getInputProps('first_name')}
-                        styles={{
-                          input: {
-                            borderColor: '#e9ecef',
-                            '&:focus': {
-                              borderColor: '#667eea'
-                            }
-                          }
-                        }}
                       />
                       <TextInput
                         label="Last Name"
@@ -205,14 +198,6 @@ export function AuthenticationForm(props: PaperProps) {
                         size="md"
                         radius="md"
                         {...form.getInputProps('last_name')}
-                        styles={{
-                          input: {
-                            borderColor: '#e9ecef',
-                            '&:focus': {
-                              borderColor: '#667eea'
-                            }
-                          }
-                        }}
                       />
                     </Group>
                   </>
@@ -225,14 +210,6 @@ export function AuthenticationForm(props: PaperProps) {
                   size="md"
                   radius="md"
                   {...form.getInputProps('email')}
-                  styles={{
-                    input: {
-                      borderColor: '#e9ecef',
-                      '&:focus': {
-                        borderColor: '#667eea'
-                      }
-                    }
-                  }}
                 />
 
                 {type === 'register' && (
@@ -242,19 +219,11 @@ export function AuthenticationForm(props: PaperProps) {
                     size="md"
                     radius="md"
                     data={[
-                      {value: 'beginner', label: '🌱 Beginner'}, 
-                      {value: 'intermediate', label: '🚀 Intermediate'}, 
-                      {value: 'advanced', label: '⚡ Advanced'}
+                      {value: 'beginner', label: 'Beginner'}, 
+                      {value: 'intermediate', label: 'Intermediate'}, 
+                      {value: 'advanced', label: 'Advanced'}
                     ]}
                     {...form.getInputProps('skill_level')}
-                    styles={{
-                      input: {
-                        borderColor: '#e9ecef',
-                        '&:focus': {
-                          borderColor: '#667eea'
-                        }
-                      }
-                    }}
                   />
                 )}
 
@@ -265,14 +234,6 @@ export function AuthenticationForm(props: PaperProps) {
                   size="md"
                   radius="md"
                   {...form.getInputProps('password')}
-                  styles={{
-                    input: {
-                      borderColor: '#e9ecef',
-                      '&:focus': {
-                        borderColor: '#667eea'
-                      }
-                    }
-                  }}
                 />
       
                 <Button 
@@ -283,14 +244,14 @@ export function AuthenticationForm(props: PaperProps) {
                   mt="md"
                   leftSection={type === 'register' ? <FaUserPlus size={18} /> : <FaSignInAlt size={18} />}
                   style={{
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    background: brandGradient,
                     transition: 'transform 0.2s',
                   }}
                   styles={{
                     root: {
                       '&:hover': {
                         transform: 'translateY(-2px)',
-                        boxShadow: '0 10px 30px rgba(102, 126, 234, 0.4)'
+                        boxShadow: '0 10px 30px rgba(15, 118, 110, 0.4)'
                       }
                     }
                   }}
@@ -323,7 +284,7 @@ export function AuthenticationForm(props: PaperProps) {
                     onClick={() => toggle()}
                     fw={600}
                     style={{
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      background: brandGradient,
                       WebkitBackgroundClip: 'text',
                       WebkitTextFillColor: 'transparent',
                     }}
@@ -340,7 +301,7 @@ export function AuthenticationForm(props: PaperProps) {
                     onClick={() => toggle()}
                     fw={600}
                     style={{
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      background: brandGradient,
                       WebkitBackgroundClip: 'text',
                       WebkitTextFillColor: 'transparent',
                     }}

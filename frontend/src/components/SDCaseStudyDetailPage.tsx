@@ -1,17 +1,4 @@
-import {
-  Box,
-  Text,
-  Button,
-  Stack,
-  Group,
-  Badge,
-  Card,
-  Loader,
-  Alert,
-  Divider,
-  Title,
-  SimpleGrid,
-} from "@mantine/core";
+import { Box, Text, Button, Stack, Group, Badge, Card, Alert, Divider, Title, SimpleGrid, Skeleton } from "@mantine/core";
 import { useParams, useNavigate } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
@@ -19,10 +6,7 @@ import { FaArrowLeft, FaProjectDiagram, FaComments } from "react-icons/fa";
 import { getSDCaseStudy } from "../api/systemDesign";
 import { createConversation } from "../api/conversation";
 import { SystemDesignDiagram } from "./SystemDesignDiagram";
-import type { SDCaseStudyDifficulty } from "../types/system_design/api_types";
-
-const difficultyColor = (d: SDCaseStudyDifficulty) =>
-  d === "easy" ? "green" : d === "medium" ? "yellow" : "red";
+import { Page, difficultyColor } from "./ui";
 
 export const SDCaseStudyDetailPage = () => {
   const { caseStudyId } = useParams<{ caseStudyId: string }>();
@@ -45,25 +29,35 @@ export const SDCaseStudyDetailPage = () => {
 
   if (isLoading) {
     return (
-      <Box p="xl" ta="center">
-        <Loader />
-      </Box>
+      <Page>
+        <Skeleton height={36} width={180} radius="md" mb="lg" />
+        <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg">
+          <Box>
+            <Skeleton height={120} radius="lg" mb="lg" />
+            <Skeleton height={200} radius="lg" />
+          </Box>
+          <Box>
+            <Skeleton height={200} radius="lg" mb="lg" />
+            <Skeleton height={120} radius="lg" />
+          </Box>
+        </SimpleGrid>
+      </Page>
     );
   }
 
   if (isError || !study) {
     return (
-      <Box p="xl">
+      <Page>
         <Alert color="red">Case study not found.</Alert>
         <Button mt="md" variant="light" onClick={() => navigate("/system-design/case-studies")}>
           Back to case studies
         </Button>
-      </Box>
+      </Page>
     );
   }
 
   return (
-    <Box p="md" style={{ minHeight: "100vh", overflowY: "auto", background: "#f9f9f9" }}>
+    <Page>
       <Button variant="subtle" color="gray" leftSection={<FaArrowLeft size={14} />} onClick={() => navigate("/system-design/case-studies")}>
         All case studies
       </Button>
@@ -95,18 +89,18 @@ export const SDCaseStudyDetailPage = () => {
         </Button>
       </Group>
 
-      <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg">
+      <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg" className="app-stagger">
         <Stack gap="lg">
-          <Card withBorder radius="md" p="lg">
+          <Card withBorder p="lg">
             <Text fw={600} size="sm" mb="xs">
               Overview
             </Text>
-            <div style={{ fontSize: 13 }}>
+            <div style={{ fontSize: 13 }} className="md-content">
               <ReactMarkdown>{study.overview}</ReactMarkdown>
             </div>
           </Card>
 
-          <Card withBorder radius="md" p="lg">
+          <Card withBorder p="lg">
             <Text fw={600} size="sm" mb="xs">
               Functional Requirements
             </Text>
@@ -130,7 +124,7 @@ export const SDCaseStudyDetailPage = () => {
             </Stack>
           </Card>
 
-          <Card withBorder radius="md" p="lg">
+          <Card withBorder p="lg">
             <Text fw={600} size="sm" mb="xs">
               Capacity Estimates
             </Text>
@@ -150,7 +144,7 @@ export const SDCaseStudyDetailPage = () => {
         </Stack>
 
         <Stack gap="lg">
-          <Card withBorder radius="md" p="lg">
+          <Card withBorder p="lg">
             <Text fw={600} size="sm" mb="xs">
               Key Components
             </Text>
@@ -168,7 +162,7 @@ export const SDCaseStudyDetailPage = () => {
             </Stack>
           </Card>
 
-          <Card withBorder radius="md" p="lg">
+          <Card withBorder p="lg">
             <Text fw={600} size="sm" mb="xs">
               Tradeoffs
             </Text>
@@ -182,7 +176,7 @@ export const SDCaseStudyDetailPage = () => {
           </Card>
 
           {study.reference_diagram && (
-            <Card withBorder radius="md" p="lg">
+            <Card withBorder p="lg">
               <Group justify="space-between" mb="xs">
                 <Text fw={600} size="sm">
                   Reference Architecture
@@ -202,6 +196,6 @@ export const SDCaseStudyDetailPage = () => {
           )}
         </Stack>
       </SimpleGrid>
-    </Box>
+    </Page>
   );
 };

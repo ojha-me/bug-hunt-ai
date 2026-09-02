@@ -20,6 +20,34 @@ interface LearningPathMessageProps {
   onHint?: () => void;
 }
 
+const typeColor = (t: string) =>
+  t === "explanation"
+    ? "blue"
+    : t === "question"
+    ? "teal"
+    : t === "challenge"
+    ? "orange"
+    : t === "feedback"
+    ? "green"
+    : t === "encouragement"
+    ? "violet"
+    : "red";
+
+const typeLabel = (t: string) =>
+  t === "explanation"
+    ? "Lesson"
+    : t === "question"
+    ? "Question"
+    : t === "challenge"
+    ? "Challenge"
+    : t === "feedback"
+    ? "Feedback"
+    : t === "encouragement"
+    ? "Nice work"
+    : t === "assessment"
+    ? "Checkpoint"
+    : t;
+
 export const LearningPathMessage = ({
   id,
   sender,
@@ -255,8 +283,8 @@ export const LearningPathMessage = ({
         const mark = document.createElement('mark');
         mark.className = 'note-highlight';
         mark.setAttribute('data-note-id', note.id);
-        mark.style.backgroundColor = '#fff9db';
-        mark.style.borderBottom = '2px solid #ffd43b';
+        mark.style.backgroundColor = 'var(--mantine-color-yellow-1)';
+        mark.style.borderBottom = '2px solid var(--mantine-color-yellow-4)';
         mark.style.cursor = 'pointer';
         mark.style.padding = '2px 0';
         mark.title = `Note: ${note.content.substring(0, 50)}${note.content.length > 50 ? '...' : ''}`;
@@ -281,10 +309,9 @@ export const LearningPathMessage = ({
     >
       <Box
         p="sm"
+        className="app-bubble"
         style={{
-          backgroundColor: sender === "user" ? "#e3f2fd" : "#f5f5f5",
-          borderRadius: "12px",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+          backgroundColor: sender === "user" ? "var(--mantine-primary-color-light)" : "var(--app-sunken)",
           maxWidth: "70%",
           position: "relative",
           overflowX: "auto",
@@ -292,9 +319,8 @@ export const LearningPathMessage = ({
       >
         {sender === "ai" && type && (
           <Group gap="xs" mb="xs">
-            <Text size="xs">{""}</Text>
-            <Badge size="xs" variant="light">
-              {type}
+            <Badge size="xs" variant="light" color={typeColor(type)} tt="capitalize">
+              {typeLabel(type)}
             </Badge>
           </Group>
         )}
@@ -303,6 +329,7 @@ export const LearningPathMessage = ({
           ref={markdownRef}
           onMouseUp={handleMouseUp}
           onContextMenu={handleContextMenu}
+          className="md-content"
           style={{ padding: "10px", userSelect: "text" }}
         >
           {renderContentWithHighlights()}
@@ -328,8 +355,8 @@ export const LearningPathMessage = ({
             </Group>
             <Box
               style={{
-                border: "1px solid #e9ecef",
-                borderRadius: "8px",
+                border: "1px solid var(--app-line)",
+                borderRadius: "var(--mantine-radius-md)",
                 overflow: "hidden",
               }}
               p={0}
@@ -379,38 +406,45 @@ export const LearningPathMessage = ({
             position: "fixed",
             top: contextMenu.y,
             left: contextMenu.x,
-            backgroundColor: "#fff",
-            border: "1px solid #ccc",
-            borderRadius: "4px",
-            boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+            backgroundColor: "var(--app-surface)",
+            border: "1px solid var(--app-line)",
+            borderRadius: "var(--mantine-radius-md)",
+            boxShadow: "var(--mantine-shadow-lg)",
             zIndex: 1000,
-            minWidth: "180px",
+            minWidth: "200px",
+            padding: 4,
+            overflow: "hidden",
           }}
         >
           {editingNote ? (
             <>
               <div
-                style={{ padding: "8px 12px", cursor: "pointer" }}
+                className="nav-item"
+                style={{ padding: "8px 12px", display: "flex", alignItems: "center", gap: 8, borderRadius: 6 }}
                 onClick={() => {
                   setNoteContent(editingNote.content);
                   setNoteModalOpen(true);
                   setContextMenu({ ...contextMenu, visible: false });
                 }}
               >
-                📝 View/Edit Note
+                <RiStickyNoteLine size={14} />
+                <Text size="sm">View/Edit Note</Text>
               </div>
               <div
-                style={{ padding: "8px 12px", cursor: "pointer", color: "#fa5252" }}
+                className="nav-item"
+                style={{ padding: "8px 12px", display: "flex", alignItems: "center", gap: 8, borderRadius: 6, color: "#fa5252" }}
                 onClick={() => {
-                    deleteNoteMutation.mutate(editingNote.id);
+                  deleteNoteMutation.mutate(editingNote.id);
                 }}
               >
-                🗑️ Delete Note
+                <RiDeleteBinLine size={14} />
+                <Text size="sm">Delete Note</Text>
               </div>
             </>
           ) : (
             <div
-              style={{ padding: "8px 12px", cursor: "pointer" }}
+              className="nav-item"
+              style={{ padding: "8px 12px", display: "flex", alignItems: "center", gap: 8, borderRadius: 6 }}
               onClick={() => {
                 if (selection) {
                   setNoteModalOpen(true);
@@ -418,17 +452,18 @@ export const LearningPathMessage = ({
                 setContextMenu({ ...contextMenu, visible: false });
               }}
             >
-              📝 Add a note
+              <RiStickyNoteLine size={14} />
+              <Text size="sm">Add a note</Text>
             </div>
           )}
           <div
             style={{
               padding: "8px 12px",
               cursor: "not-allowed",
-              color: "gray",
+              color: "var(--mantine-color-dimmed)",
             }}
           >
-            Explore in another branch (coming soon)
+            <Text size="sm">Explore in another branch (coming soon)</Text>
           </div>
         </div>
       )}
@@ -479,9 +514,9 @@ export const LearningPathMessage = ({
             <Box
               p="sm"
               style={{
-                backgroundColor: "#fff9db",
+                backgroundColor: "var(--mantine-color-yellow-1)",
                 borderRadius: "4px",
-                border: "1px solid #ffd43b",
+                border: "1px solid var(--mantine-color-yellow-4)",
               }}
             >
               <Text size="sm" style={{ fontStyle: "italic" }}>
@@ -535,9 +570,9 @@ export const LearningPathMessage = ({
               <Box
                 p="md"
                 style={{
-                  backgroundColor: "#f8f9fa",
+                  backgroundColor: "var(--app-sunken)",
                   borderRadius: "4px",
-                  border: "1px solid #e9ecef",
+                  border: "1px solid var(--app-line)",
                 }}
               >
                 <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
@@ -567,9 +602,9 @@ export const LearningPathMessage = ({
             <Box
               p="sm"
               style={{
-                backgroundColor: "#fff9db",
+                backgroundColor: "var(--mantine-color-yellow-1)",
                 borderRadius: "4px",
-                border: "1px solid #ffd43b",
+                border: "1px solid var(--mantine-color-yellow-4)",
               }}
             >
               <Text size="sm" style={{ fontStyle: "italic" }}>

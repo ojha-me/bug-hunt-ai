@@ -1,13 +1,10 @@
 import { useState, useMemo } from "react";
 import {
-  Box,
   Text,
   Button,
-  Stack,
   Group,
   Badge,
   Card,
-  Loader,
   SimpleGrid,
   SegmentedControl,
   TextInput,
@@ -17,10 +14,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { FaCode, FaArrowRight, FaSearch } from "react-icons/fa";
 import { getProblems } from "../api/challenges";
-import type { Difficulty } from "../types/challenges/api_types";
-
-const difficultyColor = (d: Difficulty) =>
-  d === "easy" ? "green" : d === "medium" ? "yellow" : "red";
+import { Page, PageHeader, GridSkeleton, difficultyColor } from "./ui";
 
 export const ProblemsPage = () => {
   const navigate = useNavigate();
@@ -53,19 +47,16 @@ export const ProblemsPage = () => {
   }, [problems, difficulty, topic, search]);
 
   return (
-    <Box p="md" style={{ height: "100vh", overflowY: "auto", background: "#f9f9f9" }}>
-      <Group mb="lg">
-        <Badge size="lg" variant="light" color="teal">
-          <FaCode size={12} style={{ marginRight: 4 }} />
-          Coding
-        </Badge>
-        <Text size="xl" fw={700}>
-          Problem Library
-        </Text>
-      </Group>
+    <Page>
+      <PageHeader
+        icon={<FaCode size={14} />}
+        iconColor="teal"
+        title="Problem Library"
+        subtitle="Practice curated coding challenges with AI-graded test cases."
+      />
 
       <Group mb="md" justify="space-between" wrap="wrap">
-        <Group gap="sm">
+        <Group gap="sm" wrap="wrap">
           <SegmentedControl
             size="xs"
             value={difficulty}
@@ -88,7 +79,7 @@ export const ProblemsPage = () => {
         </Group>
         {topic !== "all" && (
           <Button size="xs" variant="subtle" color="gray" onClick={() => setTopic("all")}>
-            ✕ {topic}
+            Clear topic: {topic}
           </Button>
         )}
       </Group>
@@ -105,13 +96,17 @@ export const ProblemsPage = () => {
       </Group>
 
       {isLoading ? (
-        <Box p="xl" ta="center">
-          <Loader />
-        </Box>
+        <GridSkeleton cards={6} />
       ) : filtered.length ? (
-        <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="lg">
+        <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="lg" className="app-stagger">
           {filtered.map((problem) => (
-            <Card key={problem.id} withBorder radius="md" p="lg">
+            <Card
+              key={problem.id}
+              withBorder
+              p="lg"
+              className="app-hover-lift"
+              style={{ display: "flex", flexDirection: "column" }}
+            >
               <Group justify="space-between" mb="sm">
                 <Badge variant="light" color={difficultyColor(problem.difficulty)}>
                   {problem.difficulty}
@@ -133,6 +128,7 @@ export const ProblemsPage = () => {
                 ))}
               </Group>
               <Button
+                mt="auto"
                 fullWidth
                 variant="light"
                 color="teal"
@@ -145,10 +141,10 @@ export const ProblemsPage = () => {
           ))}
         </SimpleGrid>
       ) : (
-        <Stack gap="sm" pt="xl" ta="center">
-          <Text c="dimmed">No problems match your filters.</Text>
-        </Stack>
+        <Text c="dimmed" ta="center" pt="xl">
+          No problems match your filters.
+        </Text>
       )}
-    </Box>
+    </Page>
   );
 };

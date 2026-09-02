@@ -13,7 +13,7 @@ import {
   MarkerType,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Button, Group, Text, Box, ActionIcon, Tooltip } from "@mantine/core";
+import { Button, Group, Text, Box, ActionIcon, Tooltip, useMantineColorScheme } from "@mantine/core";
 import {
   RiGlobalLine,
   RiSmartphoneLine,
@@ -28,7 +28,10 @@ import {
 } from "react-icons/ri";
 import type { ComponentType, ReactFlowDiagram } from "../types/ai_core/api_types";
 
-export interface PaletteEntry {
+type FlowNode = ReactFlowDiagram["nodes"][number];
+type FlowEdge = ReactFlowDiagram["edges"][number];
+
+interface PaletteEntry {
   key: string;
   label: string;
   icon: React.ReactNode;
@@ -36,7 +39,7 @@ export interface PaletteEntry {
   nodeType?: "input" | "output" | "default";
 }
 
-export const COMPONENT_PALETTE: PaletteEntry[] = [
+const COMPONENT_PALETTE: PaletteEntry[] = [
   { key: "client_web", label: "Web Client", icon: <RiGlobalLine />, color: "#4c6ef5", nodeType: "input" },
   { key: "client_mobile", label: "Mobile Client", icon: <RiSmartphoneLine />, color: "#6741d9", nodeType: "input" },
   { key: "load_balancer", label: "Load Balancer", icon: <RiDashboardLine />, color: "#0ca678" },
@@ -65,19 +68,21 @@ interface Props {
 }
 
 export const SystemDesignWhiteboard = ({ onSubmit, loadedDiagram }: Props) => {
+  const { colorScheme } = useMantineColorScheme();
+  const flowColorMode = colorScheme === "dark" ? "dark" : "light";
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
   useEffect(() => {
     if (!loadedDiagram) return;
-    const rfNodes: Node[] = (loadedDiagram.nodes ?? []).map((n: any) => ({
+    const rfNodes: Node[] = (loadedDiagram.nodes ?? []).map((n: FlowNode): Node => ({
       id: n.id,
       type: n.type === "input" || n.type === "output" ? n.type : "default",
       position: n.position,
       data: { label: n.data?.label ?? "" },
-      style: { width: 168, borderRadius: 10, border: `2px solid #868e96`, background: "#fff", color: "#1c1f2e", fontSize: 13 },
+      style: { width: 168, borderRadius: 10, border: "2px solid var(--app-line)", background: "var(--app-surface)", color: "var(--mantine-color-text)", fontSize: 13 },
     }));
-    const rfEdges: Edge[] = (loadedDiagram.edges ?? []).map((e: any) => ({
+    const rfEdges: Edge[] = (loadedDiagram.edges ?? []).map((e: FlowEdge): Edge => ({
       id: e.id,
       source: e.source,
       target: e.target,
@@ -120,18 +125,22 @@ export const SystemDesignWhiteboard = ({ onSubmit, loadedDiagram }: Props) => {
   };
 
   const getDiagram = (): ReactFlowDiagram => {
-    const sdNodes: NonNullable<ReactFlowDiagram["nodes"]> = nodes.map((n: any) => ({
-      id: n.id,
-      type: (n.type === "input" || n.type === "output" ? n.type : "default") as ComponentType,
-      position: n.position,
-      data: { label: String(n.data?.label ?? "") },
-    }));
-    const sdEdges: NonNullable<ReactFlowDiagram["edges"]> = edges.map((e: any) => ({
-      id: e.id,
-      source: e.source,
-      target: e.target,
-      label: e.label ?? "",
-    }));
+    const sdNodes: NonNullable<ReactFlowDiagram["nodes"]> = nodes.map(
+      (n): FlowNode => ({
+        id: n.id,
+        type: (n.type === "input" || n.type === "output" ? n.type : "default") as ComponentType,
+        position: n.position,
+        data: { label: String(n.data?.label ?? "") },
+      })
+    );
+    const sdEdges: NonNullable<ReactFlowDiagram["edges"]> = edges.map(
+      (e): FlowEdge => ({
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        label: e.label != null ? String(e.label) : undefined,
+      })
+    );
     return { nodes: sdNodes, edges: sdEdges };
   };
 
@@ -161,7 +170,7 @@ export const SystemDesignWhiteboard = ({ onSubmit, loadedDiagram }: Props) => {
 
   return (
     <Box style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", position: "relative" }}>
-      <Group gap={6} p="xs" style={{ borderBottom: "1px solid #e9ecef", flexShrink: 0, overflowX: "auto", flexWrap: "nowrap" }}>
+      <Group gap={6} p="xs" style={{ borderBottom: "1px solid var(--app-line)", flexShrink: 0, overflowX: "auto", flexWrap: "nowrap" }}>
         {COMPONENT_PALETTE.map((entry) => (
           <Tooltip key={entry.key} label={`Add ${entry.label}`} position="bottom">
             <ActionIcon
@@ -195,6 +204,7 @@ export const SystemDesignWhiteboard = ({ onSubmit, loadedDiagram }: Props) => {
           onNodeDoubleClick={onNodeDoubleClick}
           onNodeClick={onNodeClick}
           fitView
+          colorMode={flowColorMode}
           style={{ width: "100%", height: "100%" }}
         >
           <Background gap={20} />
@@ -202,7 +212,18 @@ export const SystemDesignWhiteboard = ({ onSubmit, loadedDiagram }: Props) => {
           <MiniMap />
         </ReactFlow>
       </Box>
-      <Text size="xs" c="dimmed" style={{ position: "absolute", bottom: 6, right: 10, background: "rgba(255,255,255,0.85)", borderRadius: 4, padding: "2px 6px" }}>
+      <Text
+        size="xs"
+        c="dimmed"
+        style={{
+          position: "absolute",
+          bottom: 6,
+          right: 10,
+          background: colorScheme === "dark" ? "rgba(24,24,37,0.85)" : "rgba(255,255,255,0.85)",
+          borderRadius: 4,
+          padding: "2px 6px",
+        }}
+      >
         Drag to connect • double-click a box to rename it
       </Text>
     </Box>

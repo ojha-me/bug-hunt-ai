@@ -1,10 +1,23 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-mantine-color-scheme="light">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React + TS</title>
+    <meta name="description" content="BugHunt — study coding, system design, and interviews with an AI tutor." />
+    <meta name="theme-color" content="#141517" />
+    <title>BugHunt</title>
+    <script>
+      // Apply persisted color scheme before first paint to avoid a flash.
+      (function () {
+        try {
+          var s = localStorage.getItem('bughunt-color-scheme');
+          if (s === 'dark' || s === 'light') {
+            document.documentElement.dataset.mantineColorScheme = s;
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

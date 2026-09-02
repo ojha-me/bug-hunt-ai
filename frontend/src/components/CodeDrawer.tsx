@@ -6,7 +6,7 @@ import {
   Loader,
   ScrollArea,
   Text,
-  useMantineTheme,
+  useMantineColorScheme,
   TextInput,
   Textarea,
   Badge,
@@ -65,7 +65,7 @@ export const CodeDrawer = ({
   testSummary,
   isTesting,
 }: CodeDrawerProps) => {
-  const theme = useMantineTheme();
+  const { colorScheme } = useMantineColorScheme();
   const [currentCode, setCurrentCode] = useState(code);
   const [currentOutput, setCurrentOutput] = useState(executionOutput);
   const [message, setMessage] = useState("");
@@ -209,13 +209,14 @@ export const CodeDrawer = ({
           <Editor
             height="100%"
             language={language}
+            theme={colorScheme === "dark" ? "vs-dark" : "vs-light"}
             value={currentCode}
             onChange={(value) => handleCodeChange(value || "")}
             options={{ fontSize: 14, minimap: { enabled: false } }}
           />
         </Box>
 
-        <Box p="md" style={{ borderTop: `1px solid ${theme.colors.gray[2]}`, borderBottom: `1px solid ${theme.colors.gray[2]}` }}>
+        <Box p="md" style={{ borderTop: `1px solid var(--app-line)`, borderBottom: `1px solid var(--app-line)` }}>
           <TextInput
             placeholder="Optional message to send with your code..."
             value={message}
@@ -285,9 +286,9 @@ export const CodeDrawer = ({
               </Box>
             </Tabs.Panel>
 
-            <Tabs.Panel value="tests" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+            <Tabs.Panel value="tests" className="app-tab-panel" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
               <ScrollArea style={{ flex: 1 }}>
-                <Box p="md" style={{ background: "#fafafa" }}>
+                <Box p="md" style={{ background: "var(--app-sunken)" }}>
                   <Group justify="space-between" mb="sm">
                     <Text size="sm" fw={600}>
                       Test cases
@@ -303,9 +304,9 @@ export const CodeDrawer = ({
                       mb="sm"
                       p="sm"
                       style={{
-                        border: "1px solid #e9ecef",
-                        borderRadius: "8px",
-                        background: "#fff",
+                        border: "1px solid var(--app-line)",
+                        borderRadius: "var(--mantine-radius-md)",
+                        background: "var(--app-surface)",
                       }}
                     >
                       <Group justify="space-between" mb="xs">
@@ -377,9 +378,9 @@ export const CodeDrawer = ({
                           mb="sm"
                           p="sm"
                           style={{
-                            border: `1px solid ${r.verdict === "passed" ? "#d3f9d8" : "#ffe3e3"}`,
-                            borderRadius: "8px",
-                            background: r.verdict === "passed" ? "#f6ffed" : "#fff5f5",
+                            border: `1px solid ${r.verdict === "passed" ? "var(--mantine-color-green-4)" : "var(--mantine-color-red-4)"}`,
+                            borderRadius: "var(--mantine-radius-md)",
+                            background: r.verdict === "passed" ? "var(--mantine-color-green-1)" : "var(--mantine-color-red-1)",
                           }}
                         >
                           <Group mb="xs">

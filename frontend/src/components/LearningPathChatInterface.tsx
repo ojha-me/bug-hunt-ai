@@ -348,21 +348,20 @@ export const LearningPathChatInterface = () => {
         height: "100vh",
         display: "flex",
         flexDirection: "column",
-        background: "#f9f9f9",
+        background: "var(--app-bg)",
       }}
     >
       {/* Top Bar with Progress */}
       <Box
         style={{
-          background: "#fff",
-          borderBottom: "1px solid #e0e0e0",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+          background: "var(--app-surface)",
+          borderBottom: "1px solid var(--app-line)",
           zIndex: 10,
         }}
       >
         <Group justify="space-between" align="center" p="md">
           <Box style={{ flex: 1 }}>
-            <Title order={4} c="dark">
+            <Title order={4}>
               {learningPathDetail?.name || "Learning Path"}
             </Title>
               <Group gap="xs" mt="xs">
@@ -412,7 +411,7 @@ export const LearningPathChatInterface = () => {
             <Loader />
           </Group>
         ) : (
-          <Stack gap="sm">
+          <Stack gap="sm" className="app-stagger">
             { allMessages.length === 0 && (
               <Alert color="blue" title="Preparing your learning journey...">
                 Your AI tutor is getting ready to guide you through this topic. This will just take a moment!
@@ -444,10 +443,9 @@ export const LearningPathChatInterface = () => {
               >
                 <Box
                   p="sm"
+                  className="app-bubble"
                   style={{
-                    backgroundColor: "#f5f5f5",
-                    borderRadius: "12px",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                    backgroundColor: "var(--app-sunken)",
                   }}
                 >
                   <Group gap="xs">
@@ -468,12 +466,12 @@ export const LearningPathChatInterface = () => {
       {showCodeInput && (
         <Box
           style={{
-            borderTop: "1px solid #ddd",
-            padding: "0.5rem",
-            background: "#fff8e1",
+            borderTop: "1px solid var(--app-line)",
+            padding: "0.75rem 1rem",
+            background: "var(--mantine-color-yellow-1)",
           }}
         >
-          <Text size="sm" mb="xs" fw={500}>
+          <Text size="sm" mb="xs" fw={600}>
             💻 Submit your code solution:
           </Text>
           <Group gap="sm" style={{ width: "100%" }}>
@@ -509,19 +507,22 @@ export const LearningPathChatInterface = () => {
       {showNextSubtopicButton && (
         <Box
           style={{
-            borderTop: "2px solid #4caf50",
+            borderTop: "2px solid var(--mantine-color-green-6)",
             padding: "1rem",
-            background: "linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)",
-            boxShadow: "0 -2px 8px rgba(76, 175, 80, 0.2)",
+            background: "var(--mantine-color-green-1)",
+            boxShadow: "0 -2px 12px var(--mantine-color-green-6)",
           }}
         >
-          <Group justify="space-between" align="center">
+          <Group justify="space-between" align="center" wrap="nowrap">
             <Box>
-              <Text size="md" fw={600} c="green.9">
-                🎉 Congratulations! You're ready!
-              </Text>
-              <Text size="sm" c="green.8" mt={4}>
-                You've mastered this subtopic. Continue to the next one!
+              <Group gap="xs">
+                <Text size="md" fw={650}>🎉</Text>
+                <Text size="md" fw={650}>
+                  You're ready for the next subtopic!
+                </Text>
+              </Group>
+              <Text size="sm" mt={4}>
+                You've mastered this one. Continue your learning path.
               </Text>
             </Box>
             <Button
@@ -532,14 +533,8 @@ export const LearningPathChatInterface = () => {
                 moveToNextSubtopic();
                 setShowNextSubtopicButton(false);
               }}
-              styles={{
-                root: {
-                  fontWeight: 600,
-                  boxShadow: "0 2px 8px rgba(76, 175, 80, 0.3)",
-                }
-              }}
             >
-              Next Topic →
+              Next Topic &rarr;
             </Button>
           </Group>
         </Box>
@@ -547,9 +542,9 @@ export const LearningPathChatInterface = () => {
 
       <Box
         style={{
-          borderTop: "1px solid #ddd",
-          padding: "0.5rem",
-          background: "#fff",
+          borderTop: "1px solid var(--app-line)",
+          padding: "0.75rem 1rem",
+          background: "var(--app-surface)",
           flexShrink: 0,
         }}
       >
@@ -715,20 +710,21 @@ export const LearningPathChatInterface = () => {
                       withBorder
                       style={{
                         backgroundColor: isActive
-                          ? "#e3f2fd"
+                          ? "var(--mantine-color-blue-1)"
                           : isCompleted
-                          ? "#e8f5e8"
+                          ? "var(--mantine-color-green-1)"
                           : isSkipped
-                          ? "#fff3e0"
+                          ? "var(--mantine-color-orange-1)"
                           : "transparent",
                         borderColor: isActive
-                          ? "#90caf9"
+                          ? "var(--mantine-color-blue-6)"
                           : isCompleted
-                          ? "#81c784"
+                          ? "var(--mantine-color-green-6)"
                           : isSkipped
-                          ? "#ffb74d"
-                          : "#e0e0e0",
+                          ? "var(--mantine-color-orange-6)"
+                          : "var(--app-line)",
                         cursor: "pointer",
+                        transition: "background-color 150ms ease, border-color 150ms ease",
                       }}
                       onClick={() => setCurrentSubtopicId(sub.id)}
                     >

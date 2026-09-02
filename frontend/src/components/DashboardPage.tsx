@@ -7,10 +7,9 @@ import {
   Group,
   Badge,
   Card,
-  Loader,
   SimpleGrid,
   Progress,
-  Title,
+  Skeleton,
 } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -31,6 +30,7 @@ import { getUserSDCourses } from "../api/systemDesign";
 import { userLearningPaths } from "../api/learningPaths";
 import { getConversations } from "../api/conversation";
 import { getDueRevisionItems } from "../api/revision";
+import { Page, PageHeader, StatsSkeleton } from "./ui";
 import type { ConversationTypeChoices } from "../types/ai_core/api_types";
 import type { UserLearningPathResponse } from "../types/learning_paths/api_types";
 
@@ -117,38 +117,37 @@ export const DashboardPage = () => {
   const loading = progressLoading || sdLoading || pathsLoading || convosLoading;
 
   return (
-    <Box
-      p="md"
-      style={{ height: "100vh", overflowY: "auto", background: "#f9f9f9" }}
-    >
-      <Group mb="lg" justify="space-between" wrap="wrap">
-        <Box>
-          <Title order={3}>Dashboard</Title>
-          <Text size="sm" c="dimmed">
-            Pick up where you left off, or start something new.
-          </Text>
-        </Box>
-        <Group gap="sm">
-          <Button variant="outline" leftSection={<FaPlus size={12} />} onClick={() => navigate("/topics")}>
-            New Learning Path
-          </Button>
-          <Button color="violet" leftSection={<FaProjectDiagram size={12} />} onClick={() => navigate("/system-design/courses")}>
-            System Design
-          </Button>
-          <Button color="teal" leftSection={<FaCode size={12} />} onClick={() => navigate("/challenges")}>
-            Coding Problems
-          </Button>
-        </Group>
-      </Group>
+    <Page>
+      <PageHeader
+        title="Dashboard"
+        subtitle="Pick up where you left off, or start something new."
+        right={
+          <Group gap="sm">
+            <Button variant="outline" leftSection={<FaPlus size={12} />} onClick={() => navigate("/topics")}>
+              New Learning Path
+            </Button>
+            <Button color="violet" leftSection={<FaProjectDiagram size={12} />} onClick={() => navigate("/system-design/courses")}>
+              System Design
+            </Button>
+            <Button color="teal" leftSection={<FaCode size={12} />} onClick={() => navigate("/challenges")}>
+              Coding Problems
+            </Button>
+          </Group>
+        }
+      />
 
       {loading ? (
-        <Box p="xl" ta="center">
-          <Loader />
-        </Box>
+        <>
+          <StatsSkeleton />
+          <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg">
+            <Skeleton height={360} radius="lg" />
+            <Skeleton height={360} radius="lg" />
+          </SimpleGrid>
+        </>
       ) : (
         <>
-          <SimpleGrid cols={{ base: 2, sm: 3, lg: 5 }} spacing="md" mb="lg">
-            <Card withBorder radius="md" p="md" bg="green.0">
+          <SimpleGrid cols={{ base: 2, sm: 3, lg: 5 }} spacing="md" mb="lg" className="app-stagger">
+            <Card withBorder p="md" bg="var(--mantine-color-green-0)" className="app-hover-lift">
               <Group gap="xs">
                 <FaCheckCircle color="green" />
                 <Text size="sm" c="dimmed">
@@ -162,7 +161,7 @@ export const DashboardPage = () => {
                 </Text>
               </Text>
             </Card>
-            <Card withBorder radius="md" p="md">
+            <Card withBorder p="md" className="app-hover-lift">
               <Group gap="xs">
                 <FaCode color="teal" />
                 <Text size="sm" c="dimmed">
@@ -173,7 +172,7 @@ export const DashboardPage = () => {
                 {stats.totalAttempts}
               </Text>
             </Card>
-            <Card withBorder radius="md" p="md">
+            <Card withBorder p="md" className="app-hover-lift">
               <Group gap="xs">
                 <FaBolt color="orange" />
                 <Text size="sm" c="dimmed">
@@ -184,7 +183,7 @@ export const DashboardPage = () => {
                 {stats.passRate === null ? "—" : `${stats.passRate}%`}
               </Text>
             </Card>
-            <Card withBorder radius="md" p="md">
+            <Card withBorder p="md" className="app-hover-lift">
               <Group gap="xs">
                 <FaProjectDiagram color="violet" />
                 <Text size="sm" c="dimmed">
@@ -195,7 +194,7 @@ export const DashboardPage = () => {
                 {stats.lessonsCompleted}
               </Text>
             </Card>
-            <Card withBorder radius="md" p="md" bg="blue.0">
+            <Card withBorder p="md" bg="var(--mantine-color-blue-0)" className="app-hover-lift">
               <Group gap="xs">
                 <FaGraduationCap color="blue" />
                 <Text size="sm" c="dimmed">
@@ -208,9 +207,9 @@ export const DashboardPage = () => {
             </Card>
           </SimpleGrid>
 
-          <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg">
+          <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg" className="app-stagger">
             <Stack gap="lg">
-              <Card withBorder radius="md" p="lg">
+              <Card withBorder p="lg">
                 <Text fw={600} size="sm" mb="xs">
                   Resume
                 </Text>
@@ -224,8 +223,7 @@ export const DashboardPage = () => {
                       {activePaths.map((p) => (
                         <Box
                           key={p.id}
-                          p="xs"
-                          style={{ border: "1px solid #e9ecef", borderRadius: 8, cursor: "pointer" }}
+                          className="row-item"
                           onClick={() => navigate(`/learning-path/${p.topic.id}`)}
                         >
                           <Group justify="space-between">
@@ -252,8 +250,7 @@ export const DashboardPage = () => {
                       {inProgressSd.map((c) => (
                         <Box
                           key={c.id}
-                          p="xs"
-                          style={{ border: "1px solid #e9ecef", borderRadius: 8, cursor: "pointer" }}
+                          className="row-item"
                           onClick={() => navigate(`/system-design/learn/${c.course.id}`)}
                         >
                           <Group justify="space-between">
@@ -294,8 +291,7 @@ export const DashboardPage = () => {
                   {recentConversations.map((c) => (
                     <Box
                       key={c.id}
-                      p="xs"
-                      style={{ border: "1px solid #e9ecef", borderRadius: 8, cursor: "pointer" }}
+                      className="row-item"
                       onClick={() => navigate(conversationHref(c.id, c.conversation_type))}
                     >
                       <Group justify="space-between">
@@ -313,7 +309,7 @@ export const DashboardPage = () => {
             </Stack>
 
             <Stack gap="lg">
-              <Card withBorder radius="md" p="lg">
+              <Card withBorder p="lg">
                 <Group justify="space-between" mb="xs">
                   <Text fw={600} size="sm">
                     Focus Areas
@@ -341,8 +337,7 @@ export const DashboardPage = () => {
                     {focus.weak.map((p) => (
                       <Box
                         key={p.problem_id}
-                        p="xs"
-                        style={{ border: "1px solid #e9ecef", borderRadius: 8, cursor: "pointer" }}
+                        className="row-item"
                         onClick={() => navigate(`/challenges/${p.problem_id}`)}
                       >
                         <Group justify="space-between">
@@ -368,7 +363,7 @@ export const DashboardPage = () => {
                 )}
               </Card>
 
-              <Card withBorder radius="md" p="lg">
+              <Card withBorder p="lg">
                 <Text fw={600} size="sm" mb="xs">
                   System Design Case Studies
                 </Text>
@@ -385,7 +380,7 @@ export const DashboardPage = () => {
                 </Button>
               </Card>
 
-              <Card withBorder radius="md" p="lg">
+              <Card withBorder p="lg">
                 <Group justify="space-between" mb="xs">
                   <Text fw={600} size="sm">
                     Spaced Repetition
@@ -407,6 +402,6 @@ export const DashboardPage = () => {
           </SimpleGrid>
         </>
       )}
-    </Box>
+    </Page>
   );
 };

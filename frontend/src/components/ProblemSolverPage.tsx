@@ -7,14 +7,14 @@ import {
   Group,
   Badge,
   Card,
-  Loader,
   Alert,
   Divider,
   ScrollArea,
   Tabs,
   Code,
-  Title,
   Textarea,
+  Skeleton,
+  SimpleGrid,
 } from "@mantine/core";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -24,6 +24,7 @@ import { FaArrowLeft, FaPlay, FaPaperPlane, FaCheckCircle, FaTimesCircle } from 
 import { RiLightbulbLine } from "react-icons/ri";
 import { getProblem, getProblemAttempts, submitProblem, getProblemTutorHistory, postProblemTutorChat } from "../api/challenges";
 import { runCode } from "../api/execution";
+import { useMantineColorScheme } from "@mantine/core";
 import type { Difficulty, ProblemAttempt, TutorTurn } from "../types/challenges/api_types";
 import type { TestCaseResult } from "../types/execution/api_types";
 
@@ -38,6 +39,7 @@ const storageKey = (problemId: string) => `problem-code-${problemId}`;
 export const ProblemSolverPage = () => {
   const { problemId } = useParams<{ problemId: string }>();
   const navigate = useNavigate();
+  const { colorScheme } = useMantineColorScheme();
 
   const { data: problem, isLoading, isError } = useQuery({
     queryKey: ["coding-problem", problemId],
@@ -149,8 +151,18 @@ export const ProblemSolverPage = () => {
 
   if (isLoading) {
     return (
-      <Box p="xl" ta="center">
-        <Loader />
+      <Box p="lg" style={{ height: "100vh", overflowY: "auto", background: "var(--app-bg)" }}>
+        <Group mb="lg" justify="space-between">
+          <Group gap="sm">
+            <Skeleton height={30} width={90} radius="md" />
+            <Skeleton height={30} width={220} radius="md" />
+          </Group>
+          <Skeleton height={30} width={180} radius="md" />
+        </Group>
+        <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg">
+          <Skeleton height={320} radius="lg" />
+          <Skeleton height={320} radius="lg" />
+        </SimpleGrid>
       </Box>
     );
   }
@@ -167,13 +179,21 @@ export const ProblemSolverPage = () => {
   }
 
   return (
-    <Box p="md" style={{ height: "100vh", overflowY: "auto", background: "#f9f9f9" }}>
-      <Group mb="md" justify="space-between">
-        <Group gap="sm">
-          <Button variant="subtle" color="gray" leftSection={<FaArrowLeft size={14} />} onClick={() => navigate("/challenges")}>
+    <Box p="md" style={{ height: "100vh", overflowY: "auto", background: "var(--app-bg)" }}>
+      <Group mb="md" justify="space-between" wrap="wrap">
+        <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
+          <Button
+            variant="subtle"
+            color="gray"
+            leftSection={<FaArrowLeft size={14} />}
+            onClick={() => navigate("/challenges")}
+            style={{ flexShrink: 0 }}
+          >
             Library
           </Button>
-          <Title order={4}>{problem.title}</Title>
+          <Text fw={650} size="lg" lineClamp={1}>
+            {problem.title}
+          </Text>
           <Badge variant="light" color={difficultyColor(problem.difficulty)}>
             {problem.difficulty}
           </Badge>
@@ -260,18 +280,18 @@ export const ProblemSolverPage = () => {
                 <Tabs.Tab value="attempts">Submissions ({attempts?.length ?? 0})</Tabs.Tab>
               </Tabs.List>
 
-              <Tabs.Panel value="code" p={0}>
+              <Tabs.Panel value="code" p={0} className="app-tab-panel">
                 <Editor
                   height="calc(100vh - 260px)"
                   language="python"
-                  theme="vs-light"
+                  theme={colorScheme === "dark" ? "vs-dark" : "vs-light"}
                   value={code}
                   onChange={(v) => setCode(v ?? "")}
                   options={{ minimap: { enabled: false }, fontSize: 13, scrollBeyondLastLine: false }}
                 />
               </Tabs.Panel>
 
-              <Tabs.Panel value="tests" p="md">
+              <Tabs.Panel value="tests" p="md" className="app-tab-panel">
                 <ScrollArea style={{ height: "calc(100vh - 300px)" }}>
                   {executionError && (
                     <Alert color="red" mb="md">
@@ -346,7 +366,7 @@ export const ProblemSolverPage = () => {
                 </ScrollArea>
               </Tabs.Panel>
 
-              <Tabs.Panel value="tutor" p={0} style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 270px)" }}>
+              <Tabs.Panel value="tutor" p={0} className="app-tab-panel" style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 270px)" }}>
                 <ScrollArea style={{ flex: 1 }} p="md">
                   {tutorTurns.length === 0 && (
                     <Text size="sm" c="dimmed" ta="center" pt="lg">
@@ -361,11 +381,12 @@ export const ProblemSolverPage = () => {
                         key={i}
                         p="sm"
                         style={{
-                          borderRadius: 8,
+                          borderRadius: "var(--mantine-radius-md)",
                           maxWidth: "85%",
                           alignSelf: turn.role === "user" ? "flex-end" : "flex-start",
-                          background: turn.role === "user" ? "#e7f5ff" : "#fff",
-                          border: "1px solid #e9ecef",
+                          background: turn.role === "user" ? "var(--mantine-primary-color-light)" : "var(--app-surface)",
+                          border: "1px solid var(--app-line)",
+                          boxShadow: "var(--mantine-shadow-xs)",
                         }}
                       >
                         {turn.role === "user" ? (
@@ -388,7 +409,7 @@ export const ProblemSolverPage = () => {
                     )}
                   </Stack>
                 </ScrollArea>
-                <Box p="sm" style={{ borderTop: "1px solid #e9ecef" }}>
+                <Box p="sm" style={{ borderTop: "1px solid var(--app-line)" }}>
                   <Group gap="xs">
                     <Textarea
                       flex={1}
@@ -423,7 +444,7 @@ export const ProblemSolverPage = () => {
                 </Box>
               </Tabs.Panel>
 
-              <Tabs.Panel value="attempts" p="md">
+              <Tabs.Panel value="attempts" p="md" className="app-tab-panel">
                 <ScrollArea style={{ height: "calc(100vh - 300px)" }}>
                   {attempts?.length ? (
                     attempts.map((a) => (

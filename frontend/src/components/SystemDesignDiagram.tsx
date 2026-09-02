@@ -50,7 +50,7 @@ export const SystemDesignDiagram = ({ diagram, onExpand }: Props) => {
         marginTop: 8,
       }}
     >
-      <Group justify="space-between" p={6} style={{ borderBottom: "1px solid #e9ecef" }}>
+      <Group justify="space-between" p={6} style={{ borderBottom: "1px solid var(--app-line)" }}>
         <Text size="xs" fw={600} c="dimmed" m={0}>
           Architecture diagram
         </Text>

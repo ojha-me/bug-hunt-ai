@@ -1,23 +1,18 @@
 import { useMemo } from "react";
 import {
-  Box,
   Text,
   Button,
   Stack,
   Group,
   Badge,
   Card,
-  Loader,
-  Title,
   SimpleGrid,
 } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FaRedoAlt, FaCheckCircle, FaExternalLinkAlt } from "react-icons/fa";
 import { getDueRevisionItems, getAllRevisionItems, reviewRevisionItem } from "../api/revision";
-
-const difficultyColor = (d: string) =>
-  d === "easy" ? "green" : d === "medium" ? "yellow" : "red";
+import { Page, PageHeader, GridSkeleton, EmptyState, difficultyColor } from "./ui";
 
 export const RevisionPage = () => {
   const navigate = useNavigate();
@@ -54,46 +49,37 @@ export const RevisionPage = () => {
   const review = (itemId: number, quality: number) => reviewMutation.mutate({ itemId, quality });
 
   return (
-    <Box p="md" style={{ height: "100vh", overflowY: "auto", background: "#f9f9f9" }}>
-      <Group mb="lg">
-        <Badge size="lg" variant="light" color="indigo">
-          <FaRedoAlt size={12} style={{ marginRight: 4 }} />
-          Review
-        </Badge>
-        <Title order={3}>Revision Queue</Title>
-        <Text size="sm" c="dimmed">
-          {isLoading ? "…" : dueItems?.length ? `${dueItems.length} item(s) due now` : "All caught up"}
-        </Text>
-      </Group>
+    <Page>
+      <PageHeader
+        icon={<FaRedoAlt size={14} />}
+        iconColor="indigo"
+        title="Revision Queue"
+        subtitle={
+          isLoading ? "…" : dueItems?.length ? `${dueItems.length} item(s) due now` : "All caught up"
+        }
+      />
 
       {isLoading || allLoading ? (
-        <Box p="xl" ta="center">
-          <Loader />
-        </Box>
+        <GridSkeleton cards={3} />
       ) : isError ? (
-        <Box p="xl">
-          <Text size="sm" c="red">
-            Could not load your review queue.
-          </Text>
-        </Box>
+        <EmptyState icon={<FaRedoAlt />} iconColor="red" title="Could not load your review queue." />
       ) : (dueItems?.length ?? 0) === 0 ? (
-        <Stack gap="sm" pt="xl" ta="center">
-          <FaCheckCircle size={40} color="green" style={{ alignSelf: "center" }} />
-          <Text size="md">Nothing due right now.</Text>
-          <Text size="sm" c="dimmed">
-            Fail a coding problem and it&apos;s automatically scheduled here for spaced repetition.
-          </Text>
-          <Group justify="center" mt="sm">
+        <EmptyState
+          icon={<FaCheckCircle />}
+          iconColor="green"
+          title="Nothing due right now."
+          description="Fail a coding problem and it's automatically scheduled here for spaced repetition."
+          action={
             <Button color="teal" onClick={() => navigate("/challenges")}>
               Practice coding problems
             </Button>
-          </Group>
-        </Stack>
+          }
+        />
       ) : (
         <>
-          <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="lg" mb="lg">
+          <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="lg" mb="lg" className="app-stagger">
             {dueItems?.map((item) => (
-              <Card key={item.id} withBorder radius="md" p="lg">
+              <Card key={item.id} withBorder p="lg" className="app-hover-lift">
                 <Group justify="space-between" mb="sm">
                   <Badge variant="light" color={difficultyColor(item.difficulty)}>
                     {item.difficulty}
@@ -151,7 +137,7 @@ export const RevisionPage = () => {
               </Text>
               <Stack gap={4}>
                 {upcoming.map((item) => (
-                  <Card key={item.id} withBorder radius="sm" p="sm">
+                  <Card key={item.id} withBorder p="sm" className="app-hover-lift" radius="md">
                     <Group justify="space-between">
                       <Group gap="xs">
                         <Badge size="xs" variant="light" color={difficultyColor(item.difficulty)}>
@@ -172,6 +158,6 @@ export const RevisionPage = () => {
           )}
         </>
       )}
-    </Box>
+    </Page>
   );
 };

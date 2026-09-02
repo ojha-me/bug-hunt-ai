@@ -1,56 +1,139 @@
-import { Button, Stack, ScrollArea, Box, Text, Loader, Modal, Group, TextInput, Divider, Progress, Badge, ActionIcon, Tooltip } from "@mantine/core";
-import { FaPlus, FaEdit, FaTrash, FaGraduationCap, FaPlay, FaChevronLeft, FaChevronRight, FaUser, FaCog, FaProjectDiagram, FaCode, FaBook, FaRedoAlt } from "react-icons/fa";
+import {
+  Button,
+  Stack,
+  ScrollArea,
+  Box,
+  Text,
+  Loader,
+  Modal,
+  UnstyledButton,
+  TextInput,
+  Divider,
+  Progress,
+  ActionIcon,
+  Tooltip,
+  Group,
+} from "@mantine/core";
+import {
+  FaPlus,
+  FaEdit,
+  FaTrash,
+  FaGraduationCap,
+  FaChevronLeft,
+  FaChevronRight,
+  FaUser,
+  FaProjectDiagram,
+  FaCode,
+  FaBook,
+  FaRedoAlt,
+  FaHome,
+} from "react-icons/fa";
 import { RiStickyNoteLine } from "react-icons/ri";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { getConversations, createConversation, updateConversationTitle, deleteConversation } from "../api/conversation";
 import { userLearningPaths } from "../api/learningPaths";
-import { getUserSDCourses } from "../api/systemDesign";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ConversationResponse } from "../types/ai_core/api_types";
 import { notifications } from "@mantine/notifications";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { UserLearningPathResponse } from "../types/learning_paths/api_types";
-import type { UserSDCourseResponse } from "../types/system_design/api_types";
 import { useSidebar } from "../contexts/SidebarContext";
+import { brandGradient } from "../theme";
+
+const WIDTH = 288;
+const WIDTH_COLLAPSED = 64;
+
+interface NavItemProps {
+  icon: ReactNode;
+  label: string;
+  active: boolean;
+  collapsed: boolean;
+  onClick: () => void;
+}
+
+const NavItem = ({ icon, label, active, collapsed, onClick }: NavItemProps) => {
+  if (collapsed) {
+    return (
+      <Tooltip label={label} position="right" withArrow>
+        <ActionIcon
+          variant={active ? "filled" : "default"}
+          color={active ? "indigo" : undefined}
+          size="xl"
+          radius="md"
+          aria-label={label}
+          onClick={onClick}
+        >
+          {icon}
+        </ActionIcon>
+      </Tooltip>
+    );
+  }
+  return (
+    <UnstyledButton
+      className="nav-item"
+      onClick={onClick}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "0.5rem 0.7rem",
+        borderRadius: "var(--mantine-radius-md)",
+        width: "100%",
+        background: active ? "var(--mantine-primary-color-light)" : "transparent",
+        color: active ? "var(--mantine-primary-color-filled)" : "var(--mantine-color-text)",
+        fontWeight: active ? 650 : 500,
+      }}
+    >
+      {icon}
+      <Text size="sm" lh={1}>
+        {label}
+      </Text>
+    </UnstyledButton>
+  );
+};
+
+const SectionLabel = ({ children, collapsed }: { children: ReactNode; collapsed: boolean }) =>
+  collapsed ? null : (
+    <Text size="xs" c="dimmed" mb="xs" className="side-label" fw={700}>
+      {children}
+    </Text>
+  );
 
 export const Sidebar = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [editingConversation, setEditingConversation] = useState<ConversationResponse | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [deletingConversationId, setDeletingConversationId] = useState<string | null>(null);
   const { isCollapsed, setIsCollapsed } = useSidebar();
-  
-  const { data: conversations, isLoading } = useQuery<ConversationResponse[]>({
-    queryKey: ['conversations'],
-    queryFn: getConversations
+  const path = location.pathname;
+
+  const { data: conversations, isLoading: convosLoading } = useQuery<ConversationResponse[]>({
+    queryKey: ["conversations"],
+    queryFn: getConversations,
   });
 
   const { data: learningPaths, isLoading: pathsLoading } = useQuery<UserLearningPathResponse[]>({
-    queryKey: ['learning-paths'],
-    queryFn: () => userLearningPaths()
+    queryKey: ["learning-paths"],
+    queryFn: () => userLearningPaths(),
   });
 
-  const { data: sdCourses, isLoading: sdCoursesLoading } = useQuery<UserSDCourseResponse[]>({
-    queryKey: ['sd-user-courses'],
-    queryFn: () => getUserSDCourses()
-  });
-  
   const createConvoMutation = useMutation({
     mutationFn: createConversation,
     onSuccess: (newConversation) => {
       notifications.show({
-        title: 'Success!',
-        message: 'New Conversation created',
-        color: 'green',
+        title: "Success!",
+        message: "New conversation created",
+        color: "green",
       });
       navigate(`/conversation/${newConversation.id}`);
     },
     onError: (error) => {
       notifications.show({
-        title: 'Error',
-        message: error.message || 'An unexpected error occurred. Please try again.',
-        color: 'red',
+        title: "Error",
+        message: error.message || "An unexpected error occurred. Please try again.",
+        color: "red",
       });
     },
   });
@@ -58,48 +141,28 @@ export const Sidebar = () => {
   const updateConvoMutation = useMutation({
     mutationFn: updateConversationTitle,
     onSuccess: (updatedConversation) => {
-      notifications.show({
-        title: 'Success!',
-        message: 'Conversation title updated',
-        color: 'green',
-      });
-      queryClient.setQueryData<ConversationResponse[]>(['conversations'], (old) => 
-        old?.map(conv => conv.id === updatedConversation.id ? updatedConversation : conv) || []
+      notifications.show({ title: "Success!", message: "Conversation title updated", color: "green" });
+      queryClient.setQueryData<ConversationResponse[]>(["conversations"], (old) =>
+        old?.map((conv) => (conv.id === updatedConversation.id ? updatedConversation : conv)) || []
       );
       setEditingConversation(null);
     },
     onError: (error) => {
-      notifications.show({
-        title: 'Error',
-        message: error.message || 'An unexpected error occurred. Please try again.',
-        color: 'red',
-      });
+      notifications.show({ title: "Error", message: error.message || "Please try again.", color: "red" });
     },
   });
 
   const deleteConvoMutation = useMutation({
     mutationFn: deleteConversation,
     onSuccess: () => {
-      notifications.show({
-        title: 'Success!',
-        message: 'Conversation deleted',
-        color: 'green',
-      });
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      notifications.show({ title: "Success!", message: "Conversation deleted", color: "green" });
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
       setDeletingConversationId(null);
     },
     onError: (error) => {
-      notifications.show({
-        title: 'Error',
-        message: error.message || 'An unexpected error occurred. Please try again.',
-        color: 'red',
-      });
+      notifications.show({ title: "Error", message: error.message || "Please try again.", color: "red" });
     },
   });
-
-  const handleSystemDesignClick = () => {
-    navigate(`/system-design/courses`);
-  };
 
   const handleConversationClick = (conversation: ConversationResponse) => {
     if (conversation.conversation_type === "system_design") {
@@ -108,455 +171,316 @@ export const Sidebar = () => {
       navigate(`/conversation/${conversation.id}`);
     }
   };
-  
+
   const handleEditClick = (conversation: ConversationResponse, e: React.MouseEvent) => {
     e.stopPropagation();
     setEditingConversation(conversation);
     setEditTitle(conversation.title);
   };
-  
+
   const handleDeleteClick = (conversationId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setDeletingConversationId(conversationId);
   };
-  
+
   const handleEditSubmit = () => {
     if (editingConversation && editTitle.trim()) {
       updateConvoMutation.mutate({ conversation_id: editingConversation.id, title: editTitle });
     }
   };
-  
+
   const handleDeleteConfirm = () => {
     if (deletingConversationId) {
       deleteConvoMutation.mutate(deletingConversationId);
     }
   };
 
-  const handleLearningPathClick = (pathId: string) => {
-    navigate(`/learning-path/${pathId}`);
+  const handleLearningPathClick = (topicId: string) => {
+    navigate(`/learning-path/${topicId}`);
   };
 
   const handleContinueLearning = (topicId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     navigate(`/learning-path/chat-interface/${topicId}`);
   };
-  
+
+  const isSystemDesign = path.startsWith("/system-design") && !path.startsWith("/system-design/case-studies");
+  const isCaseStudies = path.startsWith("/system-design/case-studies");
+
   return (
-    <Box 
+    <Box
       style={{
-        width: isCollapsed ? '60px' : '300px',
-        height: '100vh',
-        borderRight: '1px solid #e9ecef',
-        display: 'flex',
-        flexDirection: 'column',
-        padding: isCollapsed ? '0.5rem' : '1rem',
-        position: 'fixed',
+        width: isCollapsed ? WIDTH_COLLAPSED : WIDTH,
+        height: "100vh",
+        borderRight: "1px solid var(--app-line)",
+        display: "flex",
+        flexDirection: "column",
+        padding: isCollapsed ? "0.6rem" : "1rem",
+        position: "fixed",
         left: 0,
         top: 0,
-        backgroundColor: 'white',
+        backgroundColor: "var(--app-surface)",
         zIndex: 100,
-        transition: 'width 0.3s ease, padding 0.3s ease'
+        transition: "width 240ms var(--ease-out), padding 240ms var(--ease-out)",
       }}
     >
-      <Group justify="space-between" mb="md">
-        {!isCollapsed && <Text size="xl" fw={700}>BugHunt</Text>}
-        <Tooltip label={isCollapsed ? "Expand" : "Collapse"} position="right">
-          <ActionIcon
-            variant="subtle"
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            size="lg"
+      <Group justify="space-between" mb="lg" wrap="nowrap">
+        {!isCollapsed ? (
+          <UnstyledButton
+            onClick={() => navigate("/")}
+            style={{ display: "flex", alignItems: "center", gap: 8 }}
           >
-            {isCollapsed ? <FaChevronRight /> : <FaChevronLeft />}
+            <Box
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: 7,
+                background: brandGradient,
+                flexShrink: 0,
+              }}
+            />
+            <Text fw={700} size="lg" style={{ letterSpacing: -0.01 }}>
+              BugHunt
+            </Text>
+          </UnstyledButton>
+        ) : (
+          <Box
+            style={{
+              width: 24,
+              height: 24,
+              borderRadius: 8,
+              background: brandGradient,
+              margin: "0 auto",
+            }}
+          />
+        )}
+        <Tooltip label={isCollapsed ? "Expand" : "Collapse"} position="right">
+          <ActionIcon variant="subtle" onClick={() => setIsCollapsed(!isCollapsed)} size="lg" radius="md">
+            {isCollapsed ? <FaChevronRight size={14} /> : <FaChevronLeft size={14} />}
           </ActionIcon>
         </Tooltip>
       </Group>
-      
-      {!isCollapsed ? (
-        <Stack gap="sm" mb="md">
-          <Button 
-            variant="outline"
-            fullWidth 
-            leftSection={<FaPlus />}
-            onClick={() => createConvoMutation.mutate()}
-          >
-            New Chat
-          </Button>
-          <Button 
-            variant="filled"
-            fullWidth 
-            leftSection={<FaGraduationCap />}
-            onClick={() => navigate('/topics')}
-          >
-            Learning Paths
-          </Button>
-<Button
-            variant="filled"
-            color="violet"
-            fullWidth
-            leftSection={<FaProjectDiagram />}
-            onClick={handleSystemDesignClick}
-          >
-            System Design
-          </Button>
-          <Button
-            variant="filled"
-            color="teal"
-            fullWidth
-            leftSection={<FaCode />}
-            onClick={() => navigate('/challenges')}
-          >
-            Coding Problems
-          </Button>
-          <Button
-            variant="light"
-            color="grape"
-            fullWidth
-            leftSection={<FaBook />}
-            onClick={() => navigate('/system-design/case-studies')}
-          >
-            SD Case Studies
-          </Button>
-          <Button
-            variant="light"
-            color="indigo"
-            fullWidth
-            leftSection={<FaRedoAlt />}
-            onClick={() => navigate('/revision')}
-          >
-            Review
-          </Button>
-          <Button 
-            variant="light"
-            fullWidth 
-            leftSection={<RiStickyNoteLine />}
-            onClick={() => navigate('/notes')}
-          >
-            My Notes
-          </Button>
-        </Stack>
-      ) : (
-        <Stack gap="sm" mb="md">
-          <Tooltip label="New Chat" position="right">
-            <ActionIcon
-              variant="outline"
-              size="xl"
-              onClick={() => createConvoMutation.mutate()}
-            >
-              <FaPlus />
-            </ActionIcon>
-          </Tooltip>
-          <Tooltip label="Learning Paths" position="right">
-            <ActionIcon
-              variant="filled"
-              size="xl"
-              onClick={() => navigate('/topics')}
-            >
-              <FaGraduationCap />
-            </ActionIcon>
-          </Tooltip>
-          <Tooltip label="System Design Courses" position="right">
-            <ActionIcon
-              variant="filled"
-              color="violet"
-              size="xl"
-              onClick={handleSystemDesignClick}
-            >
-              <FaProjectDiagram />
-            </ActionIcon>
-          </Tooltip>
-          <Tooltip label="Coding Problems" position="right">
-            <ActionIcon
-              variant="filled"
-              color="teal"
-              size="xl"
-              onClick={() => navigate('/challenges')}
-            >
-              <FaCode />
-            </ActionIcon>
-          </Tooltip>
-          <Tooltip label="SD Case Studies" position="right">
-            <ActionIcon
-              variant="light"
-              color="grape"
-              size="xl"
-              onClick={() => navigate('/system-design/case-studies')}
-            >
-              <FaBook />
-            </ActionIcon>
-          </Tooltip>
-          <Tooltip label="Review Queue" position="right">
-            <ActionIcon
-              variant="light"
-              color="indigo"
-              size="xl"
-              onClick={() => navigate('/revision')}
-            >
-              <FaRedoAlt />
-            </ActionIcon>
-          </Tooltip>
-          <Tooltip label="My Notes" position="right">
-            <ActionIcon
-              variant="light"
-              size="xl"
-              onClick={() => navigate('/notes')}
-            >
-              <RiStickyNoteLine />
-            </ActionIcon>
-          </Tooltip>
-        </Stack>
-      )}
 
-      {!isCollapsed && <Box style={{ flex: 1, overflow: 'hidden' }}>
-        <Box mb="md">
-          <Text size="sm" c="dimmed" mb="xs">Active Learning Paths</Text>
-          <ScrollArea style={{ maxHeight: '200px' }}>
-            <Stack gap={0}>
+      <Stack gap="xs" mb="md">
+        <Button
+          variant="filled"
+          fullWidth
+          leftSection={<FaPlus size={12} />}
+          onClick={() => createConvoMutation.mutate()}
+          radius="md"
+        >
+          {!isCollapsed && "New Chat"}
+        </Button>
+
+        <Box>
+          <SectionLabel collapsed={isCollapsed}>Overview</SectionLabel>
+          <Stack gap={2}>
+            <NavItem
+              icon={<FaHome size={16} />}
+              label="Dashboard"
+              active={path === "/"}
+              collapsed={isCollapsed}
+              onClick={() => navigate("/")}
+            />
+            <NavItem
+              icon={<FaGraduationCap size={16} />}
+              label="Learning Paths"
+              active={path.startsWith("/topics") || path.startsWith("/learning-path")}
+              collapsed={isCollapsed}
+              onClick={() => navigate("/topics")}
+            />
+          </Stack>
+        </Box>
+
+        <Box mt="sm">
+          <SectionLabel collapsed={isCollapsed}>Practice</SectionLabel>
+          <Stack gap={2}>
+            <NavItem
+              icon={<FaCode size={16} />}
+              label="Coding Problems"
+              active={path.startsWith("/challenges")}
+              collapsed={isCollapsed}
+              onClick={() => navigate("/challenges")}
+            />
+            <NavItem
+              icon={<FaProjectDiagram size={16} />}
+              label="System Design"
+              active={isSystemDesign}
+              collapsed={isCollapsed}
+              onClick={() => navigate("/system-design/courses")}
+            />
+            <NavItem
+              icon={<FaBook size={16} />}
+              label="Case Studies"
+              active={isCaseStudies}
+              collapsed={isCollapsed}
+              onClick={() => navigate("/system-design/case-studies")}
+            />
+          </Stack>
+        </Box>
+
+        <Box mt="sm">
+          <SectionLabel collapsed={isCollapsed}>Review</SectionLabel>
+          <Stack gap={2}>
+            <NavItem
+              icon={<FaRedoAlt size={16} />}
+              label="Review Queue"
+              active={path.startsWith("/revision")}
+              collapsed={isCollapsed}
+              onClick={() => navigate("/revision")}
+            />
+            <NavItem
+              icon={<RiStickyNoteLine size={16} />}
+              label="My Notes"
+              active={path.startsWith("/notes")}
+              collapsed={isCollapsed}
+              onClick={() => navigate("/notes")}
+            />
+          </Stack>
+        </Box>
+      </Stack>
+
+      {!isCollapsed ? (
+        <ScrollArea style={{ flex: 1, minHeight: 0 }} type="auto">
+          <Divider mb="md" />
+          <Box mb="lg">
+            <SectionLabel collapsed={false}>Active learning paths</SectionLabel>
+            <Stack gap={2}>
               {pathsLoading ? (
-                <Box ta="center" pt="sm">
-                  <Loader size="sm" />
-                </Box>
+                <Loader size="sm" mx="auto" my="sm" />
               ) : !learningPaths?.length ? (
                 <Text size="xs" c="dimmed" ta="center" py="sm">
                   No active learning paths
                 </Text>
               ) : (
-                learningPaths.map((path) => (
-                  <Box 
-                    key={path.id} 
-                    p="sm" 
-                    className="hover:bg-gray-50 cursor-pointer border-b border-gray-100"
-                    onClick={() => handleLearningPathClick(path.topic.id)}
-                    style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}
+                learningPaths.map((pathRow) => (
+                  <Box
+                    key={pathRow.id}
+                    p="xs"
+                    className="row-item"
+                    onClick={() => handleLearningPathClick(pathRow.topic.id)}
                   >
-                    <Group justify="space-between" align="flex-start">
+                    <Group justify="space-between" align="flex-start" wrap="nowrap">
                       <Box style={{ flex: 1, minWidth: 0 }}>
                         <Text size="sm" lineClamp={1} fw={500}>
-                          {path.topic.name}
+                          {pathRow.topic.name}
                         </Text>
-                        <Group gap="xs" mt={2}>
-                          <Badge 
-                            size="xs" 
-                            color={path.is_completed ? 'green' : 'blue'}
-                            variant="light"
-                          >
-                            {Math.round(path.progress_percentage)}%
-                          </Badge>
-                          {path.current_subtopic && (
-                            <Text size="xs" c="dimmed" lineClamp={1}>
-                              {path.current_subtopic.name}
-                            </Text>
-                          )}
+                        <Group gap="xs" mt={2} wrap="nowrap">
+                          <Text size="xs" c="dimmed" fw={600}>
+                            {Math.round(pathRow.progress_percentage)}%
+                          </Text>
+                          <Progress value={pathRow.progress_percentage} size="3" radius="xl" style={{ flex: 1 }} />
                         </Group>
                       </Box>
-                      {!path.is_completed && (
-                        <Button
-                          size="xs"
+                      {!pathRow.is_completed && (
+                        <ActionIcon
+                          size="sm"
                           variant="subtle"
-                          onClick={(e) => handleContinueLearning(path.topic.id, e)}
+                          aria-label="Continue"
+                          onClick={(e) => handleContinueLearning(pathRow.topic.id, e)}
                         >
-                          <FaPlay size={10} />
-                        </Button>
+                          <FaGraduationCap size={12} />
+                        </ActionIcon>
                       )}
                     </Group>
-                    <Progress 
-                      value={path.progress_percentage} 
-                      size="xs" 
-                      color={path.is_completed ? 'green' : 'blue'}
-                    />
                   </Box>
                 ))
               )}
             </Stack>
-          </ScrollArea>
-        </Box>
+          </Box>
 
-        <Divider mb="md" />
+          <Divider mb="md" />
 
-        {/* System Design Courses Section */}
-        <Box mb="md">
-          <Group justify="space-between" mb="xs">
-            <Text size="sm" c="dimmed">System Design</Text>
-            <FaProjectDiagram size={12} className="cursor-pointer text-gray-500 hover:text-violet-500" onClick={() => navigate('/system-design/courses')} />
-          </Group>
-          <ScrollArea style={{ maxHeight: '160px' }}>
-            <Stack gap={0}>
-              {sdCoursesLoading ? (
-                <Box ta="center" pt="sm">
-                  <Loader size="sm" />
-                </Box>
-              ) : !sdCourses?.length ? (
-                <Text size="xs" c="dimmed" ta="center" py="sm">
-                  No courses yet
-                </Text>
-              ) : (
-                sdCourses.map((uc) => (
-                  <Box
-                    key={uc.id}
-                    p="sm"
-                    className="hover:bg-gray-50 cursor-pointer border-b border-gray-100"
-                    onClick={() => navigate(`/system-design/learn/${uc.course.id}`)}
-                    style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}
-                  >
-                    <Group justify="space-between" align="flex-start">
-                      <Text size="sm" lineClamp={1} fw={500}>
-                        {uc.course.name}
-                      </Text>
-                      <Badge
-                        size="xs"
-                        color={uc.is_completed ? 'green' : 'violet'}
-                        variant="light"
-                      >
-                        {uc.is_completed ? 'Done' : `${Math.round(uc.progress_percentage)}%`}
-                      </Badge>
-                    </Group>
-                    {uc.current_lesson && !uc.is_completed && (
-                      <Text size="xs" c="dimmed" lineClamp={1}>
-                        {uc.current_lesson.name}
-                      </Text>
-                    )}
-                    <Progress
-                      value={uc.progress_percentage}
-                      size="xs"
-                      color={uc.is_completed ? 'green' : 'violet'}
-                    />
-                  </Box>
-                ))
-              )}
-            </Stack>
-          </ScrollArea>
-        </Box>
-
-        <Divider mb="md" />
-
-        {/* Regular Conversations Section */}
-        <Box>
-          <Text size="sm" c="dimmed" mb="xs">Recent Conversations</Text>
-          <ScrollArea style={{ height: '100%' }}>
-            <Stack gap={0}>
-              {isLoading ? (
-                <Box ta="center" pt="xl">
-                  <Loader size="sm" />
-                </Box>
+          <Box mb="md">
+            <SectionLabel collapsed={false}>Recent conversations</SectionLabel>
+            <Stack gap={2}>
+              {convosLoading ? (
+                <Loader size="sm" mx="auto" my="sm" />
               ) : !conversations?.length ? (
                 <Text size="sm" c="dimmed" ta="center" mt="md">
                   No conversations yet
                 </Text>
               ) : (
                 conversations
-                  .filter(conv => !learningPaths?.some(path => path.conversation_id === conv.id))
-                  .filter(conv => conv.conversation_type !== "system_design_learning")
+                  .filter((conv) => !learningPaths?.some((lp) => lp.conversation_id === conv.id))
+                  .filter((conv) => conv.conversation_type !== "system_design_learning")
                   .map((conv) => (
-                    <Box 
-                      key={conv.id} 
-                      p="sm" 
-                      className="hover:bg-gray-50 cursor-pointer border-b border-gray-100"
+                    <Box
+                      key={conv.id}
+                      p="sm"
+                      className="row-item"
                       onClick={() => handleConversationClick(conv)}
-                      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                     >
-                      <Box style={{ flex: 1, minWidth: 0 }}>
-                        <Text lineClamp={1}>{conv.title}</Text>
-                        <Text size="xs" c="dimmed">
-                          {new Date(conv.created_at).toLocaleDateString()}
-                        </Text>
-                      </Box>
-                      <Group gap="xs" style={{ flexShrink: 0 }}>
-                        <FaEdit 
-                          size={14}
-                          className="cursor-pointer text-gray-500 hover:text-blue-500"
-                          onClick={(e) => handleEditClick(conv, e)}
-                        />
-                        <FaTrash 
-                          size={14}
-                          className="cursor-pointer text-gray-500 hover:text-red-500"
-                          onClick={(e) => handleDeleteClick(conv.id, e)}
-                        />
+                      <Group gap="xs" align="center" wrap="nowrap">
+                        <Box style={{ flex: 1, minWidth: 0 }}>
+                          <Text size="sm" lineClamp={1}>
+                            {conv.title}
+                          </Text>
+                          <Text size="xs" c="dimmed">
+                            {new Date(conv.created_at).toLocaleDateString()}
+                          </Text>
+                        </Box>
+                        <Group gap={2} wrap="nowrap">
+                          <ActionIcon
+                            size="sm"
+                            variant="subtle"
+                            aria-label="Edit title"
+                            onClick={(e) => handleEditClick(conv, e)}
+                          >
+                            <FaEdit size={12} />
+                          </ActionIcon>
+                          <ActionIcon
+                            size="sm"
+                            variant="subtle"
+                            color="red"
+                            aria-label="Delete conversation"
+                            onClick={(e) => handleDeleteClick(conv.id, e)}
+                          >
+                            <FaTrash size={12} />
+                          </ActionIcon>
+                        </Group>
                       </Group>
                     </Box>
                   ))
               )}
             </Stack>
-          </ScrollArea>
-        </Box>
-      </Box>}
+          </Box>
+        </ScrollArea>
+      ) : (
+        <Box style={{ flex: 1, minHeight: 0 }} />
+      )}
 
-      {/* Settings Section */}
-      <Box mt="auto" pt="md" style={{ borderTop: '1px solid #e9ecef' }}>
-        {!isCollapsed ? (
-          <Stack gap="xs">
-            <Button
-              variant="light"
-              fullWidth
-              leftSection={<FaUser />}
-              onClick={() => navigate('/profile')}
-            >
-              Profile
-            </Button>
-            <Button
-              variant="subtle"
-              fullWidth
-              leftSection={<FaCog />}
-              c="dimmed"
-            >
-              Settings
-            </Button>
-          </Stack>
-        ) : (
-          <Stack gap="xs">
-            <Tooltip label="Profile" position="right">
-              <ActionIcon
-                variant="light"
-                size="xl"
-                onClick={() => navigate('/profile')}
-              >
-                <FaUser />
-              </ActionIcon>
-            </Tooltip>
-            <Tooltip label="Settings" position="right">
-              <ActionIcon
-                variant="subtle"
-                size="xl"
-              >
-                <FaCog />
-              </ActionIcon>
-            </Tooltip>
-          </Stack>
-        )}
+      <Box mt="auto" pt="md" style={{ borderTop: "1px solid var(--app-line)" }}>
+        <Stack gap="xs">
+          <NavItem
+            icon={<FaUser size={16} />}
+            label="Profile"
+            active={path.startsWith("/profile")}
+            collapsed={isCollapsed}
+            onClick={() => navigate("/profile")}
+          />
+        </Stack>
       </Box>
-      
-      {/* Edit Conversation Modal */}
-      <Modal
-        opened={!!editingConversation}
-        onClose={() => setEditingConversation(null)}
-        title="Edit Conversation Title"
-        centered
-      >
+
+      <Modal opened={!!editingConversation} onClose={() => setEditingConversation(null)} title="Edit conversation title" centered>
         <TextInput
           label="Title"
           value={editTitle}
           onChange={(e) => setEditTitle(e.target.value)}
-          placeholder="Enter conversation title"
           mb="md"
+          data-autofocus
         />
         <Group justify="flex-end">
           <Button variant="default" onClick={() => setEditingConversation(null)}>
             Cancel
           </Button>
-          <Button 
-            onClick={handleEditSubmit}
-            disabled={!editTitle.trim()}
-          >
+          <Button onClick={handleEditSubmit} disabled={!editTitle.trim()}>
             Save
           </Button>
         </Group>
       </Modal>
-      
-      {/* Delete Confirmation Modal */}
-      <Modal
-        opened={!!deletingConversationId}
-        onClose={() => setDeletingConversationId(null)}
-        title="Delete Conversation"
-        centered
-      >
+
+      <Modal opened={!!deletingConversationId} onClose={() => setDeletingConversationId(null)} title="Delete conversation" centered>
         <Text size="sm" mb="md">
           Are you sure you want to delete this conversation? This action cannot be undone.
         </Text>
@@ -564,10 +488,7 @@ export const Sidebar = () => {
           <Button variant="default" onClick={() => setDeletingConversationId(null)}>
             Cancel
           </Button>
-          <Button 
-            color="red"
-            onClick={handleDeleteConfirm}
-          >
+          <Button color="red" onClick={handleDeleteConfirm}>
             Delete
           </Button>
         </Group>

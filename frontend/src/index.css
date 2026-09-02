@@ -1,5 +1,313 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* ============================================================
+   BugHunt design tokens + motion system
+   ============================================================ */
 
+:root[data-mantine-color-scheme="light"] {
+  --app-bg: #f5f6f8;
+  --app-surface: #ffffff;
+  --app-surface-hover: #f1f3f5;
+  --app-sunken: #f1f3f5;
+  --app-line: #e9ecef;
+  --app-overlay: rgba(255, 255, 255, 0.92);
+}
 
+:root[data-mantine-color-scheme="dark"] {
+  --app-bg: #131417;
+  --app-surface: #1b1d21;
+  --app-surface-hover: #24262b;
+  --app-sunken: #22242a;
+  --app-line: #2c2f35;
+  --app-overlay: rgba(19, 20, 23, 0.7);
+}
+
+:root {
+  --brand-gradient: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  font-family: var(--mantine-font-family);
+  background-color: var(--mantine-color-body);
+  color: var(--mantine-color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--mantine-primary-color-filled-hover);
+  color: var(--mantine-color-white);
+}
+
+/* Scrollbars ------------------------------------------------- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--mantine-color-gray-3) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: var(--mantine-color-gray-3);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+:root[data-mantine-color-scheme="dark"] *::-webkit-scrollbar-thumb {
+  background-color: var(--mantine-color-dark-5);
+}
+
+/* Press feedback — buttons feel responsive ------------------- */
+.mantine-Button-root,
+.mantine-ActionIcon-root,
+.mantine-CloseButton-root {
+  transition:
+    transform 130ms var(--ease-out),
+    background-color 150ms ease,
+    color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+.mantine-Button-root:not(:disabled):active,
+.mantine-ActionIcon-root:not(:disabled):active,
+.mantine-CloseButton-root:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+/* Interactive rows / cards ----------------------------------- */
+@keyframes app-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes app-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .app-fade-in {
+    animation: app-fade-in 220ms ease-out both;
+  }
+  .app-fade-up {
+    animation: app-fade-up 320ms var(--ease-out) both;
+  }
+  /* Stagger children (cards, rows, messages) */
+  .app-stagger > * {
+    animation: app-fade-up 320ms var(--ease-out) both;
+  }
+  .app-stagger > *:nth-child(1) { animation-delay: 0ms; }
+  .app-stagger > *:nth-child(2) { animation-delay: 40ms; }
+  .app-stagger > *:nth-child(3) { animation-delay: 80ms; }
+  .app-stagger > *:nth-child(4) { animation-delay: 120ms; }
+  .app-stagger > *:nth-child(5) { animation-delay: 160ms; }
+  .app-stagger > *:nth-child(6) { animation-delay: 200ms; }
+  .app-stagger > *:nth-child(7) { animation-delay: 240ms; }
+  .app-stagger > *:nth-child(8) { animation-delay: 280ms; }
+  .app-stagger > *:nth-child(9) { animation-delay: 320ms; }
+  .app-stagger > *:nth-child(10) { animation-delay: 360ms; }
+  .app-stagger > *:nth-child(n + 11) { animation-delay: 400ms; }
+
+  /* Tab panels crossfade on mount */
+  .app-tab-panel {
+    animation: app-fade-in 200ms ease-out both;
+  }
+
+  /* Hover lift for interactive surfaces (pointer devices only) */
+  @media (hover: hover) and (pointer: fine) {
+    .app-hover-lift {
+      transition:
+        transform 180ms var(--ease-out),
+        box-shadow 180ms ease,
+        border-color 180ms ease,
+        background-color 150ms ease;
+    }
+    .app-hover-lift:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--mantine-shadow-md);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-fade-in,
+  .app-fade-up,
+  .app-stagger > *,
+  .app-tab-panel {
+    animation: none;
+  }
+  .mantine-Button-root,
+  .mantine-ActionIcon-root,
+  .mantine-CloseButton-root,
+  .app-hover-lift {
+    transition: none;
+  }
+}
+
+/* Chat bubble base ------------------------------------------- */
+.app-bubble {
+  border-radius: var(--mantine-radius-md);
+  box-shadow: var(--mantine-shadow-xs);
+  max-width: 72%;
+}
+
+/* Markdown content ------------------------------------------- */
+.md-content {
+  font-size: var(--mantine-font-size-sm);
+  line-height: 1.65;
+  overflow-wrap: break-word;
+}
+.md-content p {
+  margin: 0 0 0.5rem;
+}
+.md-content p:last-child {
+  margin-bottom: 0;
+}
+.md-content h1,
+.md-content h2,
+.md-content h3,
+.md-content h4 {
+  margin: 0.9rem 0 0.4rem;
+  font-weight: 650;
+}
+.md-content h1 { font-size: 1.15rem; }
+.md-content h2 { font-size: 1.05rem; }
+.md-content h3 { font-size: 0.98rem; }
+.md-content h4 { font-size: 0.92rem; }
+.md-content ul,
+.md-content ol {
+  padding-left: 1.25rem;
+  margin: 0 0 0.6rem;
+}
+.md-content li {
+  margin-bottom: 0.2rem;
+}
+.md-content code {
+  font-family: var(--mantine-font-family-monospace);
+  font-size: 0.86em;
+  background: var(--mantine-color-default-hover);
+  border-radius: var(--mantine-radius-sm);
+  padding: 1px 4px;
+}
+.md-content pre {
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: var(--mantine-radius-md);
+  padding: 0.6rem 0.8rem;
+  overflow-x: auto;
+  margin: 0.4rem 0 0.7rem;
+}
+.md-content pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+.md-content blockquote {
+  margin: 0.5rem 0;
+  padding-left: 0.7rem;
+  border-left: 3px solid var(--mantine-color-default);
+  color: var(--mantine-color-dimmed);
+}
+.md-content a {
+  color: var(--mantine-primary-color-filled);
+  text-decoration: none;
+}
+.md-content a:hover {
+  text-decoration: underline;
+}
+.md-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.5rem 0;
+  font-size: 0.86em;
+}
+.md-content th,
+.md-content td {
+  border: 1px solid var(--mantine-color-default);
+  padding: 4px 8px;
+  text-align: left;
+}
+.md-content th {
+  background: var(--mantine-color-default-hover);
+}
+.md-content hr {
+  border: none;
+  border-top: 1px solid var(--mantine-color-default);
+  margin: 0.7rem 0;
+}
+
+/* Note highlights -------------------------------------------- */
+.note-highlight {
+  background-color: var(--mantine-color-yellow-1);
+  border-bottom: 2px solid var(--mantine-color-yellow-4);
+  cursor: pointer;
+  padding: 2px 0;
+  border-radius: 2px;
+}
+
+/* Focus rings stay visible in both schemes -------------------- */
+:focus-visible {
+  outline: 2px solid var(--mantine-primary-color-filled);
+  outline-offset: 2px;
+}
+
+/* Sidebar ----------------------------------------------------- */
+.nav-item {
+  position: relative;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease,
+    transform 130ms var(--ease-out);
+}
+.nav-item:active {
+  transform: scale(0.98);
+}
+@media (hover: hover) and (pointer: fine) {
+  .nav-item:hover {
+    background: var(--app-surface-hover);
+  }
+}
+.row-item {
+  cursor: pointer;
+  border-radius: var(--mantine-radius-md);
+  border: 1px solid var(--app-line);
+  padding: 6px 10px;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .row-item:hover {
+    background: var(--app-surface-hover);
+  }
+}
+.side-label {
+  font-size: var(--mantine-font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mantine-color-dimmed);
+}

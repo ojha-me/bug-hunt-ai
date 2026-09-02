@@ -71,7 +71,7 @@ export const SystemDesignRoom = () => {
         height: "100vh",
         display: "flex",
         flexDirection: "column",
-        background: "#f9f9f9",
+        background: "var(--app-bg)",
       }}
     >
       {!isConnected && (
@@ -97,10 +97,11 @@ export const SystemDesignRoom = () => {
             minWidth: 0,
             display: "flex",
             flexDirection: "column",
-            border: "1px solid #e9ecef",
-            borderRadius: "12px",
-            background: "#fff",
+            border: "1px solid var(--app-line)",
+            borderRadius: "var(--mantine-radius-lg)",
+            background: "var(--app-surface)",
             overflow: "hidden",
+            boxShadow: "var(--mantine-shadow-sm)",
           }}
         >
           <Box style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "1rem" }}>
@@ -122,9 +123,10 @@ export const SystemDesignRoom = () => {
                     <Box
                       p="sm"
                       style={{
-                        backgroundColor: msg.sender === "user" ? "#e3f2fd" : "#f5f5f5",
+                        backgroundColor: msg.sender === "user" ? "var(--mantine-primary-color-light)" : "var(--app-sunken)",
+                        border: "1px solid var(--app-line)",
                         borderRadius: "12px",
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
                         maxWidth: "70%",
                       }}
                     >
@@ -157,7 +159,7 @@ export const SystemDesignRoom = () => {
 
                 {isTyping && (
                   <Group gap="xs" style={{ alignSelf: "flex-start" }}>
-                    <Box p="sm" style={{ backgroundColor: "#f5f5f5", borderRadius: "12px" }}>
+                    <Box p="sm" style={{ backgroundColor: "var(--app-surface-hover)", borderRadius: "12px" }}>
                       <Loader size="sm" type="dots" />
                     </Box>
                   </Group>
@@ -168,7 +170,7 @@ export const SystemDesignRoom = () => {
           </Box>
 
           <Divider />
-          <Box style={{ padding: "0.75rem", flexShrink: 0, background: "#fff" }}>
+          <Box style={{ padding: "0.75rem", flexShrink: 0, background: "var(--app-surface)", borderTop: "1px solid var(--app-line)" }}>
             <Group gap="sm" align="flex-end">
               <Textarea
                 placeholder="Ask about requirements, capacity, trade-offs..."
@@ -198,10 +200,11 @@ export const SystemDesignRoom = () => {
           style={{
             flex: 1,
             minWidth: 0,
-            border: "1px solid #e9ecef",
-            borderRadius: "12px",
-            background: "#fff",
+            border: "1px solid var(--app-line)",
+            borderRadius: "var(--mantine-radius-lg)",
+            background: "var(--app-surface)",
             overflow: "hidden",
+            boxShadow: "var(--mantine-shadow-sm)",
           }}
         >
           <SystemDesignWhiteboard

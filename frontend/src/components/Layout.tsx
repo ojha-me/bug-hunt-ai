@@ -5,15 +5,16 @@ import { SidebarProvider, useSidebar } from "../contexts/SidebarContext";
 
 const LayoutContent = () => {
   const { isCollapsed } = useSidebar();
-  
+
   return (
     <Box style={{ display: "flex", minHeight: "100vh" }}>
       <Sidebar />
-      <Box 
-        style={{ 
-          flex: 1, 
-          marginLeft: isCollapsed ? "60px" : "300px",
-          transition: 'margin-left 0.3s ease'
+      <Box
+        style={{
+          flex: 1,
+          minWidth: 0,
+          marginLeft: isCollapsed ? "64px" : "288px",
+          transition: "margin-left 260ms var(--ease-out)",
         }}
       >
         <Outlet />

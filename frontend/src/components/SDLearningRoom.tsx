@@ -148,7 +148,7 @@ export const SDLearningRoom = () => {
         height: "100vh",
         display: "flex",
         flexDirection: "column",
-        background: "#f9f9f9",
+        background: "var(--app-bg)",
       }}
     >
       {!isConnected && lessonId && (
@@ -201,15 +201,15 @@ export const SDLearningRoom = () => {
           style={{
             width: 250,
             flexShrink: 0,
-            border: "1px solid #e9ecef",
-            borderRadius: "12px",
-            background: "#fff",
+            border: "1px solid var(--app-line)",
+            borderRadius: "var(--mantine-radius-lg)",
+            background: "var(--app-surface)",
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
           }}
         >
-          <Box p="sm" style={{ borderBottom: "1px solid #e9ecef" }}>
+          <Box p="sm" style={{ borderBottom: "1px solid var(--app-line)" }}>
             <Text size="sm" fw={600}>
               Curriculum
             </Text>
@@ -233,9 +233,9 @@ export const SDLearningRoom = () => {
                       gap: 8,
                       borderRadius: "8px",
                       cursor: isCurrent ? "default" : clickable ? "pointer" : "not-allowed",
-                      background: isCurrent ? "#f0ecfc" : "transparent",
+                      background: isCurrent ? "var(--mantine-color-violet-1)" : "transparent",
                       opacity: locked ? 0.5 : 1,
-                      border: isCurrent ? "1px solid #b197fc" : "1px solid transparent",
+                      border: isCurrent ? "1px solid var(--mantine-color-violet-4)" : "1px solid transparent",
                     }}
                   >
                     <ActionIcon
@@ -263,9 +263,9 @@ export const SDLearningRoom = () => {
             minWidth: 0,
             display: "flex",
             flexDirection: "column",
-            border: "1px solid #e9ecef",
-            borderRadius: "12px",
-            background: "#fff",
+            border: "1px solid var(--app-line)",
+            borderRadius: "var(--mantine-radius-lg)",
+            background: "var(--app-surface)",
             overflow: "hidden",
           }}
         >
@@ -288,9 +288,10 @@ export const SDLearningRoom = () => {
                     <Box
                       p="sm"
                       style={{
-                        backgroundColor: msg.sender === "user" ? "#e3f2fd" : "#f5f5f5",
+                        backgroundColor: msg.sender === "user" ? "var(--mantine-primary-color-light)" : "var(--app-sunken)",
                         borderRadius: "12px",
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                        border: "1px solid var(--app-line)",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
                         maxWidth: "70%",
                       }}
                     >
@@ -323,7 +324,7 @@ export const SDLearningRoom = () => {
 
                 {isTyping && (
                   <Group gap="xs" style={{ alignSelf: "flex-start" }}>
-                    <Box p="sm" style={{ backgroundColor: "#f5f5f5", borderRadius: "12px" }}>
+                    <Box p="sm" style={{ backgroundColor: "var(--app-surface-hover)", borderRadius: "12px" }}>
                       <Loader size="sm" type="dots" />
                     </Box>
                   </Group>
@@ -334,7 +335,7 @@ export const SDLearningRoom = () => {
           </Box>
 
           {progress && (progress.covered_points.length > 0 || progress.remaining_points.length > 0) && (
-            <Box p="sm" style={{ borderTop: "1px solid #f1f3f5", background: "#fafafa" }}>
+            <Box p="sm" style={{ borderTop: "1px solid var(--app-line)", background: "var(--app-surface-hover)" }}>
               <Group gap="6px" wrap="wrap">
                 {progress.covered_points.map((p) => (
                   <Badge key={p} size="xs" color="green" variant="light">
@@ -354,7 +355,7 @@ export const SDLearningRoom = () => {
           )}
 
           <Divider />
-          <Box style={{ padding: "0.75rem", flexShrink: 0, background: "#fff" }}>
+          <Box style={{ padding: "0.75rem", flexShrink: 0, background: "var(--app-surface)", borderTop: "1px solid var(--app-line)" }}>
             <Stack gap="sm">
               {isReady && !courseCompleted && (
                 <Button
@@ -403,9 +404,9 @@ export const SDLearningRoom = () => {
           style={{
             flex: 1,
             minWidth: 0,
-            border: "1px solid #e9ecef",
-            borderRadius: "12px",
-            background: "#fff",
+            border: "1px solid var(--app-line)",
+            borderRadius: "var(--mantine-radius-lg)",
+            background: "var(--app-surface)",
             overflow: "hidden",
           }}
         >

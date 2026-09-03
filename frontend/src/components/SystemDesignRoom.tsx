@@ -24,8 +24,9 @@ import { SystemDesignDiagram } from "./SystemDesignDiagram";
 export const SystemDesignRoom = () => {
   const { conversationId } = useParams<{ conversationId: string }>();
   const location = useLocation();
-  const initialDiagram = (location.state as { diagram?: ReactFlowDiagram } | null)?.diagram;
-  const [message, setMessage] = useState("");
+  const navState = location.state as { diagram?: ReactFlowDiagram; prompt?: string } | null;
+  const initialDiagram = navState?.diagram;
+  const [message, setMessage] = useState(navState?.prompt ?? "");
   const [loadedDiagram, setLoadedDiagram] = useState<ReactFlowDiagram | null>(initialDiagram ?? null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 

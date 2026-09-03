@@ -16,6 +16,38 @@ export interface ComponentCard {
   consistency: string;
   scaling: string;
   examples: string[];
+  /** Present once the component has a full taught lesson (otherwise reference-only). */
+  lesson?: ComponentLesson;
+}
+
+/** A scenario-based active-recall question with an explained answer. */
+export interface Drill {
+  scenario: string;
+  options: string[];
+  answerIndex: number;
+  explanation: string;
+}
+
+/** A common mistake, named and explained (not just listed). */
+export interface Pitfall {
+  title: string;
+  detail: string;
+}
+
+/** The taught lesson: reason your way to the component, then test it. */
+export interface ComponentLesson {
+  /** The motivating problem that makes you *want* this component. */
+  problem: string;
+  /** The analogy / mental model to hold onto. */
+  mentalModel: string;
+  /** The mechanism — how it actually does the job. */
+  howItWorks: string;
+  /** Why the trade-offs exist, reasoned rather than listed. */
+  why: string;
+  pitfalls: Pitfall[];
+  drills: Drill[];
+  /** Seed prompt for the "Discuss with the tutor" CTA. */
+  tutorPrompt: string;
 }
 
 export type CardCategory = "Edge & Traffic" | "Compute" | "Data Stores" | "Messaging" | "Integration";
@@ -181,6 +213,76 @@ export const COMPONENT_CARDS: ComponentCard[] = [
     consistency: "Eventual relative to the source of truth — you trade freshness for speed.",
     scaling: "Horizontal via sharding / consistent hashing; replicas for HA.",
     examples: ["Redis", "Memcached"],
+    lesson: {
+      problem:
+        "Your feed endpoint reads the same ~50 trending posts tens of thousands of times a second. Every read hits Postgres, which does real work — parse the query, check the buffer pool, maybe touch disk — to return an answer that barely changes between requests. Eventually the database spends all its time re-answering identical questions and tips over. You didn't run out of data; you ran out of the ability to *re-read* it fast enough.",
+      mentalModel:
+        "A cache is a small, fast cheat sheet you keep in front of the slow source of truth: RAM instead of disk, a keyed lookup instead of query planning. The deal you're striking is explicit — give up a little freshness in exchange for a lot of speed. Almost everything hard about caching flows from that single trade, because the cheat sheet can be *wrong*.",
+      howItWorks:
+        "The default pattern is cache-aside. On a read, check the cache first — a hit returns in well under a millisecond. On a miss, read the DB, store the value in the cache, then return it. Each entry carries a TTL so it eventually expires and gets re-fetched, and when memory fills an eviction policy (usually LRU — least recently used) decides what to drop. Writes are the subtle part: you either update the cache on write (write-through) or simply delete the key and let the next read repopulate it — deletion is the safer default because it can't leave a half-updated value behind.",
+      why:
+        "Why not just cache everything forever? Because the source of truth changes, and a cache entry is a copy frozen in time. The instant the underlying row changes, your cached copy is a lie until it's invalidated or expires. That's the whole reason TTLs exist — a TTL is a ceiling on how stale a value can get even if you write zero invalidation logic. It's also why 'cache invalidation' is famously one of the two hard problems in computing: the cache has no idea the DB changed unless you tell it, and telling it correctly on every write path is exactly where the bugs live.",
+      pitfalls: [
+        {
+          title: "Cache stampede (thundering herd)",
+          detail:
+            "A hot key expires and thousands of concurrent requests all miss at the same instant, then hammer the DB together — the exact load you added the cache to prevent. Fix it with a short repopulation lock (one request rebuilds while the rest wait) or jittered TTLs so keys don't expire in lockstep.",
+        },
+        {
+          title: "Stale reads after writes",
+          detail:
+            "If the write path updates the DB but forgets to touch the cache, users keep seeing the old value until the TTL lapses. Every write must invalidate (or update) the affected keys — or you must decide, on purpose, that a bounded staleness window is acceptable.",
+        },
+        {
+          title: "Caching data with no skew",
+          detail:
+            "A cache only pays off when reads are skewed — a small hot set read a lot. Caching uniformly-random keys just burns memory: you miss almost every time and pay for two lookups instead of one.",
+        },
+      ],
+      drills: [
+        {
+          scenario:
+            "Your feed API reads the same 50 trending posts ~10k times/sec and the primary DB is saturating. What's the highest-leverage fix?",
+          options: [
+            "Add read replicas to the database",
+            "Put a cache (e.g. Redis) in front of the DB for the hot posts",
+            "Shard the database by post ID",
+            "Move the posts to object storage",
+          ],
+          answerIndex: 1,
+          explanation:
+            "This is extreme read skew on a tiny hot set — the textbook case for a cache. Read replicas help but still do real query work per read and cost far more; sharding solves write/size scaling, not repeated identical reads; object storage isn't for queryable rows.",
+        },
+        {
+          scenario:
+            "A post gets edited. Your write path updates Postgres but nothing else. What do readers see?",
+          options: [
+            "The new content immediately",
+            "The old content until the cache entry's TTL expires",
+            "An error, because the cache and DB now disagree",
+            "Nothing changes — caches are read-only",
+          ],
+          answerIndex: 1,
+          explanation:
+            "The cached copy is frozen at write time. With no invalidation, readers keep hitting the stale entry until its TTL lapses. That's why every write path must invalidate or update the affected keys.",
+        },
+        {
+          scenario:
+            "One extremely popular key expires and thousands of requests miss simultaneously, spiking the DB. This is called…",
+          options: [
+            "A cache miss",
+            "Cache invalidation",
+            "A cache stampede (thundering herd)",
+            "An eviction storm",
+          ],
+          answerIndex: 2,
+          explanation:
+            "A synchronized rush of misses on a single hot key is a stampede. Mitigate with a repopulation lock (one request rebuilds, others wait) or TTL jitter so keys don't all expire at the same moment.",
+        },
+      ],
+      tutorPrompt:
+        "Teach me caching like an interviewer. Give me a realistic scenario, ask me what I'd add and where, then probe the trade-offs — staleness, invalidation, cache stampedes, write-through vs cache-aside. Correct me when I'm wrong and only move on once I can reason about it clearly.",
+    },
   },
   {
     kind: "object_storage",

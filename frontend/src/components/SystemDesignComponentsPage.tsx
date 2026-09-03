@@ -1,11 +1,11 @@
-import { useState } from "react";
-import { Text, Card, Badge, Group, Box, SimpleGrid, Modal, Stack, Divider } from "@mantine/core";
-import { FaCubes, FaCheckCircle, FaExclamationTriangle } from "react-icons/fa";
+import { Text, Card, Badge, Group, Box, SimpleGrid, Stack } from "@mantine/core";
+import { useNavigate } from "react-router-dom";
+import { FaCubes, FaArrowRight } from "react-icons/fa";
 import { Page, PageHeader } from "./ui";
 import { KIND_META } from "./SystemDesignNodes";
 import { COMPONENT_CARDS, CARD_CATEGORIES, type ComponentCard } from "../data/componentCards";
 
-const KindChip = ({ kind, size = 34 }: { kind: ComponentCard["kind"]; size?: number }) => {
+export const KindChip = ({ kind, size = 34 }: { kind: ComponentCard["kind"]; size?: number }) => {
   const meta = KIND_META[kind];
   return (
     <Box
@@ -28,36 +28,8 @@ const KindChip = ({ kind, size = 34 }: { kind: ComponentCard["kind"]; size?: num
   );
 };
 
-const DetailList = ({
-  title,
-  items,
-  icon,
-  color,
-}: {
-  title: string;
-  items: string[];
-  icon: React.ReactNode;
-  color: string;
-}) => (
-  <Box>
-    <Group gap={6} mb={6}>
-      <Box style={{ color, display: "inline-flex", fontSize: 13 }}>{icon}</Box>
-      <Text size="sm" fw={600}>
-        {title}
-      </Text>
-    </Group>
-    <Stack gap={4}>
-      {items.map((item, i) => (
-        <Text key={i} size="sm" c="dimmed" style={{ lineHeight: 1.4 }}>
-          • {item}
-        </Text>
-      ))}
-    </Stack>
-  </Box>
-);
-
 export const SystemDesignComponentsPage = () => {
-  const [selected, setSelected] = useState<ComponentCard | null>(null);
+  const navigate = useNavigate();
 
   return (
     <Page>
@@ -65,7 +37,7 @@ export const SystemDesignComponentsPage = () => {
         icon={<FaCubes size={14} />}
         iconColor="violet"
         title="Components"
-        subtitle="The building blocks of every system design. Learn what each piece is for, its consistency model, and how it scales — then pick the right one and defend the trade-off."
+        subtitle="The building blocks of every system design. Don't just memorize what each one is — learn to reason about when and why you'd reach for it, then test yourself and talk it through with the tutor."
       />
 
       <Stack gap="xl">
@@ -85,21 +57,31 @@ export const SystemDesignComponentsPage = () => {
                     p="md"
                     className="app-hover-lift"
                     style={{ cursor: "pointer", display: "flex", flexDirection: "column" }}
-                    onClick={() => setSelected(card)}
+                    onClick={() => navigate(`/system-design/components/${card.kind}`)}
                   >
-                    <Group gap="sm" wrap="nowrap" mb={8}>
-                      <KindChip kind={card.kind} />
-                      <Text fw={600}>{card.name}</Text>
+                    <Group gap="sm" wrap="nowrap" mb={8} justify="space-between">
+                      <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
+                        <KindChip kind={card.kind} />
+                        <Text fw={600} truncate>
+                          {card.name}
+                        </Text>
+                      </Group>
+                      <Badge size="xs" variant={card.lesson ? "filled" : "light"} color={card.lesson ? "violet" : "gray"}>
+                        {card.lesson ? "Lesson" : "Reference"}
+                      </Badge>
                     </Group>
                     <Text size="sm" c="dimmed" style={{ flex: 1, lineHeight: 1.45 }}>
                       {card.tagline}
                     </Text>
-                    <Group gap={4} mt="sm" wrap="wrap">
-                      {card.examples.slice(0, 3).map((ex) => (
-                        <Badge key={ex} size="xs" variant="light" color="gray">
-                          {ex}
-                        </Badge>
-                      ))}
+                    <Group gap={4} mt="sm" justify="space-between" wrap="nowrap">
+                      <Group gap={4} wrap="wrap" style={{ minWidth: 0 }}>
+                        {card.examples.slice(0, 2).map((ex) => (
+                          <Badge key={ex} size="xs" variant="light" color="gray">
+                            {ex}
+                          </Badge>
+                        ))}
+                      </Group>
+                      <FaArrowRight size={12} style={{ color: "var(--mantine-color-dimmed)", flexShrink: 0 }} />
                     </Group>
                   </Card>
                 ))}
@@ -108,83 +90,6 @@ export const SystemDesignComponentsPage = () => {
           );
         })}
       </Stack>
-
-      <Modal
-        opened={!!selected}
-        onClose={() => setSelected(null)}
-        size="lg"
-        radius="md"
-        title={
-          selected && (
-            <Group gap="sm">
-              <KindChip kind={selected.kind} size={38} />
-              <Box>
-                <Text fw={700}>{selected.name}</Text>
-                <Text size="xs" c="dimmed">
-                  {selected.category}
-                </Text>
-              </Box>
-            </Group>
-          )
-        }
-      >
-        {selected && (
-          <Stack gap="md">
-            <Text size="sm" style={{ lineHeight: 1.5 }}>
-              {selected.tagline}
-            </Text>
-
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              <DetailList
-                title="When to use"
-                items={selected.whenToUse}
-                icon={<FaCheckCircle />}
-                color="var(--mantine-color-teal-6)"
-              />
-              <DetailList
-                title="Watch out for"
-                items={selected.watchOut}
-                icon={<FaExclamationTriangle />}
-                color="var(--mantine-color-orange-6)"
-              />
-            </SimpleGrid>
-
-            <Divider />
-
-            <Group align="flex-start" gap="xl" wrap="wrap">
-              <Box style={{ flex: 1, minWidth: 200 }}>
-                <Text size="xs" fw={700} tt="uppercase" c="dimmed" mb={4} style={{ letterSpacing: 0.5 }}>
-                  Consistency
-                </Text>
-                <Text size="sm" c="dimmed" style={{ lineHeight: 1.45 }}>
-                  {selected.consistency}
-                </Text>
-              </Box>
-              <Box style={{ flex: 1, minWidth: 200 }}>
-                <Text size="xs" fw={700} tt="uppercase" c="dimmed" mb={4} style={{ letterSpacing: 0.5 }}>
-                  Scaling
-                </Text>
-                <Text size="sm" c="dimmed" style={{ lineHeight: 1.45 }}>
-                  {selected.scaling}
-                </Text>
-              </Box>
-            </Group>
-
-            <Box>
-              <Text size="xs" fw={700} tt="uppercase" c="dimmed" mb={6} style={{ letterSpacing: 0.5 }}>
-                Real-world examples
-              </Text>
-              <Group gap={6} wrap="wrap">
-                {selected.examples.map((ex) => (
-                  <Badge key={ex} variant="light" color="violet">
-                    {ex}
-                  </Badge>
-                ))}
-              </Group>
-            </Box>
-          </Stack>
-        )}
-      </Modal>
     </Page>
   );
 };

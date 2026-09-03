@@ -186,3 +186,46 @@ class SDCaseStudy(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class SDPracticeStatus(models.TextChoices):
+    IN_PROGRESS = 'in_progress', 'In Progress'
+    COMPLETED = 'completed', 'Completed'
+
+
+class SDPracticeSession(models.Model):
+    """
+    A guided 5-phase system design practice drill. Tracks the user's position
+    in the thinking protocol (Clarify -> Estimate -> Components -> HLD -> Deep
+    Dives), which phases are complete, and the weak areas diagnosed along the way.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sd_practice_sessions')
+    case_study = models.ForeignKey(
+        SDCaseStudy,
+        on_delete=models.CASCADE,
+        related_name='practice_sessions',
+        help_text="The design prompt being practiced against",
+    )
+    conversation = models.OneToOneField(
+        Conversation,
+        on_delete=models.CASCADE,
+        related_name='sd_practice_session',
+        help_text="The chat room for this practice run",
+    )
+    current_phase = models.PositiveSmallIntegerField(default=1, help_text="Active phase 1..5 of the thinking protocol")
+    phase_states = models.JSONField(default=dict, blank=True, help_text="Per-phase state: {phase: {completed, score, notes}}")
+    weak_areas = models.JSONField(default=list, blank=True, help_text="Diagnosed weak areas from the drill")
+    status = models.CharField(
+        max_length=20,
+        choices=SDPracticeStatus.choices,
+        default=SDPracticeStatus.IN_PROGRESS,
+    )
+    started_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-started_at"]
+
+    def __str__(self):
+        return f"{self.user.email} - {self.case_study.title} (phase {self.current_phase})"

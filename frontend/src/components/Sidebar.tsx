@@ -27,6 +27,7 @@ import {
   FaBook,
   FaRedoAlt,
   FaHome,
+  FaDumbbell,
 } from "react-icons/fa";
 import { RiStickyNoteLine } from "react-icons/ri";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -167,6 +168,8 @@ export const Sidebar = () => {
   const handleConversationClick = (conversation: ConversationResponse) => {
     if (conversation.conversation_type === "system_design") {
       navigate(`/system-design/${conversation.id}`);
+    } else if (conversation.conversation_type === "system_design_practice") {
+      navigate(`/system-design/practice/${conversation.id}`);
     } else {
       navigate(`/conversation/${conversation.id}`);
     }
@@ -204,8 +207,9 @@ export const Sidebar = () => {
     navigate(`/learning-path/chat-interface/${topicId}`);
   };
 
-  const isSystemDesign = path.startsWith("/system-design") && !path.startsWith("/system-design/case-studies");
+  const isSystemDesign = path.startsWith("/system-design") && !path.startsWith("/system-design/case-studies") && !path.startsWith("/system-design/practice");
   const isCaseStudies = path.startsWith("/system-design/case-studies");
+  const isPractice = path.startsWith("/system-design/practice");
 
   return (
     <Box
@@ -315,6 +319,13 @@ export const Sidebar = () => {
               active={isCaseStudies}
               collapsed={isCollapsed}
               onClick={() => navigate("/system-design/case-studies")}
+            />
+            <NavItem
+              icon={<FaDumbbell size={16} />}
+              label="Design Drills"
+              active={isPractice}
+              collapsed={isCollapsed}
+              onClick={() => navigate("/system-design/practice")}
             />
           </Stack>
         </Box>

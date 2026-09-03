@@ -72,3 +72,19 @@ class SDCaseStudyDetail(SDCaseStudySummary):
     key_components: List[dict] = []
     tradeoffs: List[str] = []
     reference_diagram: Optional[dict] = None
+
+
+class CreateSDPracticeSchema(Schema):
+    case_study_id: UUID
+
+
+class SDPracticeSessionResponse(Schema):
+    id: UUID
+    case_study: SDCaseStudyDetail
+    conversation_id: UUID
+    current_phase: int = 1
+    phase_states: dict = {}
+    weak_areas: List[str] = []
+    status: str = "in_progress"
+    started_at: datetime
+    completed_at: Optional[datetime] = None

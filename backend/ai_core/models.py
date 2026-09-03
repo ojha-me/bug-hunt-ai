@@ -8,6 +8,7 @@ class ConversationTypeChoices(models.TextChoices):
     LEARNING_PATH = 'learning_path', 'Structured Learning Path'
     SYSTEM_DESIGN = 'system_design', 'System Design'
     SYSTEM_DESIGN_LEARNING = 'system_design_learning', 'System Design Learning'
+    SYSTEM_DESIGN_PRACTICE = 'system_design_practice', 'System Design Practice'
 
 class Conversation(models.Model):
     """

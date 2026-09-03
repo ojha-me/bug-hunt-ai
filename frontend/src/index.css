@@ -105,6 +105,18 @@ body {
   }
 }
 
+@keyframes pulse-red {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(230, 60, 60, 0.45);
+  }
+  50% {
+    opacity: 0.65;
+    box-shadow: 0 0 0 5px rgba(230, 60, 60, 0);
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .app-fade-in {
     animation: app-fade-in 220ms ease-out both;

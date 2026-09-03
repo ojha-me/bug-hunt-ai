@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
 import {
   Box,
   Text,
@@ -13,12 +14,14 @@ import {
   Progress,
   ScrollArea,
   ActionIcon,
+  Tooltip,
 } from "@mantine/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FaExclamationCircle, FaLock, FaCheck, FaPlay, FaGraduationCap } from "react-icons/fa";
-import { RiFocus3Line, RiArrowRightLine } from "react-icons/ri";
+import { RiFocus3Line, RiArrowRightLine, RiMicLine, RiMicOffLine } from "react-icons/ri";
 import { useSDLearningWebSocket } from "../hooks/useSDLearningWebSocket";
+import { useSpeechToText } from "../hooks/useSpeechToText";
 import {
   getUserSDCourses,
   getSDCourseDetail,
@@ -39,6 +42,11 @@ export const SDLearningRoom = () => {
   const [message, setMessage] = useState("");
   const [courseCompleted, setCourseCompleted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const { supported: dictationSupported, listening: dictating, interim: dictationInterim, start: startDictation, stop: stopDictation } =
+    useSpeechToText((segment) => {
+      if (segment) setMessage((prev) => (prev ? `${prev.trimEnd()} ${segment}` : segment));
+    });
 
   const { data: userCourses, isLoading: userCoursesLoading } = useQuery({
     queryKey: ["sd-user-courses"],
@@ -126,6 +134,14 @@ export const SDLearningRoom = () => {
     if (message.trim() && isConnected && !isTyping) {
       sendMessage({ message });
       setMessage("");
+    }
+  };
+
+  const toggleDictation = () => {
+    if (dictating) {
+      stopDictation();
+    } else {
+      startDictation();
     }
   };
 
@@ -295,11 +311,16 @@ export const SDLearningRoom = () => {
                         maxWidth: "70%",
                       }}
                     >
-                      {msg.content && (
-                        <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
-                          {msg.content}
-                        </Text>
-                      )}
+                      {msg.content &&
+                        (msg.sender === "ai" ? (
+                          <Box className="md-content">
+                            <ReactMarkdown>{msg.content}</ReactMarkdown>
+                          </Box>
+                        ) : (
+                          <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
+                            {msg.content}
+                          </Text>
+                        ))}
                       {msg.diagram && (
                         <>
                           <SystemDesignDiagram diagram={msg.diagram} />
@@ -388,6 +409,29 @@ export const SDLearningRoom = () => {
                   minRows={2}
                   maxRows={8}
                 />
+                <Tooltip
+                  label={
+                    dictationSupported
+                      ? dictating
+                        ? "Stop dictation"
+                        : "Dictate your question"
+                      : "Speech input is not supported in this browser. Try Chrome or Edge."
+                  }
+                  withArrow
+                >
+                  <ActionIcon
+                    size="lg"
+                    radius="md"
+                    variant={dictating ? "filled" : "default"}
+                    color={dictating ? "red" : "violet"}
+                    aria-label="Dictate your message"
+                    disabled={!dictationSupported || !isConnected || isTyping || courseCompleted}
+                    onClick={toggleDictation}
+                    style={dictating ? { animation: "pulse-red 1.2s ease-in-out infinite" } : undefined}
+                  >
+                    {dictating ? <RiMicOffLine size={16} /> : <RiMicLine size={16} />}
+                  </ActionIcon>
+                </Tooltip>
                 <Button
                   onClick={handleSendMessage}
                   disabled={!isConnected || !message.trim() || isTyping || courseCompleted}
@@ -395,6 +439,17 @@ export const SDLearningRoom = () => {
                   Send
                 </Button>
               </Group>
+              {dictating && (
+                <Group gap="xs" align="center" wrap="nowrap" style={{ padding: "0.25rem 0.5rem", borderRadius: 8, background: "var(--app-surface-hover)" }}>
+                  <Box style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--mantine-color-red-6)", flexShrink: 0, animation: "pulse-red 1.2s ease-in-out infinite" }} />
+                  <Text size="xs" c="dimmed" style={{ flex: 1 }} lineClamp={1}>
+                    {dictationInterim || "Listening…"}
+                  </Text>
+                  <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>
+                    Speaking
+                  </Text>
+                </Group>
+              )}
             </Stack>
           </Box>
         </Box>

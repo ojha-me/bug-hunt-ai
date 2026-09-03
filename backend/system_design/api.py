@@ -6,13 +6,15 @@ from django.shortcuts import get_object_or_404
 from ninja import Router
 from users.utils.ninja import get, post
 from ai_core.models import Conversation, ConversationTypeChoices
-from system_design.models import SDCourse, SDLesson, SDCaseStudy, UserSDCourse, SDLessonProgress, SDProgressStatus
+from system_design.models import SDCourse, SDLesson, SDCaseStudy, UserSDCourse, SDLessonProgress, SDProgressStatus, SDPracticeSession
 from system_design.api_types import (
     SDCourseResponse,
     SDCourseDetailResponse,
     UserSDCourseResponse,
     SDCaseStudySummary,
     SDCaseStudyDetail,
+    CreateSDPracticeSchema,
+    SDPracticeSessionResponse,
 )
 from django.utils import timezone
 
@@ -208,3 +210,64 @@ def get_case_study(request: HttpRequest, case_id: UUID):
         tradeoffs=case.tradeoffs,
         reference_diagram=case.reference_diagram,
     )
+
+
+# ---------------- Guided Practice (5-phase thinking system) ----------------
+
+def _case_study_detail(case: SDCaseStudy) -> SDCaseStudyDetail:
+    return SDCaseStudyDetail(
+        id=case.id,
+        title=case.title,
+        slug=case.slug,
+        difficulty=case.difficulty,
+        topics=case.topics,
+        overview=case.overview,
+        functional_requirements=case.functional_requirements,
+        non_functional_requirements=case.non_functional_requirements,
+        capacity=case.capacity,
+        key_components=case.key_components,
+        tradeoffs=case.tradeoffs,
+        reference_diagram=case.reference_diagram,
+    )
+
+
+def _practice_response(session: SDPracticeSession) -> SDPracticeSessionResponse:
+    return SDPracticeSessionResponse(
+        id=session.id,
+        case_study=_case_study_detail(session.case_study),
+        conversation_id=session.conversation_id,
+        current_phase=session.current_phase,
+        phase_states=session.phase_states,
+        weak_areas=session.weak_areas,
+        status=session.status,
+        started_at=session.started_at,
+        completed_at=session.completed_at,
+    )
+
+
+@get(router, "/practice-sessions", response={200: List[SDPracticeSessionResponse], 401: Dict[str, str]})
+def get_practice_sessions(request: HttpRequest):
+    sessions = SDPracticeSession.objects.filter(user=request.user).select_related("case_study", "conversation")
+    return [_practice_response(s) for s in sessions]
+
+
+@post(router, "/practice-sessions", response={200: SDPracticeSessionResponse, 401: Dict[str, str], 404: Dict[str, str]})
+def create_practice_session(request: HttpRequest, params: CreateSDPracticeSchema):
+    case = get_object_or_404(SDCaseStudy, id=params.case_study_id, is_active=True)
+    existing = SDPracticeSession.objects.filter(
+        user=request.user, case_study=case, status="in_progress"
+    ).first()
+    if existing:
+        return _practice_response(existing)
+
+    conversation = Conversation.objects.create(
+        user=request.user,
+        title=f"Practice: {case.title}",
+        conversation_type=ConversationTypeChoices.SYSTEM_DESIGN_PRACTICE,
+    )
+    session = SDPracticeSession.objects.create(
+        user=request.user,
+        case_study=case,
+        conversation=conversation,
+    )
+    return _practice_response(session)

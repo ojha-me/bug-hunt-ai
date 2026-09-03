@@ -6,6 +6,7 @@ import type {
   SDLearningMessage,
   SDCaseStudySummary,
   SDCaseStudyDetail,
+  SDPracticeSessionResponse,
 } from "../types/system_design/api_types";
 
 export const getSDCourses = async (): Promise<SDCourseResponse[]> => {
@@ -47,5 +48,19 @@ export const getSDCaseStudies = async (): Promise<SDCaseStudySummary[]> => {
 
 export const getSDCaseStudy = async (caseId: string): Promise<SDCaseStudyDetail> => {
   const response = await apiClient.get(`/system-design/case-studies/${caseId}`);
+  return response.data;
+};
+
+export const getSDPracticeSessions = async (): Promise<SDPracticeSessionResponse[]> => {
+  const response = await apiClient.get("/system-design/practice-sessions");
+  return response.data;
+};
+
+export const createSDPracticeSession = async (
+  caseStudyId: string
+): Promise<SDPracticeSessionResponse> => {
+  const response = await apiClient.post("/system-design/practice-sessions", {
+    case_study_id: caseStudyId,
+  });
   return response.data;
 };

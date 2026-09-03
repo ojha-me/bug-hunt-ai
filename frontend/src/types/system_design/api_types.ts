@@ -85,3 +85,17 @@ export interface SDCaseStudyDetail extends SDCaseStudySummary {
   tradeoffs: string[];
   reference_diagram: ReactFlowDiagram | null;
 }
+
+export type SDPracticeStatus = "in_progress" | "completed";
+
+export interface SDPracticeSessionResponse {
+  id: string;
+  case_study: SDCaseStudyDetail;
+  conversation_id: string;
+  current_phase: number;
+  phase_states: Record<string, unknown>;
+  weak_areas: string[];
+  status: SDPracticeStatus;
+  started_at: string;
+  completed_at: string | null;
+}

@@ -12,6 +12,8 @@ import { SDLearningRoom } from "./components/SDLearningRoom";
 import { SDCoursesPage } from "./components/SDCoursesPage";
 import { SDCaseStudiesPage } from "./components/SDCaseStudiesPage";
 import { SDCaseStudyDetailPage } from "./components/SDCaseStudyDetailPage";
+import { SystemDesignPracticePage } from "./components/SystemDesignPracticePage";
+import { SystemDesignPracticeRoom } from "./components/SystemDesignPracticeRoom";
 import { NotesView } from "./pages/NotesView";
 import { LearningPathNotesView } from "./pages/LearningPathNotesView";
 import { ProblemsPage } from "./components/ProblemsPage";
@@ -38,6 +40,8 @@ export default function App() {
           <Route path="/system-design/learn/:courseId" element={<SDLearningRoom />} />
           <Route path="/system-design/case-studies" element={<SDCaseStudiesPage />} />
           <Route path="/system-design/case-studies/:caseStudyId" element={<SDCaseStudyDetailPage />} />
+          <Route path="/system-design/practice" element={<SystemDesignPracticePage />} />
+          <Route path="/system-design/practice/:conversationId" element={<SystemDesignPracticeRoom />} />
           <Route path="/learning-path/chat-interface/:learningTopicId" element={<LearningPathChatInterface />} />
           <Route path="/challenges" element={<ProblemsPage />} />
           <Route path="/challenges/:problemId" element={<ProblemSolverPage />} />

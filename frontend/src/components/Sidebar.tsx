@@ -171,6 +171,8 @@ export const Sidebar = () => {
       navigate(`/system-design/${conversation.id}`);
     } else if (conversation.conversation_type === "system_design_practice") {
       navigate(`/system-design/practice/${conversation.id}`);
+    } else if (conversation.conversation_type === "component_tutor") {
+      navigate(`/component-tutor/${conversation.id}`);
     } else {
       navigate(`/conversation/${conversation.id}`);
     }

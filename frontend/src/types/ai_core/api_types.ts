@@ -7,7 +7,7 @@
 
 export type MessageLanguageChoices = "python" | "javascript" | "typescript";
 
-export type ConversationTypeChoices = "general" | "learning_path" | "system_design" | "system_design_learning" | "system_design_practice";
+export type ConversationTypeChoices = "general" | "learning_path" | "system_design" | "system_design_learning" | "system_design_practice" | "component_tutor";
 
 export type ComponentType = "input" | "default" | "output";
 

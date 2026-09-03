@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   ReactFlow,
   Background,
@@ -10,7 +11,7 @@ import "@xyflow/react/dist/style.css";
 import { Box, Group, Text, Anchor } from "@mantine/core";
 import { RiExpandLeftLine } from "react-icons/ri";
 import type { ReactFlowDiagram } from "../types/ai_core/api_types";
-import { sdNodeTypes } from "./SystemDesignNodes";
+import { sdNodeTypes, KIND_META } from "./SystemDesignNodes";
 
 interface Props {
   diagram: ReactFlowDiagram;
@@ -18,6 +19,16 @@ interface Props {
 }
 
 export const SystemDesignDiagram = ({ diagram, onExpand }: Props) => {
+  const navigate = useNavigate();
+
+  const onNodeClick = useCallback(
+    (_e: React.MouseEvent, node: Node) => {
+      const kind = (node?.data as { kind?: string })?.kind;
+      if (kind && kind in KIND_META) navigate(`/system-design/components/${kind}`);
+    },
+    [navigate]
+  );
+
   const nodes = useMemo<Node[]>(
     () =>
       (diagram?.nodes ?? []).map((n) => ({
@@ -52,7 +63,7 @@ export const SystemDesignDiagram = ({ diagram, onExpand }: Props) => {
     >
       <Group justify="space-between" p={6} style={{ borderBottom: "1px solid var(--app-line)" }}>
         <Text size="xs" fw={600} c="dimmed" m={0}>
-          Architecture diagram
+          Architecture diagram · click a node to learn it
         </Text>
         {onExpand && (
           <Anchor onClick={onExpand} size="xs" style={{ cursor: "pointer" }}>
@@ -65,13 +76,14 @@ export const SystemDesignDiagram = ({ diagram, onExpand }: Props) => {
           nodes={nodes}
           edges={edges}
           nodeTypes={sdNodeTypes}
+          onNodeClick={onNodeClick}
           fitView
           nodesDraggable={false}
           nodesConnectable={false}
           elementsSelectable={false}
           panOnDrag
           zoomOnDoubleClick={false}
-          style={{ width: "100%", height: "100%" }}
+          style={{ width: "100%", height: "100%", cursor: "default" }}
         >
           <Background gap={20} />
         </ReactFlow>

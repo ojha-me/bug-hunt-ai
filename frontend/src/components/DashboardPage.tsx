@@ -24,9 +24,11 @@ import {
   FaPlay,
   FaBolt,
   FaRedoAlt,
+  FaCubes,
 } from "react-icons/fa";
 import { getMyProblemProgress } from "../api/challenges";
-import { getUserSDCourses } from "../api/systemDesign";
+import { getUserSDCourses, getComponentProgress } from "../api/systemDesign";
+import { COMPONENT_CARDS } from "../data/componentCards";
 import { userLearningPaths } from "../api/learningPaths";
 import { getConversations } from "../api/conversation";
 import { getDueRevisionItems } from "../api/revision";
@@ -63,6 +65,14 @@ export const DashboardPage = () => {
     queryKey: ["revision-due"],
     queryFn: getDueRevisionItems,
   });
+
+  const { data: componentProgress } = useQuery({
+    queryKey: ["component-progress"],
+    queryFn: getComponentProgress,
+  });
+  const componentsDone = componentProgress?.length ?? 0;
+  const componentsTotal = COMPONENT_CARDS.length;
+  const componentsPct = componentsTotal ? Math.round((componentsDone / componentsTotal) * 100) : 0;
 
   const stats = useMemo(() => {
     const solved = (myProgress ?? []).filter((p) => p.solved).length;
@@ -146,7 +156,7 @@ export const DashboardPage = () => {
         </>
       ) : (
         <>
-          <SimpleGrid cols={{ base: 2, sm: 3, lg: 5 }} spacing="md" mb="lg" className="app-stagger">
+          <SimpleGrid cols={{ base: 2, sm: 3, lg: 6 }} spacing="md" mb="lg" className="app-stagger">
             <Card withBorder p="md" bg="var(--mantine-color-green-0)" className="app-hover-lift">
               <Group gap="xs">
                 <FaCheckCircle color="green" />
@@ -204,6 +214,27 @@ export const DashboardPage = () => {
               <Text size="xl" fw={700}>
                 {stats.activePaths}
               </Text>
+            </Card>
+            <Card
+              withBorder
+              p="md"
+              className="app-hover-lift"
+              style={{ cursor: "pointer" }}
+              onClick={() => navigate("/system-design/components")}
+            >
+              <Group gap="xs">
+                <FaCubes color="var(--mantine-color-violet-6)" />
+                <Text size="sm" c="dimmed">
+                  Components
+                </Text>
+              </Group>
+              <Text size="xl" fw={700}>
+                {componentsDone}
+                <Text component="span" size="sm" c="dimmed" fw={400}>
+                  {" "}/ {componentsTotal}
+                </Text>
+              </Text>
+              <Progress value={componentsPct} size="xs" mt={6} color="violet" />
             </Card>
           </SimpleGrid>
 

@@ -64,3 +64,25 @@ export const createSDPracticeSession = async (
   });
   return response.data;
 };
+
+export const createComponentTutor = async (
+  kind: string
+): Promise<{ conversation_id: string }> => {
+  const response = await apiClient.post("/system-design/component-tutor", { kind });
+  return response.data;
+};
+
+export interface ComponentProgress {
+  component_kind: string;
+  completed_at: string;
+}
+
+export const getComponentProgress = async (): Promise<ComponentProgress[]> => {
+  const response = await apiClient.get("/system-design/component-progress");
+  return response.data;
+};
+
+export const markComponentComplete = async (kind: string): Promise<ComponentProgress> => {
+  const response = await apiClient.post("/system-design/component-progress", { kind });
+  return response.data;
+};

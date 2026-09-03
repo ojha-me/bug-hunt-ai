@@ -9,6 +9,7 @@ class ConversationTypeChoices(models.TextChoices):
     SYSTEM_DESIGN = 'system_design', 'System Design'
     SYSTEM_DESIGN_LEARNING = 'system_design_learning', 'System Design Learning'
     SYSTEM_DESIGN_PRACTICE = 'system_design_practice', 'System Design Practice'
+    COMPONENT_TUTOR = 'component_tutor', 'Component Tutor'
 
 class Conversation(models.Model):
     """

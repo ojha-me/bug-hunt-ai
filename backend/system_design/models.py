@@ -229,3 +229,49 @@ class SDPracticeSession(models.Model):
 
     def __str__(self):
         return f"{self.user.email} - {self.case_study.title} (phase {self.current_phase})"
+
+
+# The system-design component vocabulary, mirrored on the frontend as NodeKind
+# (see frontend/src/components/SystemDesignNodes.tsx) and the component cards.
+COMPONENT_KINDS = [
+    'client', 'load_balancer', 'api_gateway', 'service', 'worker', 'database',
+    'cache', 'object_storage', 'search', 'warehouse', 'queue', 'stream', 'cdn', 'external',
+]
+
+
+class ComponentTutorSession(models.Model):
+    """
+    Links a chat conversation to the component it teaches, so the tutor consumer
+    can ground each turn in the right component.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='component_tutor_sessions')
+    conversation = models.OneToOneField(
+        Conversation,
+        on_delete=models.CASCADE,
+        related_name='component_tutor_session',
+        help_text="The chat room for this tutoring session",
+    )
+    component_kind = models.CharField(max_length=32, help_text="Which component this session teaches")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.email} - tutor:{self.component_kind}"
+
+
+class ComponentProgress(models.Model):
+    """
+    Marks that a user has completed a component's lesson (finished its drills).
+    Presence of a row means completed.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='component_progress')
+    component_kind = models.CharField(max_length=32)
+    completed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'component_kind')
+        ordering = ['-completed_at']
+
+    def __str__(self):
+        return f"{self.user.email} - done:{self.component_kind}"

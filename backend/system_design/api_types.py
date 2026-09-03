@@ -88,3 +88,20 @@ class SDPracticeSessionResponse(Schema):
     status: str = "in_progress"
     started_at: datetime
     completed_at: Optional[datetime] = None
+
+
+class ComponentTutorCreate(Schema):
+    kind: str
+
+
+class ComponentTutorResponse(Schema):
+    conversation_id: UUID
+
+
+class MarkComponentSchema(Schema):
+    kind: str
+
+
+class ComponentProgressResponse(Schema):
+    component_kind: str
+    completed_at: datetime

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
 import {
   Text,
@@ -27,7 +27,11 @@ import {
 } from "react-icons/fa";
 import { Page, EmptyState } from "./ui";
 import { KindChip } from "./SystemDesignComponentsPage";
-import { createConversation } from "../api/conversation";
+import {
+  createComponentTutor,
+  getComponentProgress,
+  markComponentComplete,
+} from "../api/systemDesign";
 import { COMPONENT_CARDS, type Drill } from "../data/componentCards";
 
 const Section = ({ label, children }: { label: string; children: React.ReactNode }) => (
@@ -41,10 +45,24 @@ const Section = ({ label, children }: { label: string; children: React.ReactNode
   </Box>
 );
 
-const DrillItem = ({ drill, index }: { drill: Drill; index: number }) => {
+const DrillItem = ({
+  drill,
+  index,
+  onCorrect,
+}: {
+  drill: Drill;
+  index: number;
+  onCorrect: (index: number) => void;
+}) => {
   const [picked, setPicked] = useState<number | null>(null);
   const answered = picked !== null;
   const correct = picked === drill.answerIndex;
+
+  const handlePick = (i: number) => {
+    if (answered) return;
+    setPicked(i);
+    if (i === drill.answerIndex) onCorrect(index);
+  };
 
   return (
     <Card withBorder p="md" radius="md">
@@ -71,7 +89,7 @@ const DrillItem = ({ drill, index }: { drill: Drill; index: number }) => {
             <UnstyledButton
               key={i}
               disabled={answered}
-              onClick={() => setPicked(i)}
+              onClick={() => handlePick(i)}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -130,16 +148,50 @@ const DrillItem = ({ drill, index }: { drill: Drill; index: number }) => {
 export const ComponentLessonPage = () => {
   const { kind } = useParams<{ kind: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const card = COMPONENT_CARDS.find((c) => c.kind === kind);
 
-  const tutorMutation = useMutation({
-    mutationFn: () => createConversation("system_design"),
-    onSuccess: (convo) => {
-      navigate(`/system-design/${convo.id}`, {
-        state: { prompt: card?.lesson?.tutorPrompt },
-      });
-    },
+  const [correctDrills, setCorrectDrills] = useState<Set<number>>(new Set());
+  const markedRef = useRef(false);
+
+  const { data: progress } = useQuery({
+    queryKey: ["component-progress"],
+    queryFn: getComponentProgress,
   });
+  const isCompleted = !!progress?.some((p) => p.component_kind === kind);
+
+  const tutorMutation = useMutation({
+    mutationFn: () => createComponentTutor(kind!),
+    onSuccess: ({ conversation_id }) => navigate(`/component-tutor/${conversation_id}`),
+  });
+
+  const completeMutation = useMutation({
+    mutationFn: () => markComponentComplete(kind!),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["component-progress"] }),
+  });
+
+  const drillCount = card?.lesson?.drills.length ?? 0;
+
+  // Auto-mark complete once every drill has been answered correctly.
+  useEffect(() => {
+    if (
+      !markedRef.current &&
+      !isCompleted &&
+      drillCount > 0 &&
+      correctDrills.size >= drillCount
+    ) {
+      markedRef.current = true;
+      completeMutation.mutate();
+    }
+  }, [correctDrills, drillCount, isCompleted, completeMutation]);
+
+  const handleCorrect = (index: number) =>
+    setCorrectDrills((prev) => {
+      if (prev.has(index)) return prev;
+      const next = new Set(prev);
+      next.add(index);
+      return next;
+    });
 
   if (!card) {
     return (
@@ -168,16 +220,23 @@ export const ComponentLessonPage = () => {
         <FaArrowLeft size={11} /> Components
       </Anchor>
 
-      <Group gap="md" mb="xs" wrap="nowrap">
-        <KindChip kind={card.kind} size={44} />
-        <Box>
-          <Text size="xl" fw={700} lh={1.2}>
-            {card.name}
-          </Text>
-          <Text size="xs" c="dimmed">
-            {card.category}
-          </Text>
-        </Box>
+      <Group gap="md" mb="xs" wrap="nowrap" justify="space-between">
+        <Group gap="md" wrap="nowrap" style={{ minWidth: 0 }}>
+          <KindChip kind={card.kind} size={44} />
+          <Box>
+            <Text size="xl" fw={700} lh={1.2}>
+              {card.name}
+            </Text>
+            <Text size="xs" c="dimmed">
+              {card.category}
+            </Text>
+          </Box>
+        </Group>
+        {isCompleted && (
+          <Badge size="lg" variant="light" color="teal" leftSection={<FaCheckCircle size={12} />}>
+            Completed
+          </Badge>
+        )}
       </Group>
       <Text size="sm" c="dimmed" mb="xl" style={{ maxWidth: 760, lineHeight: 1.5 }}>
         {card.tagline}
@@ -224,9 +283,18 @@ export const ComponentLessonPage = () => {
 
             <Divider label="Test yourself" labelPosition="center" />
 
+            <Group justify="space-between" align="center">
+              <Text size="sm" c="dimmed">
+                Answer all {drillCount} correctly to complete this component.
+              </Text>
+              <Badge variant="light" color={correctDrills.size >= drillCount ? "teal" : "gray"}>
+                {correctDrills.size}/{drillCount} solved
+              </Badge>
+            </Group>
+
             <Stack gap="md">
               {lesson.drills.map((drill, i) => (
-                <DrillItem key={i} drill={drill} index={i} />
+                <DrillItem key={i} drill={drill} index={i} onCorrect={handleCorrect} />
               ))}
             </Stack>
 

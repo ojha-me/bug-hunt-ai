@@ -6,7 +6,10 @@ from django.shortcuts import get_object_or_404
 from ninja import Router
 from users.utils.ninja import get, post
 from ai_core.models import Conversation, ConversationTypeChoices
-from system_design.models import SDCourse, SDLesson, SDCaseStudy, UserSDCourse, SDLessonProgress, SDProgressStatus, SDPracticeSession
+from system_design.models import (
+    SDCourse, SDLesson, SDCaseStudy, UserSDCourse, SDLessonProgress, SDProgressStatus,
+    SDPracticeSession, ComponentTutorSession, ComponentProgress, COMPONENT_KINDS,
+)
 from system_design.api_types import (
     SDCourseResponse,
     SDCourseDetailResponse,
@@ -15,6 +18,10 @@ from system_design.api_types import (
     SDCaseStudyDetail,
     CreateSDPracticeSchema,
     SDPracticeSessionResponse,
+    ComponentTutorCreate,
+    ComponentTutorResponse,
+    MarkComponentSchema,
+    ComponentProgressResponse,
 )
 from django.utils import timezone
 
@@ -271,3 +278,37 @@ def create_practice_session(request: HttpRequest, params: CreateSDPracticeSchema
         conversation=conversation,
     )
     return _practice_response(session)
+
+
+# ---------------- Component tutor + progress ----------------
+
+@post(router, "/component-tutor", response={200: ComponentTutorResponse, 400: Dict[str, str], 401: Dict[str, str]})
+def create_component_tutor(request: HttpRequest, params: ComponentTutorCreate):
+    if params.kind not in COMPONENT_KINDS:
+        return 400, {"detail": f"Unknown component: {params.kind}"}
+
+    conversation = Conversation.objects.create(
+        user=request.user,
+        title=f"Tutor: {params.kind.replace('_', ' ').title()}",
+        conversation_type=ConversationTypeChoices.COMPONENT_TUTOR,
+    )
+    ComponentTutorSession.objects.create(
+        user=request.user,
+        conversation=conversation,
+        component_kind=params.kind,
+    )
+    return ComponentTutorResponse(conversation_id=conversation.id)
+
+
+@get(router, "/component-progress", response={200: List[ComponentProgressResponse], 401: Dict[str, str]})
+def get_component_progress(request: HttpRequest):
+    rows = ComponentProgress.objects.filter(user=request.user)
+    return [ComponentProgressResponse(component_kind=r.component_kind, completed_at=r.completed_at) for r in rows]
+
+
+@post(router, "/component-progress", response={200: ComponentProgressResponse, 400: Dict[str, str], 401: Dict[str, str]})
+def mark_component_progress(request: HttpRequest, params: MarkComponentSchema):
+    if params.kind not in COMPONENT_KINDS:
+        return 400, {"detail": f"Unknown component: {params.kind}"}
+    row, _ = ComponentProgress.objects.get_or_create(user=request.user, component_kind=params.kind)
+    return ComponentProgressResponse(component_kind=row.component_kind, completed_at=row.completed_at)

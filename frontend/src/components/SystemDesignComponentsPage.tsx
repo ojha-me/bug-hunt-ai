@@ -1,8 +1,10 @@
 import { Text, Card, Badge, Group, Box, SimpleGrid, Stack } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
-import { FaCubes, FaArrowRight } from "react-icons/fa";
+import { useQuery } from "@tanstack/react-query";
+import { FaCubes, FaArrowRight, FaCheckCircle } from "react-icons/fa";
 import { Page, PageHeader } from "./ui";
 import { KIND_META } from "./SystemDesignNodes";
+import { getComponentProgress } from "../api/systemDesign";
 import { COMPONENT_CARDS, CARD_CATEGORIES, type ComponentCard } from "../data/componentCards";
 
 export const KindChip = ({ kind, size = 34 }: { kind: ComponentCard["kind"]; size?: number }) => {
@@ -30,6 +32,11 @@ export const KindChip = ({ kind, size = 34 }: { kind: ComponentCard["kind"]; siz
 
 export const SystemDesignComponentsPage = () => {
   const navigate = useNavigate();
+  const { data: progress } = useQuery({
+    queryKey: ["component-progress"],
+    queryFn: getComponentProgress,
+  });
+  const completed = new Set((progress ?? []).map((p) => p.component_kind));
 
   return (
     <Page>
@@ -38,6 +45,11 @@ export const SystemDesignComponentsPage = () => {
         iconColor="violet"
         title="Components"
         subtitle="The building blocks of every system design. Don't just memorize what each one is — learn to reason about when and why you'd reach for it, then test yourself and talk it through with the tutor."
+        right={
+          <Badge size="lg" variant="light" color="teal">
+            {completed.size}/{COMPONENT_CARDS.length} completed
+          </Badge>
+        }
       />
 
       <Stack gap="xl">
@@ -66,9 +78,14 @@ export const SystemDesignComponentsPage = () => {
                           {card.name}
                         </Text>
                       </Group>
-                      <Badge size="xs" variant={card.lesson ? "filled" : "light"} color={card.lesson ? "violet" : "gray"}>
-                        {card.lesson ? "Lesson" : "Reference"}
-                      </Badge>
+                      <Group gap={6} wrap="nowrap">
+                        {completed.has(card.kind) && (
+                          <FaCheckCircle size={14} style={{ color: "var(--mantine-color-teal-6)", flexShrink: 0 }} />
+                        )}
+                        <Badge size="xs" variant={card.lesson ? "filled" : "light"} color={card.lesson ? "violet" : "gray"}>
+                          {card.lesson ? "Lesson" : "Reference"}
+                        </Badge>
+                      </Group>
                     </Group>
                     <Text size="sm" c="dimmed" style={{ flex: 1, lineHeight: 1.45 }}>
                       {card.tagline}

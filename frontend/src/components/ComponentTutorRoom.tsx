@@ -1,10 +1,12 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { Box, Text, Button, Stack, Group, Alert, Loader, Textarea, Badge, Anchor } from "@mantine/core";
+import { Box, Text, Button, Stack, Group, Alert, Loader, Textarea, Badge, Anchor, ActionIcon, Tooltip } from "@mantine/core";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { FaExclamationCircle, FaArrowLeft, FaComments } from "react-icons/fa";
+import { RiMicLine, RiMicOffLine } from "react-icons/ri";
 import ReactMarkdown from "react-markdown";
 import { useQuery } from "@tanstack/react-query";
 import { useComponentTutorWebSocket } from "../hooks/useComponentTutorWebSocket";
+import { useSpeechToText } from "../hooks/useSpeechToText";
 import { getConversation } from "../api/conversation";
 import type { ConversationResponse } from "../types/ai_core/api_types";
 
@@ -15,6 +17,16 @@ export const ComponentTutorRoom = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { messages: liveMessages, sendMessage, isConnected, isTyping } = useComponentTutorWebSocket(conversationId!);
+
+  const { supported: dictationSupported, listening: dictating, interim: dictationInterim, start: startDictation, stop: stopDictation } =
+    useSpeechToText((segment) => {
+      if (segment) setMessage((prev) => (prev ? `${prev.trimEnd()} ${segment}` : segment));
+    });
+
+  const toggleDictation = () => {
+    if (dictating) stopDictation();
+    else startDictation();
+  };
 
   const { data: conversation } = useQuery<ConversationResponse>({
     queryKey: ["conversation", conversationId, "component-tutor"],
@@ -132,27 +144,63 @@ export const ComponentTutorRoom = () => {
         </Box>
 
         <Box style={{ padding: "0.75rem", flexShrink: 0, borderTop: "1px solid var(--app-line)" }}>
-          <Group gap="sm" align="flex-end">
-            <Textarea
-              placeholder="Answer the tutor, or ask a question..."
-              value={message}
-              onChange={(e) => setMessage(e.currentTarget.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
+          <Stack gap="sm">
+            <Group gap="sm" align="flex-end">
+              <Textarea
+                placeholder="Answer the tutor, or ask a question..."
+                value={message}
+                onChange={(e) => setMessage(e.currentTarget.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                style={{ flex: 1 }}
+                disabled={!isConnected || isTyping}
+                autosize
+                minRows={1}
+                maxRows={6}
+              />
+              <Tooltip
+                label={
+                  dictationSupported
+                    ? dictating
+                      ? "Stop dictation"
+                      : "Dictate your message"
+                    : "Speech input is not supported in this browser. Try Chrome or Edge."
                 }
-              }}
-              style={{ flex: 1 }}
-              disabled={!isConnected || isTyping}
-              autosize
-              minRows={1}
-              maxRows={6}
-            />
-            <Button onClick={handleSend} disabled={!isConnected || !message.trim() || isTyping}>
-              Send
-            </Button>
-          </Group>
+                withArrow
+              >
+                <ActionIcon
+                  size="lg"
+                  radius="md"
+                  variant={dictating ? "filled" : "default"}
+                  color={dictating ? "red" : "violet"}
+                  aria-label="Dictate your message"
+                  disabled={!dictationSupported || !isConnected || isTyping}
+                  onClick={toggleDictation}
+                  style={dictating ? { animation: "pulse-red 1.2s ease-in-out infinite" } : undefined}
+                >
+                  {dictating ? <RiMicOffLine size={16} /> : <RiMicLine size={16} />}
+                </ActionIcon>
+              </Tooltip>
+              <Button onClick={handleSend} disabled={!isConnected || !message.trim() || isTyping}>
+                Send
+              </Button>
+            </Group>
+            {dictating && (
+              <Group gap="xs" align="center" wrap="nowrap" style={{ padding: "0.25rem 0.5rem", borderRadius: 8, background: "var(--app-surface-hover)" }}>
+                <Box style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--mantine-color-red-6)", flexShrink: 0, animation: "pulse-red 1.2s ease-in-out infinite" }} />
+                <Text size="xs" c="dimmed" style={{ flex: 1 }} lineClamp={1}>
+                  {dictationInterim || "Listening…"}
+                </Text>
+                <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>
+                  Speaking
+                </Text>
+              </Group>
+            )}
+          </Stack>
         </Box>
       </Box>
     </Box>

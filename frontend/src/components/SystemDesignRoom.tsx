@@ -10,11 +10,14 @@ import {
   Textarea,
   Divider,
   Badge,
+  ActionIcon,
+  Tooltip,
 } from "@mantine/core";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { FaExclamationCircle } from "react-icons/fa";
-import { RiFocus3Line } from "react-icons/ri";
+import { RiFocus3Line, RiMicLine, RiMicOffLine } from "react-icons/ri";
 import { useSystemDesignWebSocket } from "../hooks/useSystemDesignWebSocket";
+import { useSpeechToText } from "../hooks/useSpeechToText";
 import { getConversation } from "../api/conversation";
 import type { ConversationResponse, ReactFlowDiagram } from "../types/ai_core/api_types";
 import { useQuery } from "@tanstack/react-query";
@@ -29,6 +32,16 @@ export const SystemDesignRoom = () => {
   const [message, setMessage] = useState(navState?.prompt ?? "");
   const [loadedDiagram, setLoadedDiagram] = useState<ReactFlowDiagram | null>(initialDiagram ?? null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const { supported: dictationSupported, listening: dictating, interim: dictationInterim, start: startDictation, stop: stopDictation } =
+    useSpeechToText((segment) => {
+      if (segment) setMessage((prev) => (prev ? `${prev.trimEnd()} ${segment}` : segment));
+    });
+
+  const toggleDictation = () => {
+    if (dictating) stopDictation();
+    else startDictation();
+  };
 
   const {
     messages: liveMessages,
@@ -172,27 +185,63 @@ export const SystemDesignRoom = () => {
 
           <Divider />
           <Box style={{ padding: "0.75rem", flexShrink: 0, background: "var(--app-surface)", borderTop: "1px solid var(--app-line)" }}>
-            <Group gap="sm" align="flex-end">
-              <Textarea
-                placeholder="Ask about requirements, capacity, trade-offs..."
-                value={message}
-                onChange={(e) => setMessage(e.currentTarget.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
+            <Stack gap="sm">
+              <Group gap="sm" align="flex-end">
+                <Textarea
+                  placeholder="Ask about requirements, capacity, trade-offs..."
+                  value={message}
+                  onChange={(e) => setMessage(e.currentTarget.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
+                  style={{ flex: 1 }}
+                  disabled={!isConnected || isTyping}
+                  autosize
+                  minRows={2}
+                  maxRows={8}
+                />
+                <Tooltip
+                  label={
+                    dictationSupported
+                      ? dictating
+                        ? "Stop dictation"
+                        : "Dictate your message"
+                      : "Speech input is not supported in this browser. Try Chrome or Edge."
                   }
-                }}
-                style={{ flex: 1 }}
-                disabled={!isConnected || isTyping}
-                autosize
-                minRows={2}
-                maxRows={8}
-              />
-              <Button onClick={handleSendMessage} disabled={!isConnected || !message.trim() || isTyping}>
-                Send
-              </Button>
-            </Group>
+                  withArrow
+                >
+                  <ActionIcon
+                    size="lg"
+                    radius="md"
+                    variant={dictating ? "filled" : "default"}
+                    color={dictating ? "red" : "violet"}
+                    aria-label="Dictate your message"
+                    disabled={!dictationSupported || !isConnected || isTyping}
+                    onClick={toggleDictation}
+                    style={dictating ? { animation: "pulse-red 1.2s ease-in-out infinite" } : undefined}
+                  >
+                    {dictating ? <RiMicOffLine size={16} /> : <RiMicLine size={16} />}
+                  </ActionIcon>
+                </Tooltip>
+                <Button onClick={handleSendMessage} disabled={!isConnected || !message.trim() || isTyping}>
+                  Send
+                </Button>
+              </Group>
+              {dictating && (
+                <Group gap="xs" align="center" wrap="nowrap" style={{ padding: "0.25rem 0.5rem", borderRadius: 8, background: "var(--app-surface-hover)" }}>
+                  <Box style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--mantine-color-red-6)", flexShrink: 0, animation: "pulse-red 1.2s ease-in-out infinite" }} />
+                  <Text size="xs" c="dimmed" style={{ flex: 1 }} lineClamp={1}>
+                    {dictationInterim || "Listening…"}
+                  </Text>
+                  <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>
+                    Speaking
+                  </Text>
+                </Group>
+              )}
+            </Stack>
           </Box>
         </Box>
 

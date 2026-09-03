@@ -28,6 +28,7 @@ import {
   FaRedoAlt,
   FaHome,
   FaDumbbell,
+  FaCubes,
 } from "react-icons/fa";
 import { RiStickyNoteLine } from "react-icons/ri";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -207,9 +208,14 @@ export const Sidebar = () => {
     navigate(`/learning-path/chat-interface/${topicId}`);
   };
 
-  const isSystemDesign = path.startsWith("/system-design") && !path.startsWith("/system-design/case-studies") && !path.startsWith("/system-design/practice");
+  const isSystemDesign =
+    path.startsWith("/system-design") &&
+    !path.startsWith("/system-design/case-studies") &&
+    !path.startsWith("/system-design/practice") &&
+    !path.startsWith("/system-design/components");
   const isCaseStudies = path.startsWith("/system-design/case-studies");
   const isPractice = path.startsWith("/system-design/practice");
+  const isComponents = path.startsWith("/system-design/components");
 
   return (
     <Box
@@ -312,6 +318,13 @@ export const Sidebar = () => {
               active={isSystemDesign}
               collapsed={isCollapsed}
               onClick={() => navigate("/system-design/courses")}
+            />
+            <NavItem
+              icon={<FaCubes size={16} />}
+              label="Components"
+              active={isComponents}
+              collapsed={isCollapsed}
+              onClick={() => navigate("/system-design/components")}
             />
             <NavItem
               icon={<FaBook size={16} />}

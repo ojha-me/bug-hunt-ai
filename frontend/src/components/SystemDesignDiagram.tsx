@@ -10,6 +10,7 @@ import "@xyflow/react/dist/style.css";
 import { Box, Group, Text, Anchor } from "@mantine/core";
 import { RiExpandLeftLine } from "react-icons/ri";
 import type { ReactFlowDiagram } from "../types/ai_core/api_types";
+import { sdNodeTypes } from "./SystemDesignNodes";
 
 interface Props {
   diagram: ReactFlowDiagram;
@@ -21,10 +22,9 @@ export const SystemDesignDiagram = ({ diagram, onExpand }: Props) => {
     () =>
       (diagram?.nodes ?? []).map((n) => ({
         id: n.id,
-        type: n.type === "output" ? "output" : n.type === "input" ? "input" : "default",
+        type: "sd",
         position: n.position,
-        data: { label: n.data?.label ?? "" },
-        style: { width: 160 },
+        data: { label: n.data?.label ?? "", kind: n.kind },
       })),
     [diagram]
   );
@@ -64,6 +64,7 @@ export const SystemDesignDiagram = ({ diagram, onExpand }: Props) => {
         <ReactFlow
           nodes={nodes}
           edges={edges}
+          nodeTypes={sdNodeTypes}
           fitView
           nodesDraggable={false}
           nodesConnectable={false}

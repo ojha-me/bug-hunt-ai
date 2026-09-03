@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 from datetime import timedelta
 from system_design.models import SDCourse, SDLesson
+from system_design.utils.diagram_kinds import infer_kind
 
 
 class Command(BaseCommand):
@@ -172,6 +173,12 @@ class Command(BaseCommand):
                 },
             },
         ]
+
+        # Tag each inline diagram node with a semantic kind for rich rendering.
+        for lesson_data in lessons:
+            diagram = lesson_data.get("reference_diagram")
+            for node in (diagram or {}).get("nodes", []):
+                node.setdefault("kind", infer_kind(node.get("data", {}).get("label", "")))
 
         for lesson_data in lessons:
             _, created = SDLesson.objects.get_or_create(

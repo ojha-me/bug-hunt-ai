@@ -1,5 +1,6 @@
 from django.core.management.base import BaseCommand
 from system_design.models import SDCaseStudy
+from system_design.utils.diagram_kinds import infer_kind
 
 
 class Command(BaseCommand):
@@ -22,8 +23,14 @@ class Command(BaseCommand):
             self.stdout.write("No case studies seeded yet.")
 
 
-def _n(node_id: str, x: int, y: int, label: str, node_type: str = "default"):
-    return {"id": node_id, "type": node_type, "position": {"x": x, "y": y}, "data": {"label": label}}
+def _n(node_id: str, x: int, y: int, label: str, node_type: str = "default", kind: str = None):
+    return {
+        "id": node_id,
+        "type": node_type,
+        "kind": infer_kind(label, kind),
+        "position": {"x": x, "y": y},
+        "data": {"label": label},
+    }
 
 
 def _e(edge_id: str, source: str, target: str, label: str = None):

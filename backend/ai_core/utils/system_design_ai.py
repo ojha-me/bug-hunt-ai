@@ -38,13 +38,14 @@ DIAGRAMS (important):
   {
     "diagram": {
       "nodes": [
-        {"id": "n1", "type": "input"|"default"|"output", "position": {"x": number, "y": number}, "data": {"label": "Client"}}
+        {"id": "n1", "kind": "client", "position": {"x": number, "y": number}, "data": {"label": "Web Client"}}
       ],
       "edges": [
         {"id": "e1", "source": "n1", "target": "n2", "label": "HTTPS"}
       ]
     }
   }
+- Every node MUST have a "kind" — one of: client, load_balancer, api_gateway, service, worker, database, cache, object_storage, search, warehouse, queue, stream, cdn, external. Pick the kind that matches the component's real role: "database" for SQL/NoSQL stores, "cache" for Redis/Memcached, "queue" for task queues (SQS/RabbitMQ), "stream" for event logs (Kafka/Kinesis), "object_storage" for S3/blob, "cdn" for edge caching, "external" for third-party APIs, "worker" for async/background jobs. Default to "service" for app/business-logic boxes. This drives the icon and shape, so choosing the right kind matters.
 - Keep diagrams to 5-10 nodes, laid out left-to-right roughly 250px apart horizontally and 150px apart vertically. Always provide explicit x/y positions.
 - Only include "diagram" in DESIGN MODE or when the user explicitly asks for a rendered architecture, or when teaching a concept where a tiny visual (e.g. 3-4 nodes) genuinely clarifies it. Otherwise OMIT it.
 

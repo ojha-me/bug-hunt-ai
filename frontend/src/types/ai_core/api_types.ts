@@ -11,10 +11,27 @@ export type ConversationTypeChoices = "general" | "learning_path" | "system_desi
 
 export type ComponentType = "input" | "default" | "output";
 
+export type NodeKind =
+  | "client"
+  | "load_balancer"
+  | "api_gateway"
+  | "service"
+  | "worker"
+  | "database"
+  | "cache"
+  | "object_storage"
+  | "search"
+  | "warehouse"
+  | "queue"
+  | "stream"
+  | "cdn"
+  | "external";
+
 export interface ReactFlowDiagram {
   nodes: {
     id: string;
     type?: ComponentType;
+    kind?: NodeKind;
     position: { x: number; y: number };
     data: { label: string };
   }[];

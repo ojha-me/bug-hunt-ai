@@ -1,5 +1,6 @@
 from django.core.management.base import BaseCommand
 from system_design.models import SDCaseStudy
+from system_design.utils.diagram_kinds import infer_kind
 
 
 class Command(BaseCommand):
@@ -19,8 +20,14 @@ class Command(BaseCommand):
                 obj.save()
 
 
-def _n(node_id: str, x: int, y: int, label: str, node_type: str = "default"):
-    return {"id": node_id, "type": node_type, "position": {"x": x, "y": y}, "data": {"label": label}}
+def _n(node_id: str, x: int, y: int, label: str, node_type: str = "default", kind: str = None):
+    return {
+        "id": node_id,
+        "type": node_type,
+        "kind": infer_kind(label, kind),
+        "position": {"x": x, "y": y},
+        "data": {"label": label},
+    }
 
 
 def _e(edge_id: str, source: str, target: str, label: str = None):
@@ -512,9 +519,9 @@ CASE_STUDIES = [
         "topics": ["Geospatial", "Indexing", "Caching"],
         "overview": (
             "Design a 'nearby places' service (like Google Maps / Yelp): given a lat/lon, return the nearest "
-            "points of interest (restaurants, gas stations) within a radius. Also covers **route/DIRECTION is out
-             of scope** unless asked. The classic answer: **geohash or S2 cells**, an **inverted grid index**, and
-             result caching."
+            "points of interest (restaurants, gas stations) within a radius. Also covers **route/DIRECTION is out "
+            "of scope** unless asked. The classic answer: **geohash or S2 cells**, an **inverted grid index**, and "
+            "result caching."
         ),
         "functional_requirements": [
             "Query: given lat/lon + radius, return nearby POIs sorted by distance",

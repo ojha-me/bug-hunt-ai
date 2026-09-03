@@ -23,7 +23,8 @@ ROLE PER LESSON:
 
 DIAGRAMS (important):
 - The learner has a whiteboard that loads a REFERENCE DIAGRAM for each lesson. You can also send your own diagram by including a "diagram" field with exactly:
-  {"nodes": [{"id": "n1", "type": "input"|"default"|"output", "position": {"x": number, "y": number}, "data": {"label": "Client"}}], "edges": [{"id": "e1", "source": "n1", "target": "n2", "label": "HTTPS"}]}
+  {"nodes": [{"id": "n1", "kind": "client", "position": {"x": number, "y": number}, "data": {"label": "Web Client"}}], "edges": [{"id": "e1", "source": "n1", "target": "n2", "label": "HTTPS"}]}
+- Every node MUST have a "kind" — one of: client, load_balancer, api_gateway, service, worker, database, cache, object_storage, search, warehouse, queue, stream, cdn, external. Choose the kind that matches the component's role ("database" for SQL/NoSQL, "cache" for Redis, "queue" for task queues, "stream" for Kafka/Kinesis, "object_storage" for S3/blob, "cdn" for edge caching, "external" for third-party APIs, "worker" for async jobs; default "service"). The kind drives the icon and shape.
 - Keep diagrams to 5-10 nodes laid out left-to-right, ~250px apart horizontally, ~150px vertically. ALWAYS provide explicit x/y positions.
 - If the learner sends their own drawn diagram for review, teach through the feedback: name each component, its role, what's missing, and the trade-offs. Do NOT fabricate a diagram when reviewing theirs.
 - Only include a "diagram" when teaching genuinely benefits from a visual or the learner asked you to draw one. Otherwise OMIT it.

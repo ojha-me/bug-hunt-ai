@@ -14,51 +14,28 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Button, Group, Text, Box, ActionIcon, Tooltip, useMantineColorScheme } from "@mantine/core";
-import {
-  RiGlobalLine,
-  RiSmartphoneLine,
-  RiDashboardLine,
-  RiServerLine,
-  RiStackLine,
-  RiExchangeLine,
-  RiDatabaseLine,
-  RiCloudLine,
-  RiSendPlaneLine,
-  RiDeleteBin6Line,
-} from "react-icons/ri";
-import type { ComponentType, ReactFlowDiagram } from "../types/ai_core/api_types";
+import { RiSendPlaneLine, RiDeleteBin6Line } from "react-icons/ri";
+import type { ComponentType, NodeKind, ReactFlowDiagram } from "../types/ai_core/api_types";
+import { KIND_META, PALETTE_KINDS, sdNodeTypes } from "./SystemDesignNodes";
 
 type FlowNode = ReactFlowDiagram["nodes"][number];
 type FlowEdge = ReactFlowDiagram["edges"][number];
 
-interface PaletteEntry {
-  key: string;
-  label: string;
-  icon: React.ReactNode;
-  color: string;
-  nodeType?: "input" | "output" | "default";
-}
-
-const COMPONENT_PALETTE: PaletteEntry[] = [
-  { key: "client_web", label: "Web Client", icon: <RiGlobalLine />, color: "#4c6ef5", nodeType: "input" },
-  { key: "client_mobile", label: "Mobile Client", icon: <RiSmartphoneLine />, color: "#6741d9", nodeType: "input" },
-  { key: "load_balancer", label: "Load Balancer", icon: <RiDashboardLine />, color: "#0ca678" },
-  { key: "servers", label: "Servers", icon: <RiServerLine />, color: "#1971c2" },
-  { key: "cache", label: "Cache", icon: <RiStackLine />, color: "#f59f00" },
-  { key: "queue", label: "Message Queue", icon: <RiExchangeLine />, color: "#e8590c" },
-  { key: "database", label: "Database", icon: <RiDatabaseLine />, color: "#f76707", nodeType: "output" },
-  { key: "blob", label: "Blob / CDN", icon: <RiCloudLine />, color: "#12b886", nodeType: "output" },
-];
+const COMPONENT_PALETTE = PALETTE_KINDS.map((kind) => ({
+  kind,
+  label: KIND_META[kind].label,
+  icon: KIND_META[kind].icon,
+  color: KIND_META[kind].color,
+}));
 
 let nodeCounter = 0;
 
 const initialNodes: Node[] = [
   {
-    id: `n-sd-${nodeCounter+1}`,
-    type: "input",
+    id: `n-sd-${nodeCounter + 1}`,
+    type: "sd",
     position: { x: 0, y: 200 },
-    data: { label: "Web Client" },
-    style: { width: 168, borderRadius: 10, border: `2px solid #4c6ef5`, background: "#e7f5ff", color: "#1c1f2e", fontSize: 13 },
+    data: { label: "Web Client", kind: "client" as NodeKind },
   },
 ];
 
@@ -77,10 +54,9 @@ export const SystemDesignWhiteboard = ({ onSubmit, loadedDiagram }: Props) => {
     if (!loadedDiagram) return;
     const rfNodes: Node[] = (loadedDiagram.nodes ?? []).map((n: FlowNode): Node => ({
       id: n.id,
-      type: n.type === "input" || n.type === "output" ? n.type : "default",
+      type: "sd",
       position: n.position,
-      data: { label: n.data?.label ?? "" },
-      style: { width: 168, borderRadius: 10, border: "2px solid var(--app-line)", background: "var(--app-surface)", color: "var(--mantine-color-text)", fontSize: 13 },
+      data: { label: n.data?.label ?? "", kind: n.kind },
     }));
     const rfEdges: Edge[] = (loadedDiagram.edges ?? []).map((e: FlowEdge): Edge => ({
       id: e.id,
@@ -105,21 +81,13 @@ export const SystemDesignWhiteboard = ({ onSubmit, loadedDiagram }: Props) => {
     [setEdges]
   );
 
-  const addNode = (entry: PaletteEntry) => {
+  const addNode = (entry: (typeof COMPONENT_PALETTE)[number]) => {
     nodeCounter += 1;
     const newNode: Node = {
       id: `n-sd-${Date.now()}`,
-      type: entry.nodeType ?? "default",
+      type: "sd",
       position: { x: 300 + (nodeCounter % 3) * 240, y: 40 + Math.floor(nodeCounter / 3) * 170 },
-      data: { label: entry.label },
-      style: {
-        width: 168,
-        borderRadius: 10,
-        border: `2px solid ${entry.color}`,
-        background: "#ffffff",
-        color: "#1c1f2e",
-        fontSize: 13,
-      },
+      data: { label: entry.label, kind: entry.kind },
     };
     setNodes((nds) => [...nds, newNode]);
   };
@@ -128,7 +96,8 @@ export const SystemDesignWhiteboard = ({ onSubmit, loadedDiagram }: Props) => {
     const sdNodes: NonNullable<ReactFlowDiagram["nodes"]> = nodes.map(
       (n): FlowNode => ({
         id: n.id,
-        type: (n.type === "input" || n.type === "output" ? n.type : "default") as ComponentType,
+        type: "default" as ComponentType,
+        kind: n.data?.kind as NodeKind | undefined,
         position: n.position,
         data: { label: String(n.data?.label ?? "") },
       })
@@ -172,7 +141,7 @@ export const SystemDesignWhiteboard = ({ onSubmit, loadedDiagram }: Props) => {
     <Box style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", position: "relative" }}>
       <Group gap={6} p="xs" style={{ borderBottom: "1px solid var(--app-line)", flexShrink: 0, overflowX: "auto", flexWrap: "nowrap" }}>
         {COMPONENT_PALETTE.map((entry) => (
-          <Tooltip key={entry.key} label={`Add ${entry.label}`} position="bottom">
+          <Tooltip key={entry.kind} label={`Add ${entry.label}`} position="bottom">
             <ActionIcon
               variant="light"
               color={entry.color}
@@ -198,6 +167,7 @@ export const SystemDesignWhiteboard = ({ onSubmit, loadedDiagram }: Props) => {
         <ReactFlow
           nodes={nodes}
           edges={edges}
+          nodeTypes={sdNodeTypes}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}

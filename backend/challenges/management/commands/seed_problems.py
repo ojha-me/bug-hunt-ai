@@ -15,6 +15,7 @@ import bisect
 from collections import Counter, defaultdict, deque
 from django.core.management.base import BaseCommand
 from challenges.models import CodingProblem
+from challenges.solutions import SOLUTIONS
 
 
 # --------------------------- node helpers ---------------------------
@@ -954,11 +955,14 @@ class Command(BaseCommand):
                                 "expected_output": _lru_stdio(c["stdin"])})
         lru_examples = [{"input": c["stdin"], "output": c["expected_output"], "explanation": ""}
                         for c in stdio_cases[:1]]
+        lru_sol = SOLUTIONS.get(lru["slug"], {})
         created = self._upsert(dict(
             slug=lru["slug"], title=lru["title"], difficulty=lru["difficulty"], topics=lru["topics"],
             description=lru["description"], examples=lru_examples, constraints=lru["constraints"],
             starter_code=lru["starter_code"], judge_mode="stdio", entry_point="", param_types=[],
             return_type="json", compare_mode="exact", test_cases=stdio_cases,
+            solution_code=lru_sol.get("code", ""), solution_explanation=lru_sol.get("explanation", ""),
+            solution_complexity=lru_sol.get("complexity", ""),
         ))
         n_created += created; n_updated += (0 if created else 1)
 
@@ -981,6 +985,7 @@ class Command(BaseCommand):
 
             examples = [{"input": json.dumps(tc["args"]), "output": json.dumps(tc["expected"]),
                          "explanation": ""} for tc in test_cases[:2]]
+            sol = SOLUTIONS.get(p["slug"], {})
 
             created = self._upsert(dict(
                 slug=p["slug"], title=p["title"], difficulty=p["difficulty"], topics=p["topics"],
@@ -988,6 +993,8 @@ class Command(BaseCommand):
                 starter_code=make_starter(p["sig"], p.get("node")),
                 judge_mode="function", entry_point=p["entry"], param_types=pt,
                 return_type=rt, compare_mode=cmp, test_cases=test_cases,
+                solution_code=sol.get("code", ""), solution_explanation=sol.get("explanation", ""),
+                solution_complexity=sol.get("complexity", ""),
             ))
             n_created += created; n_updated += (0 if created else 1)
 

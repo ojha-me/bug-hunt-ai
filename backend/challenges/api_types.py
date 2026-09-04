@@ -46,6 +46,13 @@ class MyProgressOut(Schema):
     best_total: int = 0
 
 
+class SolutionOut(Schema):
+    code: str = ""
+    explanation: str = ""
+    complexity: str = ""
+    available: bool = False
+
+
 class ProblemListOut(Schema):
     slug: str
     name: str

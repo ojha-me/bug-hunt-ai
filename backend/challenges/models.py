@@ -55,6 +55,11 @@ class CodingProblem(models.Model):
         max_length=20, blank=True, default="exact",
         help_text="'exact' | 'unordered' | 'unordered_nested' — how the return is compared to expected.",
     )
+
+    # --- Editorial (revealed on demand) ---
+    solution_code = models.TextField(blank=True, default="", help_text="Reference/optimal solution shown as the editorial")
+    solution_explanation = models.TextField(blank=True, default="", help_text="Short explanation of the approach")
+    solution_complexity = models.CharField(max_length=120, blank=True, default="", help_text="e.g. 'O(n) time, O(1) space'")
     test_cases = models.JSONField(
         default=list, blank=True,
         help_text="stdio: {name, stdin, expected_output}. function: {name, args, expected}.",

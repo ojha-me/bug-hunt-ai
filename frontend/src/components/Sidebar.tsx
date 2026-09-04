@@ -30,6 +30,7 @@ import {
   FaDumbbell,
   FaCubes,
   FaStopwatch,
+  FaComments,
 } from "react-icons/fa";
 import { RiStickyNoteLine } from "react-icons/ri";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -321,6 +322,13 @@ export const Sidebar = () => {
               active={path.startsWith("/mock")}
               collapsed={isCollapsed}
               onClick={() => navigate("/mock")}
+            />
+            <NavItem
+              icon={<FaComments size={16} />}
+              label="Behavioral Prep"
+              active={path.startsWith("/behavioral")}
+              collapsed={isCollapsed}
+              onClick={() => navigate("/behavioral")}
             />
             <NavItem
               icon={<FaProjectDiagram size={16} />}

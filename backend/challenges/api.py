@@ -28,6 +28,7 @@ from challenges.api_types import (
     ProblemAttemptOut,
     MyProgressOut,
     ProblemListOut,
+    SolutionOut,
     TutorChatIn,
     TutorChatOut,
     TutorHistoryOut,
@@ -53,6 +54,18 @@ def _problem_summary(problem: CodingProblem) -> CodingProblemSummary:
 def list_problems(request: HttpRequest):
     problems = CodingProblem.objects.filter(is_active=True)
     return [_problem_summary(p) for p in problems]
+
+
+@get(router, "/problems/{problem_id}/solution", response={200: SolutionOut, 401: Dict[str, str], 404: Dict[str, str]})
+def get_problem_solution(request: HttpRequest, problem_id: UUID):
+    """The editorial solution — fetched only when the user explicitly reveals it."""
+    problem = get_object_or_404(CodingProblem, id=problem_id, is_active=True)
+    return SolutionOut(
+        code=problem.solution_code,
+        explanation=problem.solution_explanation,
+        complexity=problem.solution_complexity,
+        available=bool(problem.solution_code),
+    )
 
 
 @get(router, "/lists", response={200: List[ProblemListOut], 401: Dict[str, str]})

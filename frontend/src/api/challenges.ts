@@ -8,6 +8,18 @@ import type {
 } from "../types/challenges/api_types";
 import type { RunResponse } from "../types/execution/api_types";
 
+export interface ProblemSolution {
+  code: string;
+  explanation: string;
+  complexity: string;
+  available: boolean;
+}
+
+export const getProblemSolution = async (problemId: string): Promise<ProblemSolution> => {
+  const response = await apiClient.get<ProblemSolution>(`/challenges/problems/${problemId}/solution`);
+  return response.data;
+};
+
 export interface ProblemListSummary {
   slug: string;
   name: string;

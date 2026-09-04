@@ -23,7 +23,7 @@ import ReactMarkdown from "react-markdown";
 import Editor from "@monaco-editor/react";
 import { FaArrowLeft, FaPlay, FaPaperPlane, FaCheckCircle, FaTimesCircle } from "react-icons/fa";
 import { RiLightbulbLine } from "react-icons/ri";
-import { getProblem, getProblemAttempts, submitProblem, runProblem, getProblemTutorHistory, postProblemTutorChat } from "../api/challenges";
+import { getProblem, getProblemAttempts, submitProblem, runProblem, getProblemSolution, getProblemTutorHistory, postProblemTutorChat, type ProblemSolution } from "../api/challenges";
 import { useMantineColorScheme } from "@mantine/core";
 import { useMockSession } from "../hooks/useMockSession";
 import { MockBar } from "./MockBar";
@@ -67,8 +67,20 @@ export const ProblemSolverPage = () => {
   const [tutorInput, setTutorInput] = useState("");
   const [isTutorThinking, setIsTutorThinking] = useState(false);
   const [expandedAttempts, setExpandedAttempts] = useState<Set<string>>(new Set());
+  const [solution, setSolution] = useState<ProblemSolution | null>(null);
+  const [solutionLoading, setSolutionLoading] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const mock = useMockSession();
+
+  const revealSolution = async () => {
+    if (!problem || solution) return;
+    setSolutionLoading(true);
+    try {
+      setSolution(await getProblemSolution(problem.id));
+    } finally {
+      setSolutionLoading(false);
+    }
+  };
 
   const persistCode = (next: string) => {
     if (problem) localStorage.setItem(storageKey(problem.id), next);
@@ -112,6 +124,7 @@ export const ProblemSolverPage = () => {
     setResults(null);
     setSummary(null);
     setExecutionError(null);
+    setSolution(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [problem?.id, problem?.starter_code]);
 
@@ -318,6 +331,7 @@ export const ProblemSolverPage = () => {
               <Tabs.List px="sm" pt="sm">
                 <Tabs.Tab value="code">Editor</Tabs.Tab>
                 <Tabs.Tab value="tests">Tests</Tabs.Tab>
+                {!mock.session && <Tabs.Tab value="solution">Solution</Tabs.Tab>}
                 {!mock.session && <Tabs.Tab value="tutor">Tutor</Tabs.Tab>}
                 <Tabs.Tab value="attempts">Submissions ({attempts?.length ?? 0})</Tabs.Tab>
               </Tabs.List>
@@ -420,6 +434,61 @@ export const ProblemSolverPage = () => {
                     <Text size="sm" c="dimmed" ta="center" pt="lg">
                       Hit <b>Run Tests</b> to check your code against the problem&apos;s test cases, or <b>Submit</b> to submit for evaluation.
                     </Text>
+                  )}
+                </ScrollArea>
+              </Tabs.Panel>
+
+              <Tabs.Panel value="solution" p="md" className="app-tab-panel">
+                <ScrollArea style={{ height: "calc(100vh - 300px)" }}>
+                  {!solution ? (
+                    <Stack align="center" gap="sm" pt="xl">
+                      <Text size="sm" c="dimmed" ta="center" style={{ maxWidth: 380 }}>
+                        Give it a real attempt first — then reveal the optimal solution with its approach and complexity.
+                      </Text>
+                      <Button
+                        variant="light"
+                        color="violet"
+                        loading={solutionLoading}
+                        onClick={revealSolution}
+                        leftSection={<RiLightbulbLine size={14} />}
+                      >
+                        Reveal solution
+                      </Button>
+                    </Stack>
+                  ) : !solution.available ? (
+                    <Text size="sm" c="dimmed" ta="center" pt="xl">
+                      No editorial available for this problem yet.
+                    </Text>
+                  ) : (
+                    <Stack gap="md">
+                      <Group gap="sm">
+                        <Badge color="violet" variant="light">Optimal solution</Badge>
+                        {solution.complexity && (
+                          <Badge color="gray" variant="light">{solution.complexity}</Badge>
+                        )}
+                      </Group>
+                      {solution.explanation && (
+                        <Text size="sm" style={{ lineHeight: 1.55 }}>
+                          {solution.explanation}
+                        </Text>
+                      )}
+                      <Code block style={{ whiteSpace: "pre", fontSize: 12, overflow: "auto" }}>
+                        {solution.code}
+                      </Code>
+                      <Group>
+                        <Button
+                          size="compact-sm"
+                          variant="light"
+                          onClick={() => {
+                            setCode(solution.code);
+                            persistCode(solution.code);
+                            setActiveTab("code");
+                          }}
+                        >
+                          Load into editor
+                        </Button>
+                      </Group>
+                    </Stack>
                   )}
                 </ScrollArea>
               </Tabs.Panel>

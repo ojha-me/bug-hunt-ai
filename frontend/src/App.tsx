@@ -22,6 +22,7 @@ import { LearningPathNotesView } from "./pages/LearningPathNotesView";
 import { ProblemsPage } from "./components/ProblemsPage";
 import { ProblemSolverPage } from "./components/ProblemSolverPage";
 import { MockInterviewPage } from "./components/MockInterviewPage";
+import { BehavioralPrepPage } from "./components/BehavioralPrepPage";
 import { DashboardPage } from "./components/DashboardPage";
 import { RevisionPage } from "./components/RevisionPage";
 
@@ -53,6 +54,7 @@ export default function App() {
           <Route path="/challenges" element={<ProblemsPage />} />
           <Route path="/challenges/:problemId" element={<ProblemSolverPage />} />
           <Route path="/mock" element={<MockInterviewPage />} />
+          <Route path="/behavioral" element={<BehavioralPrepPage />} />
           <Route path="/revision" element={<RevisionPage />} />
           <Route path="/notes" element={<NotesView />} />
           <Route path="/learning-path/:pathId/notes" element={<LearningPathNotesView />} />

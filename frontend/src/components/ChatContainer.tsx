@@ -12,7 +12,7 @@ import {
   UnstyledButton,
 } from "@mantine/core";
 import { useState, useMemo, useEffect, useRef } from "react";
-import { FaExclamationCircle, FaArrowLeft } from "react-icons/fa";
+import { FaExclamationCircle, FaArrowLeft, FaRedo } from "react-icons/fa";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { getConversation } from "../api/conversation";
 import type { ConversationResponse } from "../types/ai_core/api_types";
@@ -34,6 +34,7 @@ export const ChatContainer = () => {
   const {
     messages: liveMessages,
     sendMessage,
+    regenerate,
     isConnected,
     isTyping,
   } = useWebSocket(conversationId!);
@@ -64,6 +65,9 @@ export const ChatContainer = () => {
       (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
   }, [conversation, liveMessages]);
+
+  const lastMsg = allMessages[allMessages.length - 1];
+  const danglingUserMsg = !!lastMsg && lastMsg.sender === "user" && !isTyping;
 
   const handleSendMessage = () => {
     if (message.trim() && isConnected) {
@@ -275,6 +279,21 @@ export const ChatContainer = () => {
             flexShrink: 0,
           }}
         >
+          {danglingUserMsg && (
+            <Group gap="xs" p="xs" mb="xs" justify="space-between" wrap="nowrap" style={{ borderRadius: 8, background: "var(--mantine-color-orange-light)" }}>
+              <Text size="xs" c="dimmed" lineClamp={1}>
+                No response yet — the connection may have dropped.
+              </Text>
+              <Group gap={6} wrap="nowrap">
+                <Button size="compact-xs" variant="light" color="orange" leftSection={<FaRedo size={10} />} disabled={!isConnected} onClick={regenerate}>
+                  Get response
+                </Button>
+                <Button size="compact-xs" variant="subtle" color="gray" onClick={() => setMessage(lastMsg.content)}>
+                  Edit
+                </Button>
+              </Group>
+            </Group>
+          )}
           <Group gap="sm" align="flex-end" wrap="nowrap">
             <Textarea
               placeholder="Type your message..."

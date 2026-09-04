@@ -43,6 +43,11 @@ class AIChatConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data):
         data = json.loads(text_data)
+
+        if data.get("action") == "regenerate":
+            await self.handle_regenerate()
+            return
+
         message_content = data.get("message")
         code_snippet = data.get("code_snippet")
         language = data.get("language")
@@ -94,6 +99,28 @@ class AIChatConsumer(AsyncWebsocketConsumer):
 
         await self.broadcast_message(ai_message)
 
+
+    async def handle_regenerate(self):
+        """
+        Generate an AI reply to the most recent user message that has no response
+        yet — used when the socket dropped before the AI answered. Does not save a
+        new user message.
+        """
+        last = await database_sync_to_async(
+            lambda: self.conversation.messages.order_by("-created_at").first()
+        )()
+        if not last or last.sender != MessageSenderChoices.USER:
+            return
+
+        await self.broadcast_event("typing_start")
+        await asyncio.sleep(1)
+
+        ai_text = await self.ai_service.generate_response(last.content, last.code_snippet, self.conversation)
+        ai_message = await self.conversation_service.save_ai_message(self.conversation, ai_text)
+        await self.ai_service.generate_summary(self.conversation)
+
+        await self.broadcast_event("done")
+        await self.broadcast_message(ai_message)
 
     async def broadcast_message(self, message):
         await self.channel_layer.group_send(

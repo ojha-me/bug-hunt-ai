@@ -14,7 +14,7 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { useState, useMemo, useEffect, useRef } from "react";
-import { FaExclamationCircle } from "react-icons/fa";
+import { FaExclamationCircle, FaRedo } from "react-icons/fa";
 import { RiFocus3Line, RiMicLine, RiMicOffLine } from "react-icons/ri";
 import { useSystemDesignWebSocket } from "../hooks/useSystemDesignWebSocket";
 import { useSpeechToText } from "../hooks/useSpeechToText";
@@ -47,6 +47,7 @@ export const SystemDesignRoom = () => {
     messages: liveMessages,
     sendMessage,
     submitDiagram,
+    regenerate,
     isConnected,
     isTyping,
   } = useSystemDesignWebSocket(conversationId!);
@@ -66,6 +67,9 @@ export const SystemDesignRoom = () => {
       (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
   }, [conversation, liveMessages]);
+
+  const lastMsg = allMessages[allMessages.length - 1];
+  const danglingUserMsg = !!lastMsg && lastMsg.sender === "user" && !isTyping;
 
   const handleSendMessage = () => {
     if (message.trim() && isConnected) {
@@ -186,6 +190,21 @@ export const SystemDesignRoom = () => {
           <Divider />
           <Box style={{ padding: "0.75rem", flexShrink: 0, background: "var(--app-surface)", borderTop: "1px solid var(--app-line)" }}>
             <Stack gap="sm">
+              {danglingUserMsg && (
+                <Group gap="xs" p="xs" justify="space-between" wrap="nowrap" style={{ borderRadius: 8, background: "var(--mantine-color-orange-light)" }}>
+                  <Text size="xs" c="dimmed" lineClamp={1}>
+                    No response yet — the connection may have dropped.
+                  </Text>
+                  <Group gap={6} wrap="nowrap">
+                    <Button size="compact-xs" variant="light" color="orange" leftSection={<FaRedo size={10} />} disabled={!isConnected} onClick={regenerate}>
+                      Get response
+                    </Button>
+                    <Button size="compact-xs" variant="subtle" color="gray" onClick={() => setMessage(lastMsg.content)}>
+                      Edit
+                    </Button>
+                  </Group>
+                </Group>
+              )}
               <Group gap="sm" align="flex-end">
                 <Textarea
                   placeholder="Ask about requirements, capacity, trade-offs..."

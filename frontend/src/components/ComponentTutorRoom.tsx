@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { Box, Text, Button, Stack, Group, Alert, Loader, Textarea, Badge, Anchor, ActionIcon, Tooltip } from "@mantine/core";
 import { useState, useMemo, useEffect, useRef } from "react";
-import { FaExclamationCircle, FaArrowLeft, FaComments } from "react-icons/fa";
+import { FaExclamationCircle, FaArrowLeft, FaComments, FaRedo } from "react-icons/fa";
 import { RiMicLine, RiMicOffLine } from "react-icons/ri";
 import ReactMarkdown from "react-markdown";
 import { useQuery } from "@tanstack/react-query";
@@ -16,7 +16,7 @@ export const ComponentTutorRoom = () => {
   const [message, setMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { messages: liveMessages, sendMessage, isConnected, isTyping } = useComponentTutorWebSocket(conversationId!);
+  const { messages: liveMessages, sendMessage, regenerate, isConnected, isTyping } = useComponentTutorWebSocket(conversationId!);
 
   const { supported: dictationSupported, listening: dictating, interim: dictationInterim, start: startDictation, stop: stopDictation } =
     useSpeechToText((segment) => {
@@ -40,6 +40,9 @@ export const ComponentTutorRoom = () => {
     const merged = [...history, ...liveMessages.filter((m) => !ids.has(m.id))];
     return merged.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
   }, [conversation, liveMessages]);
+
+  const lastMsg = allMessages[allMessages.length - 1];
+  const danglingUserMsg = !!lastMsg && lastMsg.sender === "user" && !isTyping;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -145,6 +148,21 @@ export const ComponentTutorRoom = () => {
 
         <Box style={{ padding: "0.75rem", flexShrink: 0, borderTop: "1px solid var(--app-line)" }}>
           <Stack gap="sm">
+            {danglingUserMsg && (
+              <Group gap="xs" p="xs" justify="space-between" wrap="nowrap" style={{ borderRadius: 8, background: "var(--mantine-color-orange-light)" }}>
+                <Text size="xs" c="dimmed" lineClamp={1}>
+                  No response yet — the connection may have dropped.
+                </Text>
+                <Group gap={6} wrap="nowrap">
+                  <Button size="compact-xs" variant="light" color="orange" leftSection={<FaRedo size={10} />} disabled={!isConnected} onClick={regenerate}>
+                    Get response
+                  </Button>
+                  <Button size="compact-xs" variant="subtle" color="gray" onClick={() => setMessage(lastMsg.content)}>
+                    Edit
+                  </Button>
+                </Group>
+              </Group>
+            )}
             <Group gap="sm" align="flex-end">
               <Textarea
                 placeholder="Answer the tutor, or ask a question..."

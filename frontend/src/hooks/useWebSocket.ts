@@ -127,6 +127,15 @@ export const useWebSocket = (conversationId: string) => {
     }
   }, []);
 
-  // Expose the new isTyping state
-  return { messages, sendMessage, isConnected, isTyping };
+  // Ask the server to (re)generate an AI reply to the last user message —
+  // recovers from a dropped socket without resending the text.
+  const regenerate = useCallback(() => {
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify({ action: "regenerate" }));
+    } else {
+      console.warn("WebSocket not connected");
+    }
+  }, []);
+
+  return { messages, sendMessage, regenerate, isConnected, isTyping };
 };

@@ -87,5 +87,13 @@ export const useComponentTutorWebSocket = (conversationId: string) => {
     }
   }, []);
 
-  return { messages, sendMessage, isConnected, isTyping };
+  const regenerate = useCallback(() => {
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify({ action: "regenerate" }));
+    } else {
+      console.warn("WebSocket not connected");
+    }
+  }, []);
+
+  return { messages, sendMessage, regenerate, isConnected, isTyping };
 };

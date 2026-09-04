@@ -40,6 +40,10 @@ class SystemDesignConsumer(AsyncWebsocketConsumer):
         data = json.loads(text_data)
         action = data.get("action", "message")
 
+        if action == "regenerate":
+            await self.handle_regenerate()
+            return
+
         if action == "submit_diagram":
             await self.handle_diagram_submission(data.get("diagram"))
             return
@@ -100,6 +104,39 @@ class SystemDesignConsumer(AsyncWebsocketConsumer):
                 "diagram": ai_data.get("diagram"),
             })
         )
+
+        await self.broadcast_event("done")
+        await self.broadcast_message(ai_message)
+
+    async def handle_regenerate(self):
+        """
+        Generate an AI reply to the latest user message that has no response yet
+        (e.g. the socket dropped before the AI answered). No new user message is
+        saved. Works for the Component Tutor consumer too, since it reuses this.
+        """
+        last = await database_sync_to_async(
+            lambda: self.conversation.messages.order_by("-created_at").first()
+        )()
+        if not last or last.sender != "user":
+            return
+
+        await self.broadcast_event("typing_start")
+        await asyncio.sleep(1)
+
+        context = await self._build_context()
+        ai_data = await database_sync_to_async(self.ai_service.generate_response)(
+            last.content, diagram=last.diagram, context=context
+        )
+        ai_message = await self.conversation_service.save_ai_message(
+            self.conversation, json.dumps({
+                "content": ai_data.get("content"),
+                "type": ai_data.get("type"),
+                "diagram": ai_data.get("diagram"),
+            })
+        )
+        if ai_data.get("diagram"):
+            ai_message.diagram = ai_data.get("diagram")
+            await database_sync_to_async(ai_message.save)(update_fields=["diagram"])
 
         await self.broadcast_event("done")
         await self.broadcast_message(ai_message)

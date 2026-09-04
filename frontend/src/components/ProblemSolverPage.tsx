@@ -25,6 +25,8 @@ import { FaArrowLeft, FaPlay, FaPaperPlane, FaCheckCircle, FaTimesCircle } from 
 import { RiLightbulbLine } from "react-icons/ri";
 import { getProblem, getProblemAttempts, submitProblem, runProblem, getProblemTutorHistory, postProblemTutorChat } from "../api/challenges";
 import { useMantineColorScheme } from "@mantine/core";
+import { useMockSession } from "../hooks/useMockSession";
+import { MockBar } from "./MockBar";
 import type { Difficulty, ProblemAttempt, TutorTurn } from "../types/challenges/api_types";
 import type { TestCaseResult } from "../types/execution/api_types";
 
@@ -66,6 +68,7 @@ export const ProblemSolverPage = () => {
   const [isTutorThinking, setIsTutorThinking] = useState(false);
   const [expandedAttempts, setExpandedAttempts] = useState<Set<string>>(new Set());
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const mock = useMockSession();
 
   const persistCode = (next: string) => {
     if (problem) localStorage.setItem(storageKey(problem.id), next);
@@ -143,6 +146,7 @@ export const ProblemSolverPage = () => {
       setSummary(response.summary ?? null);
       setActiveTab("tests");
       refetchAttempts();
+      if (response.summary?.all_passed) mock.complete(problem.id);
     } catch (e) {
       setResults(null);
       setSummary(null);
@@ -234,6 +238,18 @@ export const ProblemSolverPage = () => {
         </Group>
       </Group>
 
+      {mock.session && (
+        <MockBar
+          remainingMs={mock.remainingMs}
+          index={mock.session.index}
+          total={mock.session.problemIds.length}
+          isCurrent={mock.isCurrent(problem.id)}
+          onSkip={mock.skip}
+          onEnd={mock.endNow}
+          onGoCurrent={mock.goToCurrent}
+        />
+      )}
+
       {lastAttempt && (
         <Alert
           mb="md"
@@ -302,7 +318,7 @@ export const ProblemSolverPage = () => {
               <Tabs.List px="sm" pt="sm">
                 <Tabs.Tab value="code">Editor</Tabs.Tab>
                 <Tabs.Tab value="tests">Tests</Tabs.Tab>
-                <Tabs.Tab value="tutor">Tutor</Tabs.Tab>
+                {!mock.session && <Tabs.Tab value="tutor">Tutor</Tabs.Tab>}
                 <Tabs.Tab value="attempts">Submissions ({attempts?.length ?? 0})</Tabs.Tab>
               </Tabs.List>
 

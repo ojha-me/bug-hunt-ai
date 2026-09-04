@@ -29,6 +29,7 @@ import {
   FaHome,
   FaDumbbell,
   FaCubes,
+  FaStopwatch,
 } from "react-icons/fa";
 import { RiStickyNoteLine } from "react-icons/ri";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -313,6 +314,13 @@ export const Sidebar = () => {
               active={path.startsWith("/challenges")}
               collapsed={isCollapsed}
               onClick={() => navigate("/challenges")}
+            />
+            <NavItem
+              icon={<FaStopwatch size={16} />}
+              label="Mock Interview"
+              active={path.startsWith("/mock")}
+              collapsed={isCollapsed}
+              onClick={() => navigate("/mock")}
             />
             <NavItem
               icon={<FaProjectDiagram size={16} />}

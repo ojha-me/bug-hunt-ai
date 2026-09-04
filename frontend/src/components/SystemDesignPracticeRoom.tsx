@@ -20,9 +20,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FaExclamationCircle, FaLock, FaCheck, FaPlay, FaDumbbell, FaArrowLeft } from "react-icons/fa";
 import { RiMicLine, RiMicOffLine } from "react-icons/ri";
-import { useSDPracticeWebSocket } from "../hooks/useSDPracticeWebSocket";
+import { useSDPracticeWebSocket, type PracticeMessage } from "../hooks/useSDPracticeWebSocket";
 import { useSpeechToText } from "../hooks/useSpeechToText";
 import { getSDPracticeSessions } from "../api/systemDesign";
+import { getConversation } from "../api/conversation";
 import { SystemDesignWhiteboard } from "./SystemDesignWhiteboard";
 import { SystemDesignDiagram } from "./SystemDesignDiagram";
 import type { SDPracticeSessionResponse } from "../types/system_design/api_types";
@@ -57,6 +58,27 @@ export const SystemDesignPracticeRoom = () => {
   const { messages, sendMessage, submitDiagram, isConnected, isTyping, phaseState, sessionCompleted } =
     useSDPracticeWebSocket(conversationId ?? "");
 
+  // The transcript is persisted server-side; load it so returning to a drill
+  // shows prior messages rather than an empty room.
+  const { data: conversation } = useQuery({
+    queryKey: ["conversation", conversationId, "sd-practice"],
+    queryFn: () => getConversation(conversationId!),
+    enabled: !!conversationId,
+  });
+
+  const allMessages = useMemo<PracticeMessage[]>(() => {
+    const history: PracticeMessage[] = (conversation?.messages ?? []).map((m) => ({
+      id: m.id,
+      sender: m.sender as "user" | "ai",
+      content: m.content,
+      timestamp: m.timestamp,
+      diagram: m.diagram ?? undefined,
+    }));
+    const seen = new Set(history.map((m) => m.id));
+    const merged = [...history, ...messages.filter((m) => !seen.has(m.id))];
+    return merged.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  }, [conversation, messages]);
+
   const currentPhase = phaseState?.current_phase ?? session?.current_phase ?? 1;
   const completedPhases = useMemo(() => phaseCompleteStates(phaseState), [phaseState]);
   const currentDef = getPhaseDef(currentPhase);
@@ -84,7 +106,7 @@ export const SystemDesignPracticeRoom = () => {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isTyping]);
+  }, [allMessages, isTyping]);
 
   if (isLoading) {
     return (
@@ -243,13 +265,13 @@ export const SystemDesignPracticeRoom = () => {
           </Box>
 
           <Box style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "1rem" }}>
-            {messages.length === 0 && !isTyping ? (
+            {allMessages.length === 0 && !isTyping ? (
               <Text c="dimmed" ta="center" pt="xl">
                 Your interviewer will open with the case study here. Respond with your thinking, phase by phase.
               </Text>
             ) : (
               <Stack gap="sm">
-                {messages.map((msg) => (
+                {allMessages.map((msg) => (
                   <Box
                     key={msg.id}
                     style={{

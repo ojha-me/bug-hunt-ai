@@ -58,7 +58,7 @@ export const ProblemSolverPage = () => {
   const [executionError, setExecutionError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState<string | null>("cases");
+  const [activeTab, setActiveTab] = useState<string | null>("code");
 
   const [tutorTurns, setTutorTurns] = useState<TutorTurn[]>([]);
   const [tutorInput, setTutorInput] = useState("");
@@ -90,12 +90,12 @@ export const ProblemSolverPage = () => {
       const response = await runProblem(problem.id, code, "python");
       setResults(response.test_results ?? null);
       setSummary(response.summary ?? null);
-      setActiveTab("cases");
+      setActiveTab("tests");
     } catch (e) {
       setResults(null);
       setSummary(null);
       setExecutionError(e instanceof Error ? e.message : "Failed to run tests");
-      setActiveTab("cases");
+      setActiveTab("tests");
     } finally {
       setIsRunning(false);
     }
@@ -110,13 +110,13 @@ export const ProblemSolverPage = () => {
       localStorage.setItem(storageKey(problem.id), code);
       setResults(response.test_results ?? null);
       setSummary(response.summary ?? null);
-      setActiveTab("cases");
+      setActiveTab("tests");
       refetchAttempts();
     } catch (e) {
       setResults(null);
       setSummary(null);
       setExecutionError(e instanceof Error ? e.message : "Submission failed");
-      setActiveTab("cases");
+      setActiveTab("tests");
     } finally {
       setIsSubmitting(false);
     }
@@ -326,30 +326,46 @@ export const ProblemSolverPage = () => {
                           </Text>
                         )}
                       </Group>
-                      {r.error && (
-                        <Code block style={{ whiteSpace: "pre-wrap", fontSize: 11, color: "red" }}>
+                      {r.error ? (
+                        <Code block style={{ whiteSpace: "pre-wrap", fontSize: 11, color: "var(--mantine-color-red-7)" }}>
                           {r.error}
                         </Code>
-                      )}
-                      {r.verdict === "failed" && (
-                        <Group align="flex-start" gap="md">
-                          <Box style={{ flex: 1 }}>
+                      ) : (
+                        <Stack gap={6}>
+                          <Box>
                             <Text size="xs" fw={600} c="dimmed">
-                              Expected
+                              Input
                             </Text>
                             <Code block style={{ whiteSpace: "pre-wrap", fontSize: 11 }}>
-                              {r.expected_output}
+                              {r.stdin}
                             </Code>
                           </Box>
-                          <Box style={{ flex: 1 }}>
-                            <Text size="xs" fw={600} c="dimmed">
-                              Got
-                            </Text>
-                            <Code block style={{ whiteSpace: "pre-wrap", fontSize: 11 }}>
-                              {r.actual_output}
-                            </Code>
-                          </Box>
-                        </Group>
+                          <Group align="flex-start" gap="md" wrap="nowrap">
+                            <Box style={{ flex: 1, minWidth: 0 }}>
+                              <Text size="xs" fw={600} c="dimmed">
+                                Expected
+                              </Text>
+                              <Code block style={{ whiteSpace: "pre-wrap", fontSize: 11 }}>
+                                {r.expected_output}
+                              </Code>
+                            </Box>
+                            <Box style={{ flex: 1, minWidth: 0 }}>
+                              <Text size="xs" fw={600} c="dimmed">
+                                Got
+                              </Text>
+                              <Code
+                                block
+                                style={{
+                                  whiteSpace: "pre-wrap",
+                                  fontSize: 11,
+                                  color: r.verdict === "passed" ? undefined : "var(--mantine-color-red-7)",
+                                }}
+                              >
+                                {r.actual_output || "(no output)"}
+                              </Code>
+                            </Box>
+                          </Group>
+                        </Stack>
                       )}
                     </Card>
                   ))}

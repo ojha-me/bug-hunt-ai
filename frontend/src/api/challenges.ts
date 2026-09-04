@@ -35,6 +35,19 @@ export const submitProblem = async (
   return response.data;
 };
 
+// Judge against the problem's stored test cases without recording an attempt.
+export const runProblem = async (
+  problemId: string,
+  code: string,
+  language: string
+): Promise<RunResponse> => {
+  const response = await apiClient.post<RunResponse>(`/challenges/problems/${problemId}/run`, {
+    code,
+    language,
+  });
+  return response.data;
+};
+
 export const getProblemAttempts = async (problemId: string): Promise<ProblemAttempt[]> => {
   const response = await apiClient.get<ProblemAttempt[]>(`/challenges/problems/${problemId}/attempts`);
   return response.data;

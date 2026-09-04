@@ -22,8 +22,7 @@ import ReactMarkdown from "react-markdown";
 import Editor from "@monaco-editor/react";
 import { FaArrowLeft, FaPlay, FaPaperPlane, FaCheckCircle, FaTimesCircle } from "react-icons/fa";
 import { RiLightbulbLine } from "react-icons/ri";
-import { getProblem, getProblemAttempts, submitProblem, getProblemTutorHistory, postProblemTutorChat } from "../api/challenges";
-import { runCode } from "../api/execution";
+import { getProblem, getProblemAttempts, submitProblem, runProblem, getProblemTutorHistory, postProblemTutorChat } from "../api/challenges";
 import { useMantineColorScheme } from "@mantine/core";
 import type { Difficulty, ProblemAttempt, TutorTurn } from "../types/challenges/api_types";
 import type { TestCaseResult } from "../types/execution/api_types";
@@ -88,11 +87,7 @@ export const ProblemSolverPage = () => {
     setIsRunning(true);
     setExecutionError(null);
     try {
-      const response = await runCode({
-        code,
-        language: "python",
-        test_cases: problem.test_cases,
-      });
+      const response = await runProblem(problem.id, code, "python");
       setResults(response.test_results ?? null);
       setSummary(response.summary ?? null);
       setActiveTab("cases");

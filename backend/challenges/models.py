@@ -15,6 +15,10 @@ class CodingProblem(models.Model):
         MEDIUM = "medium", "Medium"
         HARD = "hard", "Hard"
 
+    class JudgeMode(models.TextChoices):
+        STDIO = "stdio", "Stdin/Stdout"
+        FUNCTION = "function", "Function (LeetCode-style)"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=220)
     slug = models.SlugField(max_length=220, unique=True)
@@ -29,9 +33,31 @@ class CodingProblem(models.Model):
     )
     constraints = models.JSONField(default=list, blank=True, help_text="List of constraint strings")
     starter_code = models.TextField(blank=True, help_text="Python scaffold for the user")
+
+    # --- Judging ---
+    judge_mode = models.CharField(
+        max_length=12, choices=JudgeMode.choices, default=JudgeMode.FUNCTION,
+        help_text="stdio: whole-program stdin/stdout. function: call a method on Solution.",
+    )
+    entry_point = models.CharField(
+        max_length=80, blank=True, default="",
+        help_text="Function mode: the method name on Solution to call (e.g. 'twoSum').",
+    )
+    param_types = models.JSONField(
+        default=list, blank=True,
+        help_text="Function mode: per-arg type tags ('json'|'listnode'|'tree'); 'json' passes through.",
+    )
+    return_type = models.CharField(
+        max_length=20, blank=True, default="json",
+        help_text="Function mode: 'json'|'listnode'|'tree' — how to serialize the return value.",
+    )
+    compare_mode = models.CharField(
+        max_length=20, blank=True, default="exact",
+        help_text="'exact' | 'unordered' | 'unordered_nested' — how the return is compared to expected.",
+    )
     test_cases = models.JSONField(
         default=list, blank=True,
-        help_text="List of {name, stdin, expected_output}"
+        help_text="stdio: {name, stdin, expected_output}. function: {name, args, expected}.",
     )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)

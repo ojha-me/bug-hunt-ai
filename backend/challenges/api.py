@@ -4,9 +4,23 @@ from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
 from ninja import Router
 from users.utils.ninja import get, post
-from execution.services.python_executor import judge_python
+from execution.services.python_executor import judge_python, judge_function
 from execution.api_types import RunResponse, TestCaseResult
 from challenges.models import CodingProblem, ProblemAttempt, ProblemTutorSession
+
+
+def _judge_problem(problem: CodingProblem, code: str, timeout: int = 5):
+    """Dispatch to the right judge based on the problem's mode."""
+    if problem.judge_mode == CodingProblem.JudgeMode.FUNCTION:
+        return judge_function(
+            code, problem.test_cases,
+            entry_point=problem.entry_point,
+            param_types=problem.param_types or [],
+            return_type=problem.return_type or "json",
+            compare_mode=problem.compare_mode or "exact",
+            timeout=timeout,
+        )
+    return judge_python(code, problem.test_cases, timeout=timeout)
 from challenges.api_types import (
     CodingProblemSummary,
     CodingProblemDetail,
@@ -83,7 +97,7 @@ def get_problem(request: HttpRequest, problem_id: UUID):
         examples=problem.examples,
         constraints=problem.constraints,
         starter_code=problem.starter_code,
-        test_cases=problem.test_cases,
+        test_cases=[],  # judging is server-side; never ship expected answers to the client
         stats=problem.attempt_stats,
     )
 
@@ -102,7 +116,7 @@ def submit_problem(request: HttpRequest, problem_id: UUID, params: SubmitParams)
     if params.language != "python":
         return RunResponse(output="", error="Only Python is supported in this demo.", success=False)
 
-    results, summary = judge_python(params.code, problem.test_cases, timeout=5)
+    results, summary = _judge_problem(problem, params.code, timeout=5)
 
     if summary["all_passed"]:
         verdict = "passed"
@@ -147,6 +161,29 @@ def submit_problem(request: HttpRequest, problem_id: UUID, params: SubmitParams)
         error=None,
         success=summary["all_passed"],
         test_results=test_results,
+        summary=summary,
+    )
+
+
+@post(router, "/problems/{problem_id}/run", response={200: RunResponse, 401: Dict[str, str], 404: Dict[str, str]})
+def run_problem(request: HttpRequest, problem_id: UUID, params: SubmitParams):
+    """
+    Judge the user's code against the problem's stored test cases WITHOUT
+    recording an attempt (the "Run tests" button). Judging happens server-side
+    using the problem's stored config, so answers are never sent to the client.
+    """
+    problem = get_object_or_404(CodingProblem, id=problem_id, is_active=True)
+    if not problem.test_cases:
+        return RunResponse(output="", error="This problem has no test cases.", success=False)
+    if params.language != "python":
+        return RunResponse(output="", error="Only Python is supported in this demo.", success=False)
+
+    results, summary = _judge_problem(problem, params.code, timeout=5)
+    return RunResponse(
+        output=f"{summary['passed']}/{summary['total']} test cases passed",
+        error=None,
+        success=summary["all_passed"],
+        test_results=[TestCaseResult(**r) for r in results],
         summary=summary,
     )
 

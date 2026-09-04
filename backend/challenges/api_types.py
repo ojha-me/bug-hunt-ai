@@ -32,6 +32,7 @@ class ProblemAttemptOut(Schema):
     total_count: int
     execution_time_ms: Optional[int] = None
     submitted_at: str
+    code: str = ""
 
 
 class MyProgressOut(Schema):

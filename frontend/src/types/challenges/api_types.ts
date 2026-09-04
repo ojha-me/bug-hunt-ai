@@ -37,6 +37,7 @@ export interface ProblemAttempt {
   total_count: number;
   execution_time_ms: number | null;
   submitted_at: string;
+  code: string;
 }
 
 export interface MyProgress {

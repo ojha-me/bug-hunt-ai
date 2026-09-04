@@ -201,6 +201,7 @@ def list_attempts(request: HttpRequest, problem_id: UUID):
             total_count=a.total_count,
             execution_time_ms=a.execution_time_ms,
             submitted_at=a.submitted_at.isoformat(),
+            code=a.code,
         )
         for a in attempts
     ]

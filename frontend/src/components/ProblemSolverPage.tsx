@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Box,
   Text,
@@ -15,6 +15,7 @@ import {
   Textarea,
   Skeleton,
   SimpleGrid,
+  Collapse,
 } from "@mantine/core";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -63,6 +64,35 @@ export const ProblemSolverPage = () => {
   const [tutorTurns, setTutorTurns] = useState<TutorTurn[]>([]);
   const [tutorInput, setTutorInput] = useState("");
   const [isTutorThinking, setIsTutorThinking] = useState(false);
+  const [expandedAttempts, setExpandedAttempts] = useState<Set<string>>(new Set());
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const persistCode = (next: string) => {
+    if (problem) localStorage.setItem(storageKey(problem.id), next);
+  };
+
+  // Autosave the editor to localStorage as you type (debounced), so a refresh
+  // never loses an unsubmitted draft.
+  const handleCodeChange = (v?: string) => {
+    const next = v ?? "";
+    setCode(next);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => persistCode(next), 600);
+  };
+
+  const toggleAttempt = (id: string) =>
+    setExpandedAttempts((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+
+  const loadAttemptCode = (attemptCode: string) => {
+    setCode(attemptCode);
+    persistCode(attemptCode);
+    setActiveTab("code");
+  };
 
   useEffect(() => {
     if (!problem) return;
@@ -84,6 +114,7 @@ export const ProblemSolverPage = () => {
 
   const handleRunTests = async () => {
     if (!problem) return;
+    persistCode(code);
     setIsRunning(true);
     setExecutionError(null);
     try {
@@ -281,7 +312,7 @@ export const ProblemSolverPage = () => {
                   language="python"
                   theme={colorScheme === "dark" ? "vs-dark" : "vs-light"}
                   value={code}
-                  onChange={(v) => setCode(v ?? "")}
+                  onChange={handleCodeChange}
                   options={{ minimap: { enabled: false }, fontSize: 13, scrollBeyondLastLine: false }}
                 />
               </Tabs.Panel>
@@ -460,7 +491,7 @@ export const ProblemSolverPage = () => {
                   {attempts?.length ? (
                     attempts.map((a) => (
                       <Card key={a.id} withBorder radius="sm" mb="sm" p="sm">
-                        <Group justify="space-between">
+                        <Group justify="space-between" wrap="nowrap">
                           <Group gap="sm">
                             <Badge size="xs" color={verdictColor(a.verdict)}>
                               {a.verdict}
@@ -469,11 +500,34 @@ export const ProblemSolverPage = () => {
                               {a.passed_count}/{a.total_count} passed
                             </Text>
                           </Group>
-                          <Text size="xs" c="dimmed">
-                            {new Date(a.submitted_at).toLocaleString()}
-                            {a.execution_time_ms ? ` · ${a.execution_time_ms}ms` : ""}
-                          </Text>
+                          <Group gap="sm" wrap="nowrap">
+                            <Text size="xs" c="dimmed">
+                              {new Date(a.submitted_at).toLocaleString()}
+                              {a.execution_time_ms ? ` · ${a.execution_time_ms}ms` : ""}
+                            </Text>
+                            <Button size="compact-xs" variant="subtle" onClick={() => toggleAttempt(a.id)}>
+                              {expandedAttempts.has(a.id) ? "Hide code" : "View code"}
+                            </Button>
+                          </Group>
                         </Group>
+                        <Collapse in={expandedAttempts.has(a.id)}>
+                          <Code
+                            block
+                            style={{ whiteSpace: "pre", fontSize: 11, marginTop: 8, maxHeight: 260, overflow: "auto" }}
+                          >
+                            {a.code || "(no code saved)"}
+                          </Code>
+                          <Group justify="flex-end" mt="xs">
+                            <Button
+                              size="compact-xs"
+                              variant="light"
+                              disabled={!a.code}
+                              onClick={() => loadAttemptCode(a.code)}
+                            >
+                              Load into editor
+                            </Button>
+                          </Group>
+                        </Collapse>
                       </Card>
                     ))
                   ) : (

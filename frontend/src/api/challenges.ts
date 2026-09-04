@@ -8,6 +8,19 @@ import type {
 } from "../types/challenges/api_types";
 import type { RunResponse } from "../types/execution/api_types";
 
+export interface ProblemListSummary {
+  slug: string;
+  name: string;
+  description: string;
+  problem_slugs: string[];
+  count: number;
+}
+
+export const getProblemLists = async (): Promise<ProblemListSummary[]> => {
+  const response = await apiClient.get<ProblemListSummary[]>("/challenges/lists");
+  return response.data;
+};
+
 export const getProblems = async (): Promise<CodingProblemSummary[]> => {
   const response = await apiClient.get<CodingProblemSummary[]>("/challenges/problems");
   return response.data;

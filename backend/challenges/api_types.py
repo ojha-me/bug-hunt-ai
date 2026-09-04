@@ -46,6 +46,14 @@ class MyProgressOut(Schema):
     best_total: int = 0
 
 
+class ProblemListOut(Schema):
+    slug: str
+    name: str
+    description: str = ""
+    problem_slugs: List[str] = []
+    count: int = 0
+
+
 class TutorChatIn(Schema):
     message: str = ""
     code: str = ""

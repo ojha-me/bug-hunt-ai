@@ -78,6 +78,27 @@ class CodingProblem(models.Model):
         }
 
 
+class ProblemList(models.Model):
+    """
+    A curated, ordered study list of problems (e.g. Blind 75, a DP ladder),
+    referenced by problem slug so it's independent of problem IDs.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    slug = models.SlugField(max_length=120, unique=True)
+    name = models.CharField(max_length=160)
+    description = models.TextField(blank=True, default="")
+    order = models.IntegerField(default=0)
+    problem_slugs = ArrayField(models.CharField(max_length=220), default=list, blank=True,
+                               help_text="Ordered problem slugs in this list")
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["order", "name"]
+
+    def __str__(self):
+        return self.name
+
+
 class ProblemAttempt(models.Model):
     """
     A user's submission for a coding problem. Records the judge verdict.

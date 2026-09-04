@@ -6,7 +6,7 @@ from ninja import Router
 from users.utils.ninja import get, post
 from execution.services.python_executor import judge_python, judge_function
 from execution.api_types import RunResponse, TestCaseResult
-from challenges.models import CodingProblem, ProblemAttempt, ProblemTutorSession
+from challenges.models import CodingProblem, ProblemAttempt, ProblemTutorSession, ProblemList
 
 
 def _judge_problem(problem: CodingProblem, code: str, timeout: int = 5):
@@ -27,6 +27,7 @@ from challenges.api_types import (
     SubmitParams,
     ProblemAttemptOut,
     MyProgressOut,
+    ProblemListOut,
     TutorChatIn,
     TutorChatOut,
     TutorHistoryOut,
@@ -52,6 +53,17 @@ def _problem_summary(problem: CodingProblem) -> CodingProblemSummary:
 def list_problems(request: HttpRequest):
     problems = CodingProblem.objects.filter(is_active=True)
     return [_problem_summary(p) for p in problems]
+
+
+@get(router, "/lists", response={200: List[ProblemListOut], 401: Dict[str, str]})
+def list_problem_lists(request: HttpRequest):
+    return [
+        ProblemListOut(
+            slug=pl.slug, name=pl.name, description=pl.description,
+            problem_slugs=pl.problem_slugs, count=len(pl.problem_slugs),
+        )
+        for pl in ProblemList.objects.filter(is_active=True)
+    ]
 
 
 @get(router, "/my-progress", response={200: List[MyProgressOut], 401: Dict[str, str]})

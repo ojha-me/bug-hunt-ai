@@ -4,7 +4,7 @@ from ai_core.utils.groq_llm import GroqChat
 
 logger = logging.getLogger('ai_core.utils.system_design_ai')
 
-AI_MODEL = "qwen/qwen3-32b"
+AI_MODEL = "qwen/qwen3.8-27b"
 
 
 SYSTEM_DESIGN_SYSTEM_PROMPT = """You are a warm, patient system design TUTOR. Your job is to TEACH the fundamentals first — build the user's mental model of how large systems work — and only move to designing a specific system once they understand the basics (or explicitly ask to design one).

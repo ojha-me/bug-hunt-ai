@@ -13,7 +13,7 @@ from system_design.utils.sd_practice_prompts import (
 
 logger = logging.getLogger('system_design.practice')
 
-AI_MODEL = "qwen/qwen3-32b"
+AI_MODEL = "qwen/qwen3.8-27b"
 
 
 def _extract_json(text: str) -> dict:

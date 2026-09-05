@@ -5,7 +5,7 @@ from .prompts import SYSTEM_PROMPT
 from .groq_llm import GroqChat
 from asgiref.sync import sync_to_async
 
-AI_MODEL = "qwen/qwen3-32b"
+AI_MODEL = "qwen/qwen3.8-27b"
 
 logger = logging.getLogger('ai_core.utils.ai_helpers')
 

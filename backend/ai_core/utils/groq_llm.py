@@ -59,8 +59,8 @@ class GroqChat:
     """
 
     MODELS = {
-        "fast": "qwen/qwen3-32b",
-        "default": "qwen/qwen3-32b",
+        "fast": "qwen/qwen3.8-27b",
+        "default": "qwen/qwen3.8-27b",
     }
 
     def __init__(self, model: str = "default"):

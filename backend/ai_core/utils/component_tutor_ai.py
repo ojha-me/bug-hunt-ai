@@ -11,7 +11,7 @@ from ai_core.utils.groq_llm import GroqChat
 
 logger = logging.getLogger('ai_core.utils.component_tutor_ai')
 
-AI_MODEL = "qwen/qwen3-32b"
+AI_MODEL = "qwen/qwen3.8-27b"
 
 # Terse grounding per component: the concepts the tutor should cover over a
 # session. Deliberately short — the model supplies the scenarios and delivery.

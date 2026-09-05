@@ -31,6 +31,7 @@ export const LearningPathNotesView = () => {
   const [editingNote, setEditingNote] = useState<MessageNoteResponse | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editContent, setEditContent] = useState("");
+  const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null);
 
   // Fetch learning path details
   const { data: learningPathDetail } = useQuery<LearningTopicDetailResponse>({
@@ -121,8 +122,12 @@ export const LearningPathNotesView = () => {
   };
 
   const handleDeleteClick = (noteId: string) => {
-    if (window.confirm("Are you sure you want to delete this note?")) {
-      deleteNoteMutation.mutate(noteId);
+    setDeletingNoteId(noteId);
+  };
+  const handleDeleteConfirm = () => {
+    if (deletingNoteId) {
+      deleteNoteMutation.mutate(deletingNoteId);
+      setDeletingNoteId(null);
     }
   };
 
@@ -281,6 +286,25 @@ export const LearningPathNotesView = () => {
           </Accordion>
         )}
       </Stack>
+
+      <Modal
+        opened={!!deletingNoteId}
+        onClose={() => setDeletingNoteId(null)}
+        title="Delete note"
+        centered
+      >
+        <Text size="sm" mb="md">
+          Are you sure you want to delete this note? This cannot be undone.
+        </Text>
+        <Group justify="flex-end">
+          <Button variant="default" onClick={() => setDeletingNoteId(null)}>
+            Cancel
+          </Button>
+          <Button color="red" onClick={handleDeleteConfirm} loading={deleteNoteMutation.isPending}>
+            Delete
+          </Button>
+        </Group>
+      </Modal>
 
       {/* Edit Modal */}
       <Modal

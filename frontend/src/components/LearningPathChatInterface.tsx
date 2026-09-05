@@ -122,7 +122,7 @@ export const LearningPathChatInterface = () => {
   }, []);
 
   const handleSubtopicChanged = useCallback((data: { new_subtopic: string; completed_subtopic: string }) => {
-    console.log("Subtopic changed:", data);
+    void data;
     setCurrentProgress(null);
     setShowNextSubtopicButton(false);
   }, []);

@@ -60,7 +60,6 @@ export const useWebSocket = (conversationId: string) => {
       socketRef.current = ws;
 
       ws.onopen = () => {
-        console.log("WebSocket connected");
         setIsConnected(true);
         reconnectAttemptsRef.current = 0;
       };
@@ -98,7 +97,6 @@ export const useWebSocket = (conversationId: string) => {
           const attempt = reconnectAttemptsRef.current + 1;
           reconnectAttemptsRef.current = attempt;
           const timeout = 2 ** attempt * 1000;
-          console.log(`WebSocket closed unexpectedly, reconnecting in ${timeout}ms`);
           setTimeout(connect, timeout);
         }
       };

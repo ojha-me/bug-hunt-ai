@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 
 interface SidebarContextType {
   isCollapsed: boolean;
@@ -7,8 +7,25 @@ interface SidebarContextType {
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 
+const STORAGE_KEY = 'sidebar-collapsed';
+
 export const SidebarProvider = ({ children }: { children: ReactNode }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return stored ? JSON.parse(stored) === true : false;
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(isCollapsed));
+    } catch {
+      // ignore write errors (e.g. storage disabled)
+    }
+  }, [isCollapsed]);
 
   return (
     <SidebarContext.Provider value={{ isCollapsed, setIsCollapsed }}>

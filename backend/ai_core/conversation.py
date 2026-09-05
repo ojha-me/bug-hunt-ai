@@ -42,9 +42,9 @@ def get_conversations(request: HttpRequest):
 
 
 
-@get(router, "/{conversation_id}/", response={200: ConversationResponse, 401: Dict[str, str]})
+@get(router, "/{conversation_id}/", response={200: ConversationResponse, 401: Dict[str, str], 404: Dict[str, str]})
 def get_conversation(request: HttpRequest, conversation_id: UUID):
-    conversation = get_object_or_404(Conversation, id=conversation_id)
+    conversation = get_object_or_404(Conversation, id=conversation_id, user=request.user)
     if conversation is None:
         conversation = Conversation.objects.create(user=request.user, title="New Conversation")
         
@@ -122,6 +122,6 @@ def update_conversation_title(request: HttpRequest, params: UpdateConversationTi
 
 @delete(router, "/{conversation_id}/", response={204: None, 401: Dict[str, str], 404: Dict[str, str]})
 def delete_conversation(request: HttpRequest, conversation_id: UUID):
-    conversation = get_object_or_404(Conversation, id=conversation_id)
+    conversation = get_object_or_404(Conversation, id=conversation_id, user=request.user)
     conversation.delete()
     return 204, None

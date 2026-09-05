@@ -101,7 +101,6 @@ export const LearningPathMessage = ({
     mutationFn: ({ noteId, content }: { noteId: string; content: string }) =>
       updateMessageNote(noteId, { content }),
     onSuccess: () => {
-      console.log("Note updated successfully");
       queryClient.invalidateQueries({ queryKey: ["message-notes", id] });
       setViewNoteModalOpen(false);
       setNoteModalOpen(false);
@@ -117,11 +116,9 @@ export const LearningPathMessage = ({
 
   const deleteNoteMutation = useMutation({
     mutationFn: (noteId: string) => {
-      console.log("Delete mutation called with noteId:", noteId);
       return deleteMessageNote(noteId);
     },
-    onSuccess: (data) => {
-      console.log("Note deleted successfully, response:", data);
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["message-notes", id] });
       setContextMenu({ visible: false, x: 0, y: 0 });
       setViewNoteModalOpen(false);
@@ -194,17 +191,13 @@ export const LearningPathMessage = ({
     
     if (noteElement) {
       const noteId = noteElement.getAttribute("data-note-id");
-      console.log("Highlighted text clicked, noteId:", noteId);
       const note = notes.find((n) => n.id === noteId);
       if (note) {
-        console.log("Note found:", note);
         setEditingNote(note);
         setNoteContent(note.content);
         setSelection({ start: note.selection_start, end: note.selection_end, text: note.selection_text });
         setViewNoteModalOpen(true);
         setIsEditMode(false);
-      } else {
-        console.log("Note not found in notes array");
       }
     }
   }, [notes]);
@@ -548,7 +541,6 @@ export const LearningPathMessage = ({
                   leftSection={<RiStickyNoteLine size={16} />}
                   onClick={() => {
                     if (editingNote && noteContent.trim()) {
-                      console.log("Updating note:", editingNote.id, noteContent);
                       updateNoteMutation.mutate({
                         noteId: editingNote.id,
                         content: noteContent,

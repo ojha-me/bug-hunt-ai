@@ -58,7 +58,6 @@ export const useLearningPathWebSocket = (
       socketRef.current = ws;
 
       ws.onopen = () => {
-        console.log("Learning Path WebSocket connected");
         setIsConnected(true);
         reconnectAttemptsRef.current = 0;
       };
@@ -124,15 +123,12 @@ export const useLearningPathWebSocket = (
           const attempt = reconnectAttemptsRef.current + 1;
           reconnectAttemptsRef.current = attempt;
           const timeout = 2 ** attempt * 1000;
-          console.log(`Learning Path WebSocket closed unexpectedly, reconnecting in ${timeout}ms`);
           setTimeout(connect, timeout);
         }
       };
 
       ws.onerror = (err) => {
         console.error("Learning Path WebSocket error:", err);
-        console.log("Socket readyState:", ws.readyState);
-        console.log("Socket URL:", ws.url);
         setIsTyping(false);
       };
     };

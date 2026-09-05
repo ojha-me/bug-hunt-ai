@@ -18,7 +18,10 @@ async def authenticate_user(scope) -> Optional[CustomUser]:
     if not user_id:
         raise ValueError("Invalid token")
 
-    user = await database_sync_to_async(CustomUser.objects.get)(id=user_id)
+    try:
+        user = await database_sync_to_async(CustomUser.objects.get)(id=user_id)
+    except CustomUser.DoesNotExist:
+        raise ValueError("User not found")
     return user
 
 

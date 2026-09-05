@@ -14,8 +14,11 @@ class ConversationService:
 
     @staticmethod
     @database_sync_to_async
-    def get_conversation(conversation_id):
-        return Conversation.objects.filter(id=conversation_id).first()
+    def get_conversation(conversation_id, user=None):
+        qs = Conversation.objects.filter(id=conversation_id)
+        if user is not None:
+            qs = qs.filter(user=user)
+        return qs.first()
 
     @staticmethod
     @database_sync_to_async

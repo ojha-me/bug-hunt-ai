@@ -17,6 +17,7 @@ import {
     enrollInLearningPath,
     topicDetails,
     userLearningPaths,
+    skipSubtopic,
 } from '../api/learningPaths';
 import type { LearningTopicDetailResponse, UserLearningPathResponse } from '../types/learning_paths/api_types';
 import { FaPlay } from 'react-icons/fa';
@@ -71,9 +72,23 @@ const handleEnroll = () => {
     enrollMutation.mutate(pathId);
 }
 
-const handleSkipSubtopic = () => {
-   console.log("implement skip here")
-}
+  const skipMutation = useMutation({
+    mutationFn: ({ topicId, subtopicId }: { topicId: string; subtopicId: string }) =>
+      skipSubtopic(topicId, subtopicId),
+    onSuccess: () => {
+      notifications.show({ title: 'Skipped', message: 'Subtopic skipped', color: 'green' });
+      queryClient.invalidateQueries({ queryKey: ['user-learning-path', pathId] });
+      queryClient.invalidateQueries({ queryKey: ['user-learning-paths', pathId] });
+    },
+    onError: (error) => {
+      notifications.show({ title: 'Error', message: error.message || 'Could not skip subtopic', color: 'red' });
+    },
+  });
+
+  const handleSkipSubtopic = () => {
+    if (!pathId || !currentSubtopic) return;
+    skipMutation.mutate({ topicId: pathId, subtopicId: currentSubtopic });
+  }
 
 const handleStartLearning = () => {
   if (!userLearningPath) return;
@@ -187,8 +202,11 @@ const handleStartLearning = () => {
                 </Button>
                 <Button
                 mt="md"
+                variant="light"
+                color="orange"
                 leftSection={<FaPlay size={16} />}
                 onClick={()=>handleSkipSubtopic()}
+                loading={skipMutation.isPending}
                 >
                 Skip Subtopic
               </Button>

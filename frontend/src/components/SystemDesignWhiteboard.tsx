@@ -13,8 +13,9 @@ import {
   MarkerType,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Button, Group, Text, Box, ActionIcon, Tooltip, useMantineColorScheme } from "@mantine/core";
+import { Button, Group, Text, Box, ActionIcon, Tooltip, useMantineColorScheme, Modal, TextInput } from "@mantine/core";
 import { RiSendPlaneLine, RiDeleteBin6Line } from "react-icons/ri";
+import { useState } from "react";
 import type { ComponentType, NodeKind, ReactFlowDiagram } from "../types/ai_core/api_types";
 import { KIND_META, PALETTE_KINDS, sdNodeTypes } from "./SystemDesignNodes";
 
@@ -49,6 +50,8 @@ export const SystemDesignWhiteboard = ({ onSubmit, loadedDiagram }: Props) => {
   const flowColorMode = colorScheme === "dark" ? "dark" : "light";
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const [renamingNode, setRenamingNode] = useState<Node | null>(null);
+  const [renameValue, setRenameValue] = useState("");
 
   useEffect(() => {
     if (!loadedDiagram) return;
@@ -125,12 +128,18 @@ export const SystemDesignWhiteboard = ({ onSubmit, loadedDiagram }: Props) => {
   };
 
   const onNodeDoubleClick = (_ev: React.MouseEvent, node: Node) => {
-    const label = window.prompt("Rename component:", String(node.data?.label ?? ""));
+    setRenamingNode(node);
+    setRenameValue(String(node.data?.label ?? ""));
+  };
+  const handleRenameSave = () => {
+    if (!renamingNode) return;
+    const label = renameValue.trim();
     if (label) {
       setNodes((nds) =>
-        nds.map((n) => (n.id === node.id ? { ...n, data: { ...n.data, label } } : n))
+        nds.map((n) => (n.id === renamingNode.id ? { ...n, data: { ...n.data, label } } : n))
       );
     }
+    setRenamingNode(null);
   };
 
   const onNodeClick = (_ev: React.MouseEvent, node: Node) => {
@@ -195,7 +204,18 @@ export const SystemDesignWhiteboard = ({ onSubmit, loadedDiagram }: Props) => {
         }}
       >
         Drag to connect • double-click a box to rename it
-      </Text>
-    </Box>
-  );
+        </Text>
+        <Modal opened={!!renamingNode} onClose={() => setRenamingNode(null)} title="Rename component" centered>
+          <TextInput value={renameValue} onChange={(e) => setRenameValue(e.target.value)} data-autofocus />
+          <Group justify="flex-end" mt="md">
+            <Button variant="default" onClick={() => setRenamingNode(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleRenameSave} disabled={!renameValue.trim()}>
+              Save
+            </Button>
+          </Group>
+        </Modal>
+     </Box>
+   );
 };

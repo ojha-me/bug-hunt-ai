@@ -9,10 +9,10 @@ import {
   UnstyledButton,
   TextInput,
   Divider,
-  Progress,
   ActionIcon,
   Tooltip,
   Group,
+  Collapse,
 } from "@mantine/core";
 import {
   FaPlus,
@@ -21,6 +21,7 @@ import {
   FaGraduationCap,
   FaChevronLeft,
   FaChevronRight,
+  FaChevronDown,
   FaUser,
   FaProjectDiagram,
   FaCode,
@@ -31,6 +32,8 @@ import {
   FaCubes,
   FaStopwatch,
   FaComments,
+  FaClock,
+  FaFolder,
 } from "react-icons/fa";
 import { RiStickyNoteLine } from "react-icons/ri";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -39,13 +42,78 @@ import { userLearningPaths } from "../api/learningPaths";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ConversationResponse } from "../types/ai_core/api_types";
 import { notifications } from "@mantine/notifications";
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, useMemo, type ReactNode } from "react";
 import type { UserLearningPathResponse } from "../types/learning_paths/api_types";
 import { useSidebar } from "../contexts/SidebarContext";
 import { brandGradient } from "../theme";
 
 const WIDTH = 288;
 const WIDTH_COLLAPSED = 64;
+
+const RECENT_PAGES_KEY = "sidebar-recent-pages";
+const EXPANDED_GROUPS_KEY = "sidebar-expanded-groups";
+
+interface RecentPage {
+  path: string;
+  label: string;
+  ts: number;
+}
+
+function getPageMeta(pathname: string): { label: string; icon: ReactNode } {
+  if (pathname === "/") return { label: "Dashboard", icon: <FaHome size={14} /> };
+  if (pathname.startsWith("/topics") || pathname.startsWith("/learning-path")) return { label: "Learning Paths", icon: <FaGraduationCap size={14} /> };
+  if (pathname.startsWith("/challenges")) return { label: pathname.includes("/challenges/") ? "Coding Problem" : "Coding Problems", icon: <FaCode size={14} /> };
+  if (pathname.startsWith("/mock")) return { label: "Mock Interview", icon: <FaStopwatch size={14} /> };
+  if (pathname.startsWith("/behavioral")) return { label: "Behavioral Prep", icon: <FaComments size={14} /> };
+  if (pathname.startsWith("/system-design/components")) return { label: "Components", icon: <FaCubes size={14} /> };
+  if (pathname.startsWith("/system-design/case-studies")) return { label: "Case Studies", icon: <FaBook size={14} /> };
+  if (pathname.startsWith("/system-design/practice")) return { label: "Design Drills", icon: <FaDumbbell size={14} /> };
+  if (pathname.startsWith("/system-design")) return { label: "System Design", icon: <FaProjectDiagram size={14} /> };
+  if (pathname.startsWith("/revision")) return { label: "Review Queue", icon: <FaRedoAlt size={14} /> };
+  if (pathname.startsWith("/notes")) return { label: "My Notes", icon: <RiStickyNoteLine size={14} /> };
+  if (pathname.startsWith("/profile")) return { label: "Profile", icon: <FaUser size={14} /> };
+  if (pathname.startsWith("/conversation")) return { label: "Chat", icon: <FaComments size={14} /> };
+  if (pathname.startsWith("/component-tutor")) return { label: "Component Tutor", icon: <FaCubes size={14} /> };
+  return { label: "Page", icon: <FaFolder size={14} /> };
+}
+
+function useRecentPages(currentPath: string) {
+  const [recentPages, setRecentPages] = useState<RecentPage[]>(() => {
+    try {
+      const raw = localStorage.getItem(RECENT_PAGES_KEY);
+      return raw ? (JSON.parse(raw) as RecentPage[]) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    if (!currentPath || currentPath.startsWith("/login")) return;
+    // don't track bare conversation ids as pages if desired - but we track all for hybrid dedupe
+    const label = getPageMeta(currentPath).label;
+    const entry: RecentPage = { path: currentPath, label, ts: Date.now() };
+    try {
+      const raw = localStorage.getItem(RECENT_PAGES_KEY);
+      const prev: RecentPage[] = raw ? JSON.parse(raw) : [];
+      // dedupe: remove existing same path, put front
+      const filtered = prev.filter((p) => p.path !== currentPath);
+      const next = [entry, ...filtered].slice(0, 10);
+      localStorage.setItem(RECENT_PAGES_KEY, JSON.stringify(next));
+      setRecentPages(next);
+    } catch {
+      // ignore
+    }
+  }, [currentPath]);
+
+  const clear = () => {
+    try {
+      localStorage.removeItem(RECENT_PAGES_KEY);
+    } catch {}
+    setRecentPages([]);
+  };
+
+  return { recentPages, clear };
+}
 
 interface NavItemProps {
   icon: ReactNode;
@@ -103,6 +171,89 @@ const SectionLabel = ({ children, collapsed }: { children: ReactNode; collapsed:
     </Text>
   );
 
+interface CollapsibleSectionProps {
+  id: string;
+  label: string;
+  icon: ReactNode;
+  collapsed: boolean;
+  isActive: boolean;
+  children: ReactNode;
+  defaultExpanded?: boolean;
+}
+
+const CollapsibleSection = ({ id, label, icon, collapsed, isActive, children, defaultExpanded = true }: CollapsibleSectionProps) => {
+  const [expanded, setExpanded] = useState<boolean>(() => {
+    try {
+      const raw = localStorage.getItem(EXPANDED_GROUPS_KEY);
+      const map = raw ? (JSON.parse(raw) as Record<string, boolean>) : {};
+      if (isActive) return true;
+      if (id in map) return map[id];
+      return defaultExpanded;
+    } catch {
+      return defaultExpanded;
+    }
+  });
+
+  useEffect(() => {
+    if (isActive && !expanded) {
+      setExpanded(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(EXPANDED_GROUPS_KEY);
+      const map = raw ? (JSON.parse(raw) as Record<string, boolean>) : {};
+      map[id] = expanded;
+      localStorage.setItem(EXPANDED_GROUPS_KEY, JSON.stringify(map));
+    } catch {}
+  }, [id, expanded]);
+
+  if (collapsed) {
+    return <Stack gap={2}>{children}</Stack>;
+  }
+
+  return (
+    <Box>
+      <UnstyledButton
+        onClick={() => setExpanded((v) => !v)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          width: "100%",
+          padding: "0.4rem 0.5rem",
+          borderRadius: "var(--mantine-radius-md)",
+          background: isActive ? "var(--mantine-primary-color-light-hover)" : "transparent",
+        }}
+      >
+        <Group gap={8} wrap="nowrap">
+          <Box c={isActive ? "var(--mantine-primary-color-filled)" : "dimmed"} style={{ display: "flex" }}>
+            {icon}
+          </Box>
+          <Text size="xs" fw={700} tt="uppercase" c={isActive ? "var(--mantine-primary-color-filled)" : "dimmed"} style={{ letterSpacing: 0.4 }}>
+            {label}
+          </Text>
+        </Group>
+        <FaChevronDown
+          size={10}
+          style={{
+            transition: "transform 180ms var(--ease-out)",
+            transform: expanded ? "rotate(0deg)" : "rotate(-90deg)",
+            opacity: 0.6,
+          }}
+        />
+      </UnstyledButton>
+      <Collapse in={expanded}>
+        <Stack gap={2} mt={6} pl={4} style={{ borderLeft: isActive ? "2px solid var(--mantine-primary-color-light-color)" : "2px solid transparent" }}>
+          {children}
+        </Stack>
+      </Collapse>
+    </Box>
+  );
+};
+
 export const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -112,13 +263,14 @@ export const Sidebar = () => {
   const [deletingConversationId, setDeletingConversationId] = useState<string | null>(null);
   const { isCollapsed, setIsCollapsed } = useSidebar();
   const path = location.pathname;
+  const { recentPages, clear: clearRecentPages } = useRecentPages(path);
 
   const { data: conversations, isLoading: convosLoading } = useQuery<ConversationResponse[]>({
     queryKey: ["conversations"],
     queryFn: getConversations,
   });
 
-  const { data: learningPaths, isLoading: pathsLoading } = useQuery<UserLearningPathResponse[]>({
+  const { data: learningPaths } = useQuery<UserLearningPathResponse[]>({
     queryKey: ["learning-paths"],
     queryFn: () => userLearningPaths(),
   });
@@ -203,15 +355,6 @@ export const Sidebar = () => {
     }
   };
 
-  const handleLearningPathClick = (topicId: string) => {
-    navigate(`/learning-path/${topicId}`);
-  };
-
-  const handleContinueLearning = (topicId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    navigate(`/learning-path/chat-interface/${topicId}`);
-  };
-
   const isSystemDesign =
     path.startsWith("/system-design") &&
     !path.startsWith("/system-design/case-studies") &&
@@ -220,6 +363,27 @@ export const Sidebar = () => {
   const isCaseStudies = path.startsWith("/system-design/case-studies");
   const isPractice = path.startsWith("/system-design/practice");
   const isComponents = path.startsWith("/system-design/components");
+
+  const isCodingActive =
+    path.startsWith("/topics") ||
+    path.startsWith("/learning-path") ||
+    path.startsWith("/challenges") ||
+    path.startsWith("/mock");
+  const isSDActive = path.startsWith("/system-design");
+  const isReviewActive = path === "/" || path.startsWith("/behavioral") || path.startsWith("/revision") || path.startsWith("/notes");
+
+  const hybridRecent = useMemo(() => {
+    const pages = recentPages.filter((p) => p.path !== path).slice(0, 4);
+    const filteredConvos = (conversations || [])
+      .filter((conv) => !learningPaths?.some((lp) => lp.conversation_id === conv.id))
+      .filter((conv) => conv.conversation_type !== "system_design_learning")
+      .slice(0, 3);
+    // dedupe by path vs convo id already separate
+    // total max 7
+    return { pages, convos: filteredConvos };
+  }, [recentPages, conversations, learningPaths, path]);
+
+  const hasHybrid = hybridRecent.pages.length > 0 || hybridRecent.convos.length > 0;
 
   return (
     <Box
@@ -286,151 +450,199 @@ export const Sidebar = () => {
           {!isCollapsed && "New Chat"}
         </Button>
 
-        <Box>
-          <SectionLabel collapsed={isCollapsed}>Overview</SectionLabel>
-          <Stack gap={2}>
-            <NavItem
-              icon={<FaHome size={16} />}
-              label="Dashboard"
-              active={path === "/"}
-              collapsed={isCollapsed}
-              onClick={() => navigate("/")}
-            />
-            <NavItem
-              icon={<FaGraduationCap size={16} />}
-              label="Learning Paths"
-              active={path.startsWith("/topics") || path.startsWith("/learning-path")}
-              collapsed={isCollapsed}
-              onClick={() => navigate("/topics")}
-            />
+        {/* Recent - Hybrid top section */}
+        {!isCollapsed && hasHybrid && (
+          <Box>
+            <Group justify="space-between" mb={4} wrap="nowrap">
+              <Group gap={6} wrap="nowrap">
+                <FaClock size={11} style={{ opacity: 0.6 }} />
+                <Text size="xs" c="dimmed" fw={700} tt="uppercase" style={{ letterSpacing: 0.4 }}>
+                  Recent
+                </Text>
+              </Group>
+              {hybridRecent.pages.length > 0 && (
+                <UnstyledButton onClick={clearRecentPages}>
+                  <Text size="xs" c="dimmed" style={{ fontSize: 11 }}>
+                    Clear
+                  </Text>
+                </UnstyledButton>
+              )}
+            </Group>
+            <Stack gap={2}>
+              {hybridRecent.pages.map((rp) => {
+                const meta = getPageMeta(rp.path);
+                const isActive = path === rp.path;
+                return (
+                  <UnstyledButton
+                    key={`rp-${rp.path}`}
+                    onClick={() => navigate(rp.path)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "0.45rem 0.6rem",
+                      borderRadius: "var(--mantine-radius-md)",
+                      width: "100%",
+                      background: isActive ? "var(--mantine-primary-color-light)" : "transparent",
+                      color: isActive ? "var(--mantine-primary-color-filled)" : "var(--mantine-color-text)",
+                      fontWeight: isActive ? 600 : 500,
+                    }}
+                  >
+                    <Box style={{ opacity: 0.7, display: "flex" }}>{meta.icon}</Box>
+                    <Text size="sm" lineClamp={1} style={{ flex: 1, textAlign: "left" }}>
+                      {meta.label}
+                    </Text>
+                    <Text size="xs" c="dimmed" style={{ fontSize: 10, whiteSpace: "nowrap" }}>
+                      {rp.path.length > 18 ? "…" + rp.path.slice(-16) : ""}
+                    </Text>
+                  </UnstyledButton>
+                );
+              })}
+              {hybridRecent.pages.length > 0 && hybridRecent.convos.length > 0 && <Divider my={4} />}
+              {hybridRecent.convos.map((conv) => (
+                <UnstyledButton
+                  key={`rc-${conv.id}`}
+                  onClick={() => handleConversationClick(conv)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "0.45rem 0.6rem",
+                    borderRadius: "var(--mantine-radius-md)",
+                    width: "100%",
+                    background: "transparent",
+                  }}
+                >
+                  <Box style={{ opacity: 0.6, display: "flex" }}>
+                    <FaComments size={12} />
+                  </Box>
+                  <Box style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+                    <Text size="sm" lineClamp={1} lh={1.2}>
+                      {conv.title}
+                    </Text>
+                    <Text size="xs" c="dimmed" lh={1}>
+                      chat • {new Date(conv.created_at).toLocaleDateString()}
+                    </Text>
+                  </Box>
+                </UnstyledButton>
+              ))}
+            </Stack>
+            <Divider mt="sm" />
+          </Box>
+        )}
+        {isCollapsed && hasHybrid && (
+          <Stack gap={2} align="center">
+            {hybridRecent.pages.slice(0, 3).map((rp) => {
+              const meta = getPageMeta(rp.path);
+              return (
+                <Tooltip key={`c-rp-${rp.path}`} label={`${meta.label} • ${rp.path}`} position="right" withArrow>
+                  <ActionIcon variant="default" size="xl" radius="md" onClick={() => navigate(rp.path)}>
+                    {meta.icon}
+                  </ActionIcon>
+                </Tooltip>
+              );
+            })}
+            {hybridRecent.convos.slice(0, 2).map((conv) => (
+              <Tooltip key={`c-rc-${conv.id}`} label={conv.title} position="right" withArrow>
+                <ActionIcon variant="default" size="xl" radius="md" onClick={() => handleConversationClick(conv)}>
+                  <FaComments size={14} />
+                </ActionIcon>
+              </Tooltip>
+            ))}
+            <Divider w="60%" my={4} />
           </Stack>
-        </Box>
+        )}
 
-        <Box mt="sm">
-          <SectionLabel collapsed={isCollapsed}>Practice</SectionLabel>
-          <Stack gap={2}>
-            <NavItem
-              icon={<FaCode size={16} />}
-              label="Coding Problems"
-              active={path.startsWith("/challenges")}
-              collapsed={isCollapsed}
-              onClick={() => navigate("/challenges")}
-            />
-            <NavItem
-              icon={<FaStopwatch size={16} />}
-              label="Mock Interview"
-              active={path.startsWith("/mock")}
-              collapsed={isCollapsed}
-              onClick={() => navigate("/mock")}
-            />
-            <NavItem
-              icon={<FaComments size={16} />}
-              label="Behavioral Prep"
-              active={path.startsWith("/behavioral")}
-              collapsed={isCollapsed}
-              onClick={() => navigate("/behavioral")}
-            />
-            <NavItem
-              icon={<FaProjectDiagram size={16} />}
-              label="System Design"
-              active={isSystemDesign}
-              collapsed={isCollapsed}
-              onClick={() => navigate("/system-design/courses")}
-            />
-            <NavItem
-              icon={<FaCubes size={16} />}
-              label="Components"
-              active={isComponents}
-              collapsed={isCollapsed}
-              onClick={() => navigate("/system-design/components")}
-            />
-            <NavItem
-              icon={<FaBook size={16} />}
-              label="Case Studies"
-              active={isCaseStudies}
-              collapsed={isCollapsed}
-              onClick={() => navigate("/system-design/case-studies")}
-            />
-            <NavItem
-              icon={<FaDumbbell size={16} />}
-              label="Design Drills"
-              active={isPractice}
-              collapsed={isCollapsed}
-              onClick={() => navigate("/system-design/practice")}
-            />
-          </Stack>
-        </Box>
+        {/* Nested groups */}
+        <CollapsibleSection id="coding" label="Coding" icon={<FaCode size={14} />} collapsed={isCollapsed} isActive={isCodingActive}>
+          <NavItem
+            icon={<FaGraduationCap size={16} />}
+            label="Learning Paths"
+            active={path.startsWith("/topics") || path.startsWith("/learning-path")}
+            collapsed={isCollapsed}
+            onClick={() => navigate("/topics")}
+          />
+          <NavItem
+            icon={<FaCode size={16} />}
+            label="Coding Problems"
+            active={path.startsWith("/challenges")}
+            collapsed={isCollapsed}
+            onClick={() => navigate("/challenges")}
+          />
+          <NavItem
+            icon={<FaStopwatch size={16} />}
+            label="Mock Interview"
+            active={path.startsWith("/mock")}
+            collapsed={isCollapsed}
+            onClick={() => navigate("/mock")}
+          />
+        </CollapsibleSection>
 
-        <Box mt="sm">
-          <SectionLabel collapsed={isCollapsed}>Review</SectionLabel>
-          <Stack gap={2}>
-            <NavItem
-              icon={<FaRedoAlt size={16} />}
-              label="Review Queue"
-              active={path.startsWith("/revision")}
-              collapsed={isCollapsed}
-              onClick={() => navigate("/revision")}
-            />
-            <NavItem
-              icon={<RiStickyNoteLine size={16} />}
-              label="My Notes"
-              active={path.startsWith("/notes")}
-              collapsed={isCollapsed}
-              onClick={() => navigate("/notes")}
-            />
-          </Stack>
-        </Box>
+        <CollapsibleSection id="system-design" label="System Design" icon={<FaProjectDiagram size={14} />} collapsed={isCollapsed} isActive={isSDActive}>
+          <NavItem
+            icon={<FaProjectDiagram size={16} />}
+            label="System Design"
+            active={isSystemDesign}
+            collapsed={isCollapsed}
+            onClick={() => navigate("/system-design/courses")}
+          />
+          <NavItem
+            icon={<FaCubes size={16} />}
+            label="Components"
+            active={isComponents}
+            collapsed={isCollapsed}
+            onClick={() => navigate("/system-design/components")}
+          />
+          <NavItem
+            icon={<FaBook size={16} />}
+            label="Case Studies"
+            active={isCaseStudies}
+            collapsed={isCollapsed}
+            onClick={() => navigate("/system-design/case-studies")}
+          />
+          <NavItem
+            icon={<FaDumbbell size={16} />}
+            label="Design Drills"
+            active={isPractice}
+            collapsed={isCollapsed}
+            onClick={() => navigate("/system-design/practice")}
+          />
+        </CollapsibleSection>
+
+        <CollapsibleSection id="prep-review" label="Prep & Review" icon={<FaBook size={14} />} collapsed={isCollapsed} isActive={isReviewActive}>
+          <NavItem
+            icon={<FaHome size={16} />}
+            label="Dashboard"
+            active={path === "/"}
+            collapsed={isCollapsed}
+            onClick={() => navigate("/")}
+          />
+          <NavItem
+            icon={<FaComments size={16} />}
+            label="Behavioral Prep"
+            active={path.startsWith("/behavioral")}
+            collapsed={isCollapsed}
+            onClick={() => navigate("/behavioral")}
+          />
+          <NavItem
+            icon={<FaRedoAlt size={16} />}
+            label="Review Queue"
+            active={path.startsWith("/revision")}
+            collapsed={isCollapsed}
+            onClick={() => navigate("/revision")}
+          />
+          <NavItem
+            icon={<RiStickyNoteLine size={16} />}
+            label="My Notes"
+            active={path.startsWith("/notes")}
+            collapsed={isCollapsed}
+            onClick={() => navigate("/notes")}
+          />
+        </CollapsibleSection>
       </Stack>
 
       {!isCollapsed ? (
         <ScrollArea style={{ flex: 1, minHeight: 0 }} type="auto">
-          <Divider mb="md" />
-          <Box mb="lg">
-            <SectionLabel collapsed={false}>Active learning paths</SectionLabel>
-            <Stack gap={2}>
-              {pathsLoading ? (
-                <Loader size="sm" mx="auto" my="sm" />
-              ) : !learningPaths?.length ? (
-                <Text size="xs" c="dimmed" ta="center" py="sm">
-                  No active learning paths
-                </Text>
-              ) : (
-                learningPaths.map((pathRow) => (
-                  <Box
-                    key={pathRow.id}
-                    p="xs"
-                    className="row-item"
-                    onClick={() => handleLearningPathClick(pathRow.topic.id)}
-                  >
-                    <Group justify="space-between" align="flex-start" wrap="nowrap">
-                      <Box style={{ flex: 1, minWidth: 0 }}>
-                        <Text size="sm" lineClamp={1} fw={500}>
-                          {pathRow.topic.name}
-                        </Text>
-                        <Group gap="xs" mt={2} wrap="nowrap">
-                          <Text size="xs" c="dimmed" fw={600}>
-                            {Math.round(pathRow.progress_percentage)}%
-                          </Text>
-                          <Progress value={pathRow.progress_percentage} size="3" radius="xl" style={{ flex: 1 }} />
-                        </Group>
-                      </Box>
-                      {!pathRow.is_completed && (
-                        <ActionIcon
-                          size="sm"
-                          variant="subtle"
-                          aria-label="Continue"
-                          onClick={(e) => handleContinueLearning(pathRow.topic.id, e)}
-                        >
-                          <FaGraduationCap size={12} />
-                        </ActionIcon>
-                      )}
-                    </Group>
-                  </Box>
-                ))
-              )}
-            </Stack>
-          </Box>
-
           <Divider mb="md" />
 
           <Box mb="md">

@@ -11,16 +11,43 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-+pk&b4*sfs2uf$vm+r6c@y#+@0z_a%ii_%cm$!v2ogqk=495bv'
+# Env-gated: require SECRET_KEY in production (DEBUG=False)
+_env_secret = os.getenv("SECRET_KEY")
+if _env_secret:
+    SECRET_KEY = _env_secret
+else:
+    SECRET_KEY = 'django-insecure-+pk&b4*sfs2uf$vm+r6c@y#+@0z_a%ii_%cm$!v2ogqk=495bv'
+    if os.getenv("DEBUG", "True").lower() not in ("true", "1", "yes"):
+        raise ValueError("SECRET_KEY must be set via env var when DEBUG=False")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "True").lower() in ("true", "1", "yes")
 
-ALLOWED_HOSTS = ["*"]
+_env_hosts = os.getenv("ALLOWED_HOSTS", "")
+if _env_hosts:
+    ALLOWED_HOSTS = [h.strip() for h in _env_hosts.split(",") if h.strip()]
+else:
+    ALLOWED_HOSTS = ["*"] if DEBUG else []
 
-
-CORS_ALLOW_ALL_ORIGINS = True # okay for development
-CORS_ALLOW_CREDENTIALS = True 
+# CORS — env-gated, dev allows all, prod requires explicit whitelist
+_cors_origins = os.getenv("CORS_ALLOWED_ORIGINS", "")
+if _cors_origins:
+    CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors_origins.split(",") if o.strip()]
+    CORS_ALLOW_ALL_ORIGINS = False
+else:
+    CORS_ALLOW_ALL_ORIGINS = DEBUG
+CORS_ALLOW_CREDENTIALS = True
+if not DEBUG:
+    CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS if '_cors_origins' in locals() and _cors_origins else []
+    # Hardening when not DEBUG
+    SECURE_SSL_REDIRECT = False  # set True if behind TLS-terminating proxy
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = "DENY"
+    SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # Application definition
 
@@ -150,15 +177,26 @@ AUTH_USER_MODEL = 'users.CustomUser'
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer",
-    },
-}
+_redis_url = os.getenv("REDIS_URL", "")
+if _redis_url:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {"hosts": [_redis_url]},
+        },
+    }
+else:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
+        },
+    }
 
 
-# JWT settings
+# JWT settings — require in prod
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not JWT_SECRET_KEY and not DEBUG:
+    raise ValueError("JWT_SECRET_KEY must be set via env var when DEBUG=False")
 
 # Google OAuth settings
 GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID")

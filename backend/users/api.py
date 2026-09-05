@@ -73,6 +73,8 @@ def login(request, params: LoginParams):
         value=refresh_token,
         httponly=True,
         samesite="strict",
+        secure=not settings.DEBUG,
+        path="/",
         max_age=30 * 24 * 60 * 60,
     )
     return response
@@ -120,6 +122,8 @@ def refresh_token(request):
             value=new_refresh_token,
             httponly=True,
             samesite="strict",
+            secure=not settings.DEBUG,
+            path="/",
             max_age=30 * 24 * 60 * 60,
         )
         return response
@@ -129,19 +133,28 @@ def refresh_token(request):
 
 
 @public_post(router, "/logout", response={200: None})
-def logout(request, params: LogoutParams):
+def logout(request, params: LogoutParams = None):
     try:
-        payload = decode_jwt(params.refresh_token)
-        jti = payload.get("jti")
-        token_obj = RefreshToken.objects.filter(jti=jti, revoked=False).first()
-        if token_obj:
-            token_obj.revoked = True
-            token_obj.save()
+        # Accept token from body param or httpOnly cookie (clients differ)
+        token = None
+        if params and getattr(params, 'refresh_token', None):
+            token = params.refresh_token
+        if not token:
+            token = request.COOKIES.get("refresh_token")
+        if token:
+            payload = decode_jwt(token)
+            jti = payload.get("jti")
+            token_obj = RefreshToken.objects.filter(jti=jti, revoked=False).first()
+            if token_obj:
+                token_obj.revoked = True
+                token_obj.save()
         response = Response(None, status=200)
-        response.delete_cookie("refresh_token")
+        response.delete_cookie("refresh_token", path="/", samesite="strict")
         return response
     except jwt.PyJWTError:
-        return 200, None 
+        response = Response(None, status=200)
+        response.delete_cookie("refresh_token", path="/", samesite="strict")
+        return response 
 
 
 @public_post(router, "/create-user", response={200: CreateUserResponse, 400: Dict[str, str]})
@@ -191,12 +204,15 @@ def google_auth(request, params: GoogleAuthParams):
         # Extract user information from the token
         google_id = idinfo['sub']
         email = idinfo.get('email')
+        email_verified = idinfo.get('email_verified', False)
         first_name = idinfo.get('given_name', '')
         last_name = idinfo.get('family_name', '')
         profile_picture = idinfo.get('picture', '')
         
         if not email:
             return 400, {"error": "Email not provided by Google"}
+        if not email_verified:
+            return 401, {"error": "Google email not verified"}
         
         # Check if user exists with this Google ID
         user = CustomUser.objects.filter(google_id=google_id).first()
@@ -205,11 +221,14 @@ def google_auth(request, params: GoogleAuthParams):
             # User exists, log them in
             pass
         else:
-            # Check if user exists with this email
+            # Check if user exists with this email — do NOT auto-link without verified email ownership proof
+            # Require explicit linking flow; for now only allow if existing user has no password (safety)
             user = CustomUser.objects.filter(email=email).first()
             
             if user:
-                # Link Google account to existing user
+                if user.has_usable_password():
+                    return 401, {"error": "Email already registered. Please log in with password to link Google, or use a different Google account."}
+                # Link Google account to existing password-less user
                 user.google_id = google_id
                 user.auth_provider = 'google'
                 if not user.profile_picture:
@@ -249,6 +268,8 @@ def google_auth(request, params: GoogleAuthParams):
             value=refresh_token,
             httponly=True,
             samesite="strict",
+            secure=not settings.DEBUG,
+            path="/",
             max_age=30 * 24 * 60 * 60,
         )
         return response

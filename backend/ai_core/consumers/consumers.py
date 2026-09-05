@@ -30,7 +30,10 @@ class AIChatConsumer(AsyncWebsocketConsumer):
         self.ai_service = AIService()
         self.conversation_service = ConversationService()
 
-        self.conversation = await self.conversation_service.get_conversation(self.conversation_id)
+        self.conversation = await self.conversation_service.get_conversation(self.conversation_id, user=self.user)
+        if not self.conversation:
+            await self.close(code=4003)
+            return
         
         await self.accept()
 

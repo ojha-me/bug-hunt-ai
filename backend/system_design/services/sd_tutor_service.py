@@ -7,7 +7,7 @@ from system_design.utils.sd_prompts import SD_TUTOR_SYSTEM_PROMPT, SD_GREETING_P
 
 logger = logging.getLogger('system_design.services')
 
-AI_MODEL = "qwen/qwen3.8-27b"
+AI_MODEL = "qwen/qwen3-32b"
 
 
 class SDTutorService:

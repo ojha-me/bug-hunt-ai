@@ -15,10 +15,12 @@ import {
   ScrollArea,
   ActionIcon,
   Tooltip,
+  Drawer,
+  Collapse,
 } from "@mantine/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FaExclamationCircle, FaLock, FaCheck, FaPlay, FaGraduationCap } from "react-icons/fa";
+import { FaExclamationCircle, FaLock, FaCheck, FaPlay, FaGraduationCap, FaColumns, FaExpand } from "react-icons/fa";
 import { RiFocus3Line, RiArrowRightLine, RiMicLine, RiMicOffLine } from "react-icons/ri";
 import { useSDLearningWebSocket } from "../hooks/useSDLearningWebSocket";
 import { useSpeechToText } from "../hooks/useSpeechToText";
@@ -41,6 +43,8 @@ export const SDLearningRoom = () => {
   const [loadedDiagram, setLoadedDiagram] = useState<ReactFlowDiagram | null>(null);
   const [message, setMessage] = useState("");
   const [courseCompleted, setCourseCompleted] = useState(false);
+  const [boardOpen, setBoardOpen] = useState(false);
+  const [showProgress, setShowProgress] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { supported: dictationSupported, listening: dictating, interim: dictationInterim, start: startDictation, stop: stopDictation } =
@@ -208,10 +212,19 @@ export const SDLearningRoom = () => {
           <Button size="compact-xs" variant="subtle" onClick={() => navigate("/system-design/courses")}>
             All courses
           </Button>
+          <Button
+            size="compact-xs"
+            variant={boardOpen ? "filled" : "light"}
+            color="violet"
+            leftSection={<FaColumns size={12} />}
+            onClick={() => setBoardOpen((v) => !v)}
+          >
+            {boardOpen ? "Hide Board" : "Whiteboard"}
+          </Button>
         </Group>
       </Group>
 
-      <Box style={{ flex: 1, minHeight: 0, display: "flex", gap: "1rem", flexDirection: "row" }}>
+      <Box style={{ flex: 1, minHeight: 0, display: "flex", gap: "1rem", flexDirection: "row", position: "relative" }}>
         {/* Lesson rail */}
         <Box
           style={{
@@ -330,7 +343,10 @@ export const SDLearningRoom = () => {
                             color="violet"
                             mt={4}
                             leftSection={<RiFocus3Line size={14} />}
-                            onClick={() => setLoadedDiagram(msg.diagram!)}
+                            onClick={() => {
+                              setLoadedDiagram(msg.diagram!);
+                              setBoardOpen(true);
+                            }}
                           >
                             Load to whiteboard
                           </Button>
@@ -356,23 +372,43 @@ export const SDLearningRoom = () => {
           </Box>
 
           {progress && (progress.covered_points.length > 0 || progress.remaining_points.length > 0) && (
-            <Box p="sm" style={{ borderTop: "1px solid var(--app-line)", background: "var(--app-surface-hover)" }}>
-              <Group gap="6px" wrap="wrap">
-                {progress.covered_points.map((p) => (
-                  <Badge key={p} size="xs" color="green" variant="light">
-                    {p}
-                  </Badge>
-                ))}
-                {progress.remaining_points.map((p) => (
-                  <Badge key={p} size="xs" color="gray" variant="light">
-                    {p}
-                  </Badge>
-                ))}
-                <Badge size="xs" color={isReady ? "green" : "violet"} variant="outline">
-                  confidence {Math.round((progress.ai_confidence ?? 0) * 100)}%
-                </Badge>
-              </Group>
-            </Box>
+            <>
+              <Box
+                p="xs"
+                style={{ borderTop: "1px solid var(--app-line)", background: "var(--app-surface-hover)", cursor: "pointer" }}
+                onClick={() => setShowProgress((v) => !v)}
+              >
+                <Group justify="space-between" wrap="nowrap">
+                  <Group gap={6} wrap="nowrap">
+                    <Badge size="xs" color={isReady ? "green" : "violet"} variant="filled">
+                      {isReady ? "Ready" : "Learning"}
+                    </Badge>
+                    <Text size="xs" c="dimmed">
+                      {progress.covered_points.length} done • {progress.remaining_points.length} left • {Math.round((progress.ai_confidence ?? 0) * 100)}% conf
+                    </Text>
+                  </Group>
+                  <Text size="xs" c="dimmed">
+                    {showProgress ? "Hide" : "Details"}
+                  </Text>
+                </Group>
+              </Box>
+              <Collapse in={showProgress}>
+                <Box p="sm" style={{ background: "var(--app-surface-hover)" }}>
+                  <Group gap={6} wrap="wrap">
+                    {progress.covered_points.map((p) => (
+                      <Badge key={p} size="xs" color="green" variant="light">
+                        {p}
+                      </Badge>
+                    ))}
+                    {progress.remaining_points.map((p) => (
+                      <Badge key={p} size="xs" color="gray" variant="light">
+                        {p}
+                      </Badge>
+                    ))}
+                  </Group>
+                </Box>
+              </Collapse>
+            </>
           )}
 
           <Divider />
@@ -454,27 +490,43 @@ export const SDLearningRoom = () => {
           </Box>
         </Box>
 
-        {/* Whiteboard panel */}
-        <Box
-          style={{
-            flex: 1,
-            minWidth: 0,
-            border: "1px solid var(--app-line)",
-            borderRadius: "var(--mantine-radius-lg)",
-            background: "var(--app-surface)",
-            overflow: "hidden",
-          }}
-        >
+        {/* Whiteboard moved to Drawer for focus */}
+        {!boardOpen && (
+          <ActionIcon
+            variant="filled"
+            color="violet"
+            size="xl"
+            radius="xl"
+            style={{ position: "absolute", right: 16, bottom: 88, zIndex: 5, boxShadow: "var(--mantine-shadow-md)" }}
+            onClick={() => setBoardOpen(true)}
+            aria-label="Open whiteboard"
+          >
+            <FaExpand size={16} />
+          </ActionIcon>
+        )}
+      </Box>
+
+      <Drawer
+        opened={boardOpen}
+        onClose={() => setBoardOpen(false)}
+        position="right"
+        size="55%"
+        title="Whiteboard"
+        overlayProps={{ backgroundOpacity: 0.15, blur: 2 }}
+        styles={{ content: { display: "flex", flexDirection: "column" }, body: { flex: 1, display: "flex", flexDirection: "column", padding: 0 } }}
+      >
+        <Box style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
           <SystemDesignWhiteboard
             loadedDiagram={loadedDiagram}
             onSubmit={(diagram) => {
               if (isConnected && !isTyping && !courseCompleted) {
                 submitDiagram(diagram);
+                setBoardOpen(false);
               }
             }}
           />
         </Box>
-      </Box>
+      </Drawer>
     </Box>
   );
 };

@@ -2,7 +2,7 @@ from groq import Groq
 from django.conf import settings
 from ai_core.utils.groq_llm import sanitize_unicode
 
-MODEL = "qwen/qwen3.8-27b"
+MODEL = "qwen/qwen3-32b"
 MAX_HISTORY_TURNS = 10
 MAX_STORED_TURNS = 40
 

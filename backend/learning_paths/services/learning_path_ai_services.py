@@ -9,7 +9,8 @@ from asgiref.sync import sync_to_async
 
 logger = logging.getLogger("ai_core.services.learning_path_service")
 
-AI_MODEL = "qwen/qwen3.8-27b"
+import os
+AI_MODEL = os.getenv("GROQ_MODEL", "qwen/qwen3-32b")
 
 
 class LearningPathAI:

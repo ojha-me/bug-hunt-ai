@@ -72,6 +72,30 @@ class GroqChat:
             self.model = self.MODELS.get(model, model)
         self.client = Groq(api_key=settings.GROQ_API_KEY)
         self.messages = []
+        # Cap output so a single request stays under Groq's free-tier
+        # output-tokens-per-minute limit (otherwise every call 429s as
+        # "request too large"). Configurable via GROQ_MAX_TOKENS.
+        try:
+            self.max_tokens = int(os.getenv("GROQ_MAX_TOKENS", "900"))
+        except ValueError:
+            self.max_tokens = 900
+
+    def _graceful_failure(self, err: Exception) -> "GroqResponse":
+        """
+        Return a readable message instead of raising, so a Groq error (rate
+        limit, network) never tears down the WebSocket. JSON-mode callers fall
+        back to treating this text as the message content.
+        """
+        if self.messages and self.messages[-1]["role"] == "user":
+            self.messages.pop()  # don't leave a dangling user turn in history
+        text = str(err)
+        low = text.lower()
+        if "rate_limit" in low or "429" in low or "too large" in low:
+            msg = "The AI is momentarily rate-limited (Groq free tier's output-per-minute cap). Please wait a minute, then try again."
+        else:
+            msg = "The AI service had a hiccup generating a reply. Please try again in a moment."
+        logger.warning("Groq call failed, returning graceful message: %s", text[:300])
+        return GroqResponse(msg)
 
     def _strip_fences(self, text: str) -> str:
         t = text.strip()
@@ -90,19 +114,23 @@ class GroqChat:
             "model": self.model,
             "messages": self.messages,
             "temperature": 0.7,
+            "max_tokens": self.max_tokens,
         }
         if json_mode:
             kwargs["response_format"] = {"type": "json_object"}
 
         try:
             completion = self.client.chat.completions.create(**kwargs)
-        except Exception:
-            # retry once without json_mode if model doesn't support it
+        except Exception as first_err:
+            # retry once without json_mode if the model rejects response_format
             if json_mode and "response_format" in kwargs:
-                kwargs.pop("response_format")
-                completion = self.client.chat.completions.create(**kwargs)
+                try:
+                    kwargs.pop("response_format")
+                    completion = self.client.chat.completions.create(**kwargs)
+                except Exception as retry_err:
+                    return self._graceful_failure(retry_err)
             else:
-                raise
+                return self._graceful_failure(first_err)
 
         reply = sanitize_unicode(completion.choices[0].message.content or "")
         # Validate JSON when requested
@@ -124,6 +152,7 @@ class GroqChat:
                 model=self.model,
                 messages=self.messages,
                 temperature=0.7,
+                max_tokens=self.max_tokens,
                 stream=True,
             )
             full = ""

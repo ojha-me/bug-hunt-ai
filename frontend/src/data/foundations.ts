@@ -11,6 +11,86 @@ export interface Foundation {
   problemSlugs: string[]; // easy problems to try after the lesson
 }
 
+export interface RoadmapStep {
+  title: string;
+  detail: string;
+}
+
+// Ordered "learn these" syllabus per foundation, keyed by slug.
+export const FOUNDATION_ROADMAPS: Record<string, RoadmapStep[]> = {
+  "arrays-strings": [
+    { title: "Indexing & iteration", detail: "Access any element in O(1) by index; loop over a list in O(n)." },
+    { title: "In-place modification", detail: "Mutate a list without allocating a new one (swaps, two-pointer writes)." },
+    { title: "Slicing and its cost", detail: "a[i:j] builds a NEW list — O(k). Know when that copy hurts." },
+    { title: "Building & growing", detail: "append is amortized O(1); list comprehensions to build cleanly." },
+    { title: "Strings are immutable", detail: "s[0]='x' fails — build with a list + ''.join(...)." },
+    { title: "Common gotchas", detail: "O(n) inserts/deletes in the middle; aliasing vs copying a list." },
+  ],
+  "hashing-maps": [
+    { title: "Dict basics", detail: "Insert / lookup / delete a key in O(1) average." },
+    { title: "Sets & membership", detail: "Dedup and answer 'have I seen this?' in O(1)." },
+    { title: "Counting", detail: "Frequency maps with Counter." },
+    { title: "Grouping", detail: "defaultdict(list) to group items by a computed key." },
+    { title: "Hashable keys", detail: "Why keys must be immutable (str, int, tuple)." },
+    { title: "What hashing costs", detail: "Collisions, average vs worst case, and no sorted order." },
+  ],
+  "stacks-queues": [
+    { title: "Stack (LIFO)", detail: "push/pop/peek with a plain list — all O(1)." },
+    { title: "Queue (FIFO)", detail: "Why list.pop(0) is O(n) and you shouldn't use it." },
+    { title: "deque", detail: "collections.deque gives O(1) at BOTH ends." },
+    { title: "When to use a stack", detail: "Matching/undo, parsing nesting, DFS, next-greater." },
+    { title: "When to use a queue", detail: "BFS and anything processed in arrival order." },
+  ],
+  "linked-lists": [
+    { title: "The node", detail: "A value plus a pointer to the next node." },
+    { title: "Traversal", detail: "Walk the list with `while node: node = node.next`." },
+    { title: "Insert & delete", detail: "O(1) once you're at the node — no shifting." },
+    { title: "The dummy head", detail: "A sentinel node that removes head edge-cases." },
+    { title: "Reversing", detail: "Save next, rewire, advance — the core pointer dance." },
+    { title: "Fast & slow pointers", detail: "Find the middle or detect a cycle in one pass." },
+  ],
+  "recursion": [
+    { title: "Base case & recursive case", detail: "When to stop, and how to shrink the problem." },
+    { title: "The call stack", detail: "Each call gets a frame; frames unwind as they return." },
+    { title: "Reduce to a subproblem", detail: "Express the answer in terms of a smaller input." },
+    { title: "Trace it by hand", detail: "Follow the calls and returns to build intuition." },
+    { title: "Recursion vs iteration", detail: "Trade-offs and Python's ~1000-deep stack limit." },
+    { title: "Recurse on structures", detail: "Apply it to trees and linked lists." },
+  ],
+  "trees-bst": [
+    { title: "Terminology", detail: "Root, node, leaf, parent/child, height, depth." },
+    { title: "Binary trees & TreeNode", detail: "≤2 children; the standard node representation." },
+    { title: "DFS traversals", detail: "Pre-order, in-order, post-order (recursive)." },
+    { title: "BFS / level-order", detail: "Visit level by level with a queue." },
+    { title: "BST property", detail: "left < node < right and what it buys you." },
+    { title: "Balanced vs skewed", detail: "Why O(log n) can degrade to O(n)." },
+  ],
+  "heaps-pq": [
+    { title: "The heap property", detail: "Smallest (or largest) element sits at the root." },
+    { title: "heapq basics", detail: "push/pop in O(log n), peek the root in O(1)." },
+    { title: "Max-heap via negation", detail: "Python's heapq is a MIN-heap — push -x for a max-heap." },
+    { title: "heapify", detail: "Turn a list into a heap in O(n)." },
+    { title: "Top-k with a size-k heap", detail: "Keep only k elements → O(n log k)." },
+    { title: "Merging sorted streams", detail: "A heap of the current heads." },
+  ],
+  "graphs-basics": [
+    { title: "Vertices & edges", detail: "Directed vs undirected; what a graph models." },
+    { title: "Representations", detail: "Adjacency list vs adjacency matrix and their trade-offs." },
+    { title: "Build one in Python", detail: "defaultdict(list) from an edge list." },
+    { title: "BFS", detail: "Shortest unweighted path / level-order with a queue." },
+    { title: "DFS", detail: "Reachability and connected components." },
+    { title: "Visited & cycles", detail: "Track visited to avoid infinite loops." },
+  ],
+  "tries": [
+    { title: "What a trie is", detail: "A tree where each edge is a character." },
+    { title: "Node structure", detail: "A children dict plus an is_word flag." },
+    { title: "Insert a word", detail: "Walk/create nodes character by character — O(L)." },
+    { title: "Search & startsWith", detail: "Exact match vs prefix existence." },
+    { title: "When it beats a set", detail: "Prefix queries a hash set can't answer." },
+    { title: "Space cost", detail: "One node per character — the memory trade-off." },
+  ],
+};
+
 export const FOUNDATIONS: Foundation[] = [
   {
     slug: "arrays-strings",

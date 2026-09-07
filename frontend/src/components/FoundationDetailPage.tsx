@@ -1,12 +1,12 @@
-import { useMemo } from "react";
-import { Text, Card, Badge, Group, Box, Stack, Button, Code, Anchor, Divider, Table } from "@mantine/core";
+import { useMemo, useState } from "react";
+import { Text, Card, Badge, Group, Box, Stack, Button, Code, Anchor, Divider, Table, Progress } from "@mantine/core";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { FaArrowLeft, FaCheckCircle, FaDotCircle, FaComments, FaCubes } from "react-icons/fa";
 import { getProblems, getMyProblemProgress } from "../api/challenges";
 import { createComponentTutor } from "../api/systemDesign";
 import { Page, EmptyState, difficultyColor } from "./ui";
-import { FOUNDATIONS } from "../data/foundations";
+import { FOUNDATIONS, FOUNDATION_ROADMAPS } from "../data/foundations";
 
 type Status = "solved" | "attempted" | "todo";
 
@@ -39,6 +39,28 @@ export const FoundationDetailPage = () => {
     onSuccess: ({ conversation_id }) => navigate(`/patterns/learn/${conversation_id}`),
   });
 
+  const roadmap = FOUNDATION_ROADMAPS[slug ?? ""] ?? [];
+  const [checked, setChecked] = useState<Set<number>>(() => {
+    try {
+      const raw = localStorage.getItem(`foundation-roadmap-${slug}`);
+      return new Set<number>(raw ? JSON.parse(raw) : []);
+    } catch {
+      return new Set<number>();
+    }
+  });
+  const toggleStep = (i: number) =>
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      try {
+        localStorage.setItem(`foundation-roadmap-${slug}`, JSON.stringify([...next]));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+
   if (!foundation) {
     return (
       <Page>
@@ -59,9 +81,16 @@ export const FoundationDetailPage = () => {
 
       <Group justify="space-between" mb="lg" wrap="wrap" gap="sm">
         <Text size="xl" fw={700}>{foundation.name}</Text>
-        <Button color="violet" leftSection={<FaComments size={12} />} loading={tutorMutation.isPending} onClick={() => tutorMutation.mutate()}>
-          Learn with tutor
-        </Button>
+        <Group gap="sm">
+          {roadmap.length > 0 && (
+            <Badge size="lg" variant="light" color={checked.size === roadmap.length ? "teal" : "gray"}>
+              {checked.size}/{roadmap.length} learned
+            </Badge>
+          )}
+          <Button color="violet" leftSection={<FaComments size={12} />} loading={tutorMutation.isPending} onClick={() => tutorMutation.mutate()}>
+            Learn with tutor
+          </Button>
+        </Group>
       </Group>
 
       <Box style={{ maxWidth: 820 }}>
@@ -70,6 +99,39 @@ export const FoundationDetailPage = () => {
             <Text size="xs" fw={700} tt="uppercase" c="dimmed" mb={6} style={{ letterSpacing: 0.6 }}>What it is</Text>
             <Text size="sm" style={{ lineHeight: 1.6 }}>{foundation.whatItIs}</Text>
           </Box>
+
+          {roadmap.length > 0 && (
+            <Box>
+              <Group justify="space-between" mb="xs">
+                <Text size="xs" fw={700} tt="uppercase" c="dimmed" style={{ letterSpacing: 0.6 }}>What you'll learn</Text>
+                <Text size="xs" c="dimmed">{checked.size}/{roadmap.length}</Text>
+              </Group>
+              <Progress value={(checked.size / roadmap.length) * 100} size="xs" color="indigo" mb="sm" />
+              <Stack gap={6}>
+                {roadmap.map((step, i) => {
+                  const done = checked.has(i);
+                  return (
+                    <Card key={i} withBorder p="sm" radius="sm" style={{ cursor: "pointer" }} onClick={() => toggleStep(i)}>
+                      <Group gap="sm" wrap="nowrap" align="flex-start">
+                        {done ? (
+                          <FaCheckCircle size={16} style={{ color: "var(--mantine-color-teal-6)", flexShrink: 0, marginTop: 2 }} />
+                        ) : (
+                          <Box style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid var(--app-line)", flexShrink: 0, marginTop: 3 }} />
+                        )}
+                        <Box style={{ flex: 1, minWidth: 0 }}>
+                          <Text size="sm" fw={600} style={{ textDecoration: done ? "line-through" : "none", opacity: done ? 0.65 : 1 }}>
+                            {i + 1}. {step.title}
+                          </Text>
+                          <Text size="xs" c="dimmed" mt={2} style={{ lineHeight: 1.5 }}>{step.detail}</Text>
+                        </Box>
+                      </Group>
+                    </Card>
+                  );
+                })}
+              </Stack>
+              <Text size="xs" c="dimmed" mt="xs">Tick these off as you go — or hit “Learn with tutor” to work through them hands-on.</Text>
+            </Box>
+          )}
 
           <Box>
             <Text size="xs" fw={700} tt="uppercase" c="dimmed" mb="xs" style={{ letterSpacing: 0.6 }}>Key operations & Big-O</Text>

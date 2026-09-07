@@ -34,6 +34,7 @@ import {
   FaComments,
   FaClock,
   FaFolder,
+  FaLayerGroup,
 } from "react-icons/fa";
 import { RiStickyNoteLine } from "react-icons/ri";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -368,6 +369,7 @@ export const Sidebar = () => {
     path.startsWith("/topics") ||
     path.startsWith("/learning-path") ||
     path.startsWith("/challenges") ||
+    path.startsWith("/patterns") ||
     path.startsWith("/mock");
   const isSDActive = path.startsWith("/system-design");
   const isReviewActive = path === "/" || path.startsWith("/behavioral") || path.startsWith("/revision") || path.startsWith("/notes");
@@ -568,6 +570,13 @@ export const Sidebar = () => {
             active={path.startsWith("/challenges")}
             collapsed={isCollapsed}
             onClick={() => navigate("/challenges")}
+          />
+          <NavItem
+            icon={<FaLayerGroup size={16} />}
+            label="Patterns"
+            active={path.startsWith("/patterns")}
+            collapsed={isCollapsed}
+            onClick={() => navigate("/patterns")}
           />
           <NavItem
             icon={<FaStopwatch size={16} />}

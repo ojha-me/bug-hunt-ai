@@ -23,6 +23,8 @@ import { ProblemsPage } from "./components/ProblemsPage";
 import { ProblemSolverPage } from "./components/ProblemSolverPage";
 import { MockInterviewPage } from "./components/MockInterviewPage";
 import { BehavioralPrepPage } from "./components/BehavioralPrepPage";
+import { PatternsPage } from "./components/PatternsPage";
+import { PatternDetailPage } from "./components/PatternDetailPage";
 import { DashboardPage } from "./components/DashboardPage";
 import { RevisionPage } from "./components/RevisionPage";
 
@@ -53,6 +55,8 @@ export default function App() {
           <Route path="/learning-path/chat-interface/:learningTopicId" element={<LearningPathChatInterface />} />
           <Route path="/challenges" element={<ProblemsPage />} />
           <Route path="/challenges/:problemId" element={<ProblemSolverPage />} />
+          <Route path="/patterns" element={<PatternsPage />} />
+          <Route path="/patterns/:slug" element={<PatternDetailPage />} />
           <Route path="/mock" element={<MockInterviewPage />} />
           <Route path="/behavioral" element={<BehavioralPrepPage />} />
           <Route path="/revision" element={<RevisionPage />} />

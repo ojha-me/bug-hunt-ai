@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { Box, Text, Button, Stack, Group, Alert, Loader, Textarea, Badge, Anchor, Code } from "@mantine/core";
 import { useState, useMemo, useEffect, useRef } from "react";
-import { FaExclamationCircle, FaArrowLeft, FaPlay, FaPaperPlane, FaRedo } from "react-icons/fa";
+import { FaExclamationCircle, FaArrowLeft, FaPlay, FaPaperPlane, FaRedo, FaArrowRight } from "react-icons/fa";
 import ReactMarkdown from "react-markdown";
 import Editor from "@monaco-editor/react";
 import { useMantineColorScheme } from "@mantine/core";
@@ -13,6 +13,18 @@ import type { ConversationResponse } from "../types/ai_core/api_types";
 
 const STARTER = "# Write your solution here. Run it to test, then send it to the tutor.\n\n";
 const codeKey = (id: string) => `pattern-learn-code-${id}`;
+
+// Pull fenced code blocks out of an AI message so we can load them into the editor.
+const extractCodeBlocks = (content: string): string[] => {
+  const blocks: string[] = [];
+  const re = /```(?:[a-zA-Z0-9]*)\n([\s\S]*?)```/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(content)) !== null) {
+    const code = m[1].replace(/\n$/, "");
+    if (code.trim()) blocks.push(code);
+  }
+  return blocks;
+};
 
 export const PatternLearningRoom = () => {
   const { conversationId } = useParams<{ conversationId: string }>();
@@ -115,7 +127,23 @@ export const PatternLearningRoom = () => {
                   <Box key={msg.id} style={{ display: "flex", flexDirection: "column", alignItems: msg.sender === "user" ? "flex-end" : "flex-start" }}>
                     <Box p="sm" style={{ backgroundColor: msg.sender === "user" ? "var(--mantine-primary-color-light)" : "var(--app-sunken)", border: "1px solid var(--app-line)", borderRadius: 12, maxWidth: "85%" }}>
                       {msg.sender === "ai" ? (
-                        <Box className="md-content"><ReactMarkdown>{msg.content}</ReactMarkdown></Box>
+                        <>
+                          <Box className="md-content"><ReactMarkdown>{msg.content}</ReactMarkdown></Box>
+                          {extractCodeBlocks(msg.content).map((block, bi, arr) => (
+                            <Button
+                              key={bi}
+                              size="compact-xs"
+                              variant="light"
+                              color="teal"
+                              mt={6}
+                              mr={6}
+                              leftSection={<FaArrowRight size={10} />}
+                              onClick={() => onCodeChange(block)}
+                            >
+                              {arr.length > 1 ? `Load snippet ${bi + 1}` : "Load into editor"}
+                            </Button>
+                          ))}
+                        </>
                       ) : (
                         <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>{msg.content}</Text>
                       )}

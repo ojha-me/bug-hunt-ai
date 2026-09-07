@@ -154,6 +154,57 @@ COMPONENT_BRIEFS = {
 DEFAULT_BRIEF = {"name": "a system-design component", "concepts": ["core purpose", "trade-offs", "how it scales"]}
 
 
+# Interview DSA patterns — the tutor reuses the same machinery, keyed by pattern slug.
+PATTERN_BRIEFS = {
+    "arrays-hashing": {"name": "the Arrays & Hashing pattern", "concepts": [
+        "trading space for time with a hash map/set", "O(1) membership vs O(n) scans",
+        "counting with a frequency map", "grouping by a computed key", "when order is or isn't preserved"]},
+    "two-pointers": {"name": "the Two Pointers pattern", "concepts": [
+        "converging pointers on sorted data", "which pointer to move from the comparison",
+        "fast/slow pointers", "in-place partitioning", "why it beats a nested loop"]},
+    "sliding-window": {"name": "the Sliding Window pattern", "concepts": [
+        "contiguous subarray/substring problems", "grow-right / shrink-left",
+        "incremental window state (not recomputing)", "fixed vs variable window", "each element enters and leaves once"]},
+    "stack": {"name": "the Stack (and Monotonic Stack) pattern", "concepts": [
+        "LIFO matching/undo", "monotonic stack for next-greater/smaller", "storing indices not values",
+        "parsing nested structure", "handling leftover items"]},
+    "binary-search": {"name": "the Binary Search pattern", "concepts": [
+        "halving a sorted search space", "binary-searching the ANSWER over a monotonic feasibility test",
+        "exact-match vs boundary search", "avoiding infinite loops", "picking lo<=hi vs lo<hi"]},
+    "linked-list": {"name": "the Linked List pattern", "concepts": [
+        "pointer rewiring (save next before rewiring)", "dummy head to kill edge cases",
+        "fast/slow pointers for middle/cycle", "reverse in O(1) space"]},
+    "trees": {"name": "the Trees (DFS/BFS) pattern", "concepts": [
+        "recursion mirroring the tree", "solve children then combine", "BFS with a queue for level order",
+        "carrying a (lo,hi) range for BST validation", "depth vs height"]},
+    "heap": {"name": "the Heap / Priority Queue pattern", "concepts": [
+        "O(log n) push/pop of the extreme", "size-k heap for top-k (O(n log k))",
+        "min-heap vs max-heap via negation", "merging k sorted streams"]},
+    "backtracking": {"name": "the Backtracking pattern", "concepts": [
+        "choose / recurse / undo", "copying the path into results", "pruning invalid branches",
+        "visited-marking to prevent reuse", "exponential worst case"]},
+    "graphs": {"name": "the Graphs (BFS/DFS/Topo) pattern", "concepts": [
+        "adjacency list / grid modeling", "BFS for shortest unweighted path, DFS for components",
+        "topological sort via indegrees for dependencies", "visited to avoid infinite loops"]},
+    "dynamic-programming": {"name": "the Dynamic Programming pattern", "concepts": [
+        "overlapping subproblems + optimal substructure", "defining the state (dp[i] / dp[i][j])",
+        "the transition/recurrence", "base cases and iteration order", "1D vs 2D and space compression"]},
+    "intervals": {"name": "the Intervals pattern", "concepts": [
+        "sort by start as the unlock", "overlap test: start <= previous end",
+        "merging vs conflict detection", "touching endpoints edge case"]},
+    "greedy": {"name": "the Greedy pattern", "concepts": [
+        "locally optimal choice that's provably globally optimal", "carrying a running best",
+        "furthest-reach / min-so-far", "when greedy fails and you need DP instead"]},
+    "bit-manipulation": {"name": "the Bit Manipulation pattern", "concepts": [
+        "XOR cancels pairs (a^a=0)", "n & (n-1) clears the lowest set bit",
+        "AND/OR/shift as flag ops", "O(1)-space tricks vs a hash set"]},
+}
+COMPONENT_BRIEFS.update(PATTERN_BRIEFS)
+
+# Every valid tutor topic (component kinds + pattern slugs).
+TUTOR_TOPICS = set(COMPONENT_BRIEFS.keys())
+
+
 class ComponentTutorService:
     def __init__(self, kind: str):
         self.kind = kind

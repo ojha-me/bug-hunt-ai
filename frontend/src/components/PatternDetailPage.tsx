@@ -1,11 +1,14 @@
 import { useMemo } from "react";
 import { Text, Card, Badge, Group, Box, Stack, Button, Code, Anchor, Divider } from "@mantine/core";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { FaArrowLeft, FaCheckCircle, FaDotCircle, FaLightbulb, FaExclamationTriangle, FaPlay } from "react-icons/fa";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { FaArrowLeft, FaCheckCircle, FaDotCircle, FaLightbulb, FaExclamationTriangle, FaPlay, FaComments } from "react-icons/fa";
 import { getProblems, getMyProblemProgress } from "../api/challenges";
+import { createComponentTutor } from "../api/systemDesign";
 import { Page, EmptyState, difficultyColor } from "./ui";
 import { PATTERNS } from "../data/patterns";
+import { PATTERN_INTERACTIVE } from "../data/patternInteractive";
+import { DrillCard, WalkthroughCard } from "./PatternInteractive";
 
 type Status = "solved" | "attempted" | "todo";
 const DIFF_ORDER = ["easy", "medium", "hard"] as const;
@@ -14,6 +17,7 @@ export const PatternDetailPage = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const pattern = PATTERNS.find((p) => p.slug === slug);
+  const interactive = PATTERN_INTERACTIVE[slug ?? ""];
 
   const { data: problems } = useQuery({ queryKey: ["coding-problems"], queryFn: getProblems });
   const { data: progress } = useQuery({ queryKey: ["my-progress"], queryFn: getMyProblemProgress });
@@ -34,6 +38,11 @@ export const PatternDetailPage = () => {
     () => (pattern?.problemSlugs ?? []).map((s) => bySlug[s]).filter(Boolean) as { id: string; title: string; difficulty: string }[],
     [pattern, bySlug]
   );
+
+  const tutorMutation = useMutation({
+    mutationFn: () => createComponentTutor(pattern!.slug),
+    onSuccess: ({ conversation_id }) => navigate(`/component-tutor/${conversation_id}`),
+  });
 
   if (!pattern) {
     return (
@@ -111,6 +120,44 @@ export const PatternDetailPage = () => {
             </Stack>
           </Box>
         </Stack>
+
+        {interactive && (
+          <>
+            <Divider label="Worked example" labelPosition="center" mb="lg" />
+            <Box mb="xl">
+              <WalkthroughCard walkthrough={interactive.walkthrough} />
+            </Box>
+
+            <Divider label="Spot the pattern" labelPosition="center" mb="lg" />
+            <Text size="sm" c="dimmed" mb="md">
+              The real interview skill is recognizing the pattern from the problem statement. Try these.
+            </Text>
+            <Stack gap="md" mb="xl">
+              {interactive.drills.map((d, i) => (
+                <DrillCard key={i} drill={d} index={i} />
+              ))}
+            </Stack>
+
+            <Card withBorder radius="md" p="lg" mb="xl" style={{ background: "var(--app-sunken)" }}>
+              <Group justify="space-between" wrap="wrap" gap="md">
+                <Box style={{ flex: 1, minWidth: 220 }}>
+                  <Text fw={600} mb={2}>Practice with the tutor</Text>
+                  <Text size="sm" c="dimmed" style={{ lineHeight: 1.5 }}>
+                    A live Socratic session on {pattern.name.toLowerCase()} — the tutor poses scenarios, asks you to reason, and corrects your thinking.
+                  </Text>
+                </Box>
+                <Button
+                  leftSection={<FaComments size={14} />}
+                  color="violet"
+                  loading={tutorMutation.isPending}
+                  onClick={() => tutorMutation.mutate()}
+                >
+                  Practice with tutor
+                </Button>
+              </Group>
+            </Card>
+          </>
+        )}
 
         <Divider label="Practice — easy to hard" labelPosition="center" mb="lg" />
 

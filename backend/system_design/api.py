@@ -284,12 +284,13 @@ def create_practice_session(request: HttpRequest, params: CreateSDPracticeSchema
 
 @post(router, "/component-tutor", response={200: ComponentTutorResponse, 400: Dict[str, str], 401: Dict[str, str]})
 def create_component_tutor(request: HttpRequest, params: ComponentTutorCreate):
-    if params.kind not in COMPONENT_KINDS:
-        return 400, {"detail": f"Unknown component: {params.kind}"}
+    from ai_core.utils.component_tutor_ai import TUTOR_TOPICS
+    if params.kind not in TUTOR_TOPICS:
+        return 400, {"detail": f"Unknown tutor topic: {params.kind}"}
 
     conversation = Conversation.objects.create(
         user=request.user,
-        title=f"Tutor: {params.kind.replace('_', ' ').title()}",
+        title=f"Tutor: {params.kind.replace('_', ' ').replace('-', ' ').title()}",
         conversation_type=ConversationTypeChoices.COMPONENT_TUTOR,
     )
     ComponentTutorSession.objects.create(

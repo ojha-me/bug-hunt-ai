@@ -25,6 +25,7 @@ import { MockInterviewPage } from "./components/MockInterviewPage";
 import { BehavioralPrepPage } from "./components/BehavioralPrepPage";
 import { PatternsPage } from "./components/PatternsPage";
 import { PatternDetailPage } from "./components/PatternDetailPage";
+import { PatternLearningRoom } from "./components/PatternLearningRoom";
 import { DashboardPage } from "./components/DashboardPage";
 import { RevisionPage } from "./components/RevisionPage";
 
@@ -57,6 +58,7 @@ export default function App() {
           <Route path="/challenges/:problemId" element={<ProblemSolverPage />} />
           <Route path="/patterns" element={<PatternsPage />} />
           <Route path="/patterns/:slug" element={<PatternDetailPage />} />
+          <Route path="/patterns/learn/:conversationId" element={<PatternLearningRoom />} />
           <Route path="/mock" element={<MockInterviewPage />} />
           <Route path="/behavioral" element={<BehavioralPrepPage />} />
           <Route path="/revision" element={<RevisionPage />} />

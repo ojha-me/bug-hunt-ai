@@ -41,7 +41,7 @@ export const PatternDetailPage = () => {
 
   const tutorMutation = useMutation({
     mutationFn: () => createComponentTutor(pattern!.slug),
-    onSuccess: ({ conversation_id }) => navigate(`/component-tutor/${conversation_id}`),
+    onSuccess: ({ conversation_id }) => navigate(`/patterns/learn/${conversation_id}`),
   });
 
   if (!pattern) {
@@ -70,9 +70,12 @@ export const PatternDetailPage = () => {
           <Badge size="lg" variant="light" color={solvedCount === resolved.length && resolved.length > 0 ? "teal" : "gray"}>
             {solvedCount}/{resolved.length} solved
           </Badge>
+          <Button color="violet" leftSection={<FaComments size={12} />} loading={tutorMutation.isPending} onClick={() => tutorMutation.mutate()}>
+            Learn with tutor
+          </Button>
           {firstUnsolved && (
-            <Button color="teal" leftSection={<FaPlay size={11} />} onClick={() => navigate(`/challenges/${firstUnsolved.id}`)}>
-              {solvedCount === 0 ? "Start" : "Continue"}
+            <Button variant="light" color="teal" leftSection={<FaPlay size={11} />} onClick={() => navigate(`/challenges/${firstUnsolved.id}`)}>
+              {solvedCount === 0 ? "Practice" : "Continue"}
             </Button>
           )}
         </Group>
@@ -141,9 +144,9 @@ export const PatternDetailPage = () => {
             <Card withBorder radius="md" p="lg" mb="xl" style={{ background: "var(--app-sunken)" }}>
               <Group justify="space-between" wrap="wrap" gap="md">
                 <Box style={{ flex: 1, minWidth: 220 }}>
-                  <Text fw={600} mb={2}>Practice with the tutor</Text>
+                  <Text fw={600} mb={2}>Learn this pattern with the tutor</Text>
                   <Text size="sm" c="dimmed" style={{ lineHeight: 1.5 }}>
-                    A live Socratic session on {pattern.name.toLowerCase()} — the tutor poses scenarios, asks you to reason, and corrects your thinking.
+                    The AI tutor teaches {pattern.name.toLowerCase()} hands-on: it explains the idea, gives you small coding exercises to write and run in the editor, then reviews your code and levels you up.
                   </Text>
                 </Box>
                 <Button
@@ -152,7 +155,7 @@ export const PatternDetailPage = () => {
                   loading={tutorMutation.isPending}
                   onClick={() => tutorMutation.mutate()}
                 >
-                  Practice with tutor
+                  Learn with tutor
                 </Button>
               </Group>
             </Card>

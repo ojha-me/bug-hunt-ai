@@ -209,11 +209,26 @@ class ComponentTutorService:
     def __init__(self, kind: str):
         self.kind = kind
         self.brief = COMPONENT_BRIEFS.get(kind, DEFAULT_BRIEF)
+        self.is_coding = kind in PATTERN_BRIEFS  # coding pattern -> hands-on code lesson
         self.chat = GroqChat(model=AI_MODEL)
 
     def _persona(self) -> str:
         name = self.brief["name"]
         concepts = "; ".join(self.brief["concepts"])
+        if self.is_coding:
+            return (
+                f"You are a sharp, encouraging coding-interview tutor running a hands-on 1:1 lesson on {name}.\n"
+                "Teach like a great mentor: explain the core idea with ONE small concrete example, then hand the "
+                "learner a SMALL, specific coding exercise to implement THEMSELVES in Python. They have a code "
+                "editor beside the chat — they can run their code and click 'Send to tutor' to share it.\n"
+                "When they share code, review it directly and specifically: is it correct, does it actually use "
+                "this pattern, what's the time/space complexity, and exactly what to fix. Then either ask them to "
+                "fix it or set the next, slightly harder exercise. Keep them WRITING code — don't just lecture.\n"
+                f"Ground the lesson in these ideas (cover them over the session, but NEVER paste this list): {concepts}.\n"
+                "When you set an exercise, state the task in one or two lines and give a clear Python function "
+                "signature, and tell them to write it in the editor and hit 'Send to tutor' when ready. Keep "
+                "replies short and conversational (2-6 sentences). Use fenced ```python blocks for any code."
+            )
         return (
             f"You are a sharp, encouraging system-design tutor running a focused 1:1 session on {name}.\n"
             "Teach dynamically and Socratically: present ONE concrete scenario at a time, ask the learner to "
@@ -227,22 +242,40 @@ class ComponentTutorService:
         )
 
     def generate_opening(self) -> str:
-        prompt = (
-            self._persona()
-            + "\n\nBegin the session now. Greet the learner in one line, then set up a fresh, specific, "
-            "slightly unusual scenario that motivates this component and ask them what they'd do. "
-            "Do not explain the answer yet — just pose the situation and the question."
-        )
-        response = self.chat.send_message(message=prompt)
+        if self.is_coding:
+            instruction = (
+                "\n\nBegin the lesson now. Greet the learner in one line, explain the core idea of this pattern "
+                "in 2-3 sentences with a tiny concrete example, then give them their FIRST small coding exercise: "
+                "state the task and a clear Python function signature, and tell them to write it in the editor and "
+                "hit 'Send to tutor' when ready. Keep it approachable — start easy."
+            )
+        else:
+            instruction = (
+                "\n\nBegin the session now. Greet the learner in one line, then set up a fresh, specific, "
+                "slightly unusual scenario that motivates this component and ask them what they'd do. "
+                "Do not explain the answer yet — just pose the situation and the question."
+            )
+        response = self.chat.send_message(message=self._persona() + instruction)
         return response.text.strip()
 
     def generate_response(self, user_message: str, diagram=None, context: str = "") -> dict:
+        if self.is_coding:
+            instruction = (
+                "Respond as the coding tutor. If they shared code, review it specifically (correctness, does it "
+                "use the pattern, complexity, what to fix) and then either ask them to fix it or set the next, "
+                "slightly harder exercise with a clear signature. If they asked a question, answer briefly and "
+                "steer them back to writing code. Always keep them coding."
+            )
+        else:
+            instruction = (
+                "Respond as the tutor: react to their reasoning, teach the next idea through the ongoing scenario "
+                "(or a new one if it's time to move on), and end with a question."
+            )
         prompt = (
             self._persona()
             + f"\n\nCONVERSATION SO FAR:\n{context or '(the session is just beginning)'}\n\n"
             f"LEARNER JUST SAID:\n{user_message}\n\n"
-            "Respond as the tutor: react to their reasoning, teach the next idea through the ongoing scenario "
-            "(or a new one if it's time to move on), and end with a question."
+            + instruction
         )
         response = self.chat.send_message(message=prompt)
         return {"content": response.text.strip(), "type": "explanation", "diagram": None}

@@ -441,6 +441,7 @@ export const Sidebar = () => {
         </Tooltip>
       </Group>
 
+      <ScrollArea style={{ flex: 1, minHeight: 0 }} type="auto">
       <Stack gap="xs" mb="md">
         <Button
           variant="filled"
@@ -650,8 +651,8 @@ export const Sidebar = () => {
         </CollapsibleSection>
       </Stack>
 
-      {!isCollapsed ? (
-        <ScrollArea style={{ flex: 1, minHeight: 0 }} type="auto">
+      {!isCollapsed && (
+        <>
           <Divider mb="md" />
 
           <Box mb="md">
@@ -708,10 +709,9 @@ export const Sidebar = () => {
               )}
             </Stack>
           </Box>
-        </ScrollArea>
-      ) : (
-        <Box style={{ flex: 1, minHeight: 0 }} />
+        </>
       )}
+      </ScrollArea>
 
       <Box mt="auto" pt="md" style={{ borderTop: "1px solid var(--app-line)" }}>
         <Stack gap="xs">

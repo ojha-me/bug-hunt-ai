@@ -369,6 +369,7 @@ export const Sidebar = () => {
     path.startsWith("/topics") ||
     path.startsWith("/learning-path") ||
     path.startsWith("/challenges") ||
+    path.startsWith("/foundations") ||
     path.startsWith("/patterns") ||
     path.startsWith("/mock");
   const isSDActive = path.startsWith("/system-design");
@@ -566,11 +567,11 @@ export const Sidebar = () => {
             onClick={() => navigate("/topics")}
           />
           <NavItem
-            icon={<FaCode size={16} />}
-            label="Coding Problems"
-            active={path.startsWith("/challenges")}
+            icon={<FaCubes size={16} />}
+            label="Foundations"
+            active={path.startsWith("/foundations")}
             collapsed={isCollapsed}
-            onClick={() => navigate("/challenges")}
+            onClick={() => navigate("/foundations")}
           />
           <NavItem
             icon={<FaLayerGroup size={16} />}
@@ -578,6 +579,13 @@ export const Sidebar = () => {
             active={path.startsWith("/patterns")}
             collapsed={isCollapsed}
             onClick={() => navigate("/patterns")}
+          />
+          <NavItem
+            icon={<FaCode size={16} />}
+            label="Coding Problems"
+            active={path.startsWith("/challenges")}
+            collapsed={isCollapsed}
+            onClick={() => navigate("/challenges")}
           />
           <NavItem
             icon={<FaStopwatch size={16} />}

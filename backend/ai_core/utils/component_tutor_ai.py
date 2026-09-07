@@ -201,7 +201,43 @@ PATTERN_BRIEFS = {
 }
 COMPONENT_BRIEFS.update(PATTERN_BRIEFS)
 
-# Every valid tutor topic (component kinds + pattern slugs).
+
+# Data-structure foundations — the prerequisites before patterns. Taught hands-on.
+DS_FOUNDATION_BRIEFS = {
+    "arrays-strings": {"name": "the Array (and String) data structure", "concepts": [
+        "contiguous memory and O(1) indexing", "iteration and in-place modification",
+        "slicing and its O(k) cost", "strings as immutable sequences of characters", "when an array is the right choice"]},
+    "hashing-maps": {"name": "the Hash Map & Hash Set", "concepts": [
+        "O(1) average insert/lookup/delete", "hashing and collisions (conceptually)",
+        "counting with a frequency map", "dedup with a set", "keys must be hashable; no sorted order"]},
+    "stacks-queues": {"name": "the Stack & Queue", "concepts": [
+        "LIFO stack: push/pop/peek in O(1)", "FIFO queue", "collections.deque for O(1) at both ends",
+        "using a Python list as a stack", "when LIFO vs FIFO matters"]},
+    "linked-lists": {"name": "the Linked List", "concepts": [
+        "nodes with a value and a next pointer", "O(1) insert/delete at a node vs O(n) search",
+        "singly vs doubly linked", "the dummy-head trick", "rewiring pointers without losing the list"]},
+    "recursion": {"name": "Recursion", "concepts": [
+        "base case + recursive case", "the call stack and how frames unwind",
+        "reducing a problem to a smaller subproblem", "recursion vs iteration", "stack depth and overflow"]},
+    "trees-bst": {"name": "the Tree & Binary Search Tree", "concepts": [
+        "nodes, root, children, leaves, height", "traversals: pre/in/post-order and level-order (BFS)",
+        "the BST ordering property", "recursion mirrors the tree", "balanced vs skewed and why it matters"]},
+    "heaps-pq": {"name": "the Heap / Priority Queue", "concepts": [
+        "a binary heap keeps the min (or max) at the root", "push/pop in O(log n)",
+        "Python heapq (min-heap; negate for max)", "top-k with a size-k heap", "heapify in O(n)"]},
+    "graphs-basics": {"name": "the Graph", "concepts": [
+        "vertices and edges; directed vs undirected", "adjacency list vs adjacency matrix",
+        "representing a graph in Python (dict of lists)", "BFS vs DFS traversal", "tracking visited nodes"]},
+    "tries": {"name": "the Trie (prefix tree)", "concepts": [
+        "a tree keyed by characters", "insert/search/startsWith in O(word length)",
+        "node children as a dict", "when a trie beats a hash set (prefix queries)", "the space cost"]},
+}
+COMPONENT_BRIEFS.update(DS_FOUNDATION_BRIEFS)
+
+# Topics that are coding lessons — they use the hands-on, write-code persona.
+CODING_TOPICS = set(PATTERN_BRIEFS.keys()) | set(DS_FOUNDATION_BRIEFS.keys())
+
+# Every valid tutor topic (component kinds + pattern slugs + DS foundations).
 TUTOR_TOPICS = set(COMPONENT_BRIEFS.keys())
 
 
@@ -209,7 +245,7 @@ class ComponentTutorService:
     def __init__(self, kind: str):
         self.kind = kind
         self.brief = COMPONENT_BRIEFS.get(kind, DEFAULT_BRIEF)
-        self.is_coding = kind in PATTERN_BRIEFS  # coding pattern -> hands-on code lesson
+        self.is_coding = kind in CODING_TOPICS  # pattern or DS foundation -> hands-on code lesson
         self.chat = GroqChat(model=AI_MODEL)
 
     def _persona(self) -> str:

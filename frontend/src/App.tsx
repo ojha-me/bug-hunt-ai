@@ -22,6 +22,8 @@ import { LearningPathNotesView } from "./pages/LearningPathNotesView";
 import { ProblemsPage } from "./components/ProblemsPage";
 import { ProblemSolverPage } from "./components/ProblemSolverPage";
 import { MockInterviewPage } from "./components/MockInterviewPage";
+import { MockInterviewRoom } from "./components/MockInterviewRoom";
+import { ResumeWorkspacePage } from "./components/ResumeWorkspacePage";
 import { BehavioralPrepPage } from "./components/BehavioralPrepPage";
 import { PatternsPage } from "./components/PatternsPage";
 import { PatternDetailPage } from "./components/PatternDetailPage";
@@ -64,8 +66,10 @@ export default function App() {
           <Route path="/patterns/:slug" element={<PatternDetailPage />} />
           <Route path="/patterns/learn/:conversationId" element={<PatternLearningRoom />} />
           <Route path="/mock" element={<MockInterviewPage />} />
+          <Route path="/mock/interview/:conversationId" element={<MockInterviewRoom />} />
           <Route path="/behavioral" element={<BehavioralPrepPage />} />
           <Route path="/revision" element={<RevisionPage />} />
+          <Route path="/resume" element={<ResumeWorkspacePage />} />
           <Route path="/notes" element={<NotesView />} />
           <Route path="/learning-path/:pathId/notes" element={<LearningPathNotesView />} />
           <Route path="/profile" element={<UserProfile />} />

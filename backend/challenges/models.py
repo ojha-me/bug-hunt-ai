@@ -153,3 +153,35 @@ class ProblemTutorSession(models.Model):
 
     def __str__(self):
         return f"{self.user.email} - {self.problem.slug}"
+
+
+class MockInterviewSession(models.Model):
+    """
+    A live, AI-driven coding interview on a single problem. The conversation
+    (interviewer <-> candidate) lives in ai_core Messages keyed by `conversation`;
+    this row tracks the problem, timing, and the final scored rubric.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="mock_interviews")
+    problem = models.ForeignKey(CodingProblem, on_delete=models.CASCADE, related_name="mock_interviews")
+    conversation = models.OneToOneField(
+        "ai_core.Conversation", on_delete=models.CASCADE, related_name="mock_interview", null=True, blank=True
+    )
+    duration_minutes = models.PositiveIntegerField(default=35)
+    final_code = models.TextField(blank=True, default="")
+    # Scored rubric produced at the end. Shape:
+    # {verdict, scores: {correctness, communication, problem_solving, coding, speed},
+    #  passed, total, strengths: [...], improvements: [...], summary}
+    evaluation = models.JSONField(null=True, blank=True)
+    started_at = models.DateTimeField(auto_now_add=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-started_at"]
+
+    @property
+    def is_complete(self) -> bool:
+        return self.evaluation is not None
+
+    def __str__(self):
+        return f"{self.user.email} - interview:{self.problem.slug}"

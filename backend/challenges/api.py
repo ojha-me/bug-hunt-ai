@@ -6,7 +6,7 @@ from ninja import Router
 from users.utils.ninja import get, post
 from execution.services.python_executor import judge_python, judge_function
 from execution.api_types import RunResponse, TestCaseResult
-from challenges.models import CodingProblem, ProblemAttempt, ProblemTutorSession, ProblemList
+from challenges.models import CodingProblem, ProblemAttempt, ProblemTutorSession, ProblemList, MockInterviewSession
 
 
 def _judge_problem(problem: CodingProblem, code: str, timeout: int = 5):
@@ -32,6 +32,8 @@ from challenges.api_types import (
     TutorChatIn,
     TutorChatOut,
     TutorHistoryOut,
+    CreateMockInterviewSchema,
+    MockInterviewResponse,
 )
 from challenges.services.tutor import send_tutor_message
 from collections import defaultdict
@@ -247,3 +249,75 @@ def tutor_chat(request: HttpRequest, problem_id: UUID, params: TutorChatIn):
     session, _ = ProblemTutorSession.objects.get_or_create(user=request.user, problem=problem)
     reply = send_tutor_message(problem, session, params.message, params.code)
     return TutorChatOut(reply=reply, history=session.history or [])
+
+
+# ---------------- Mock interview ----------------
+
+def _serialize_mock(session: MockInterviewSession) -> MockInterviewResponse:
+    p = session.problem
+    return MockInterviewResponse(
+        id=session.id,
+        conversation_id=session.conversation_id,
+        problem=CodingProblemDetail(
+            id=p.id, title=p.title, slug=p.slug, difficulty=p.difficulty, topics=p.topics,
+            description=p.description, examples=p.examples, constraints=p.constraints,
+            starter_code=p.starter_code, test_cases=[], stats=p.attempt_stats,
+        ),
+        duration_minutes=session.duration_minutes,
+        evaluation=session.evaluation,
+        final_code=session.final_code or "",
+    )
+
+
+@post(router, "/mock-interview", response={200: MockInterviewResponse, 400: Dict[str, str], 401: Dict[str, str]})
+def create_mock_interview(request: HttpRequest, params: CreateMockInterviewSchema):
+    """
+    Start a live AI interview. Picks the requested problem, or a random one matching
+    the difficulty/list filters. Creates a conversation the interviewer consumer drives.
+    """
+    from ai_core.models import Conversation, ConversationTypeChoices
+
+    if params.problem_id:
+        problem = get_object_or_404(CodingProblem, id=params.problem_id, is_active=True)
+    else:
+        qs = CodingProblem.objects.filter(is_active=True)
+        if params.difficulty and params.difficulty != "all":
+            qs = qs.filter(difficulty=params.difficulty)
+        if params.list_slug and params.list_slug != "all":
+            plist = ProblemList.objects.filter(slug=params.list_slug).first()
+            if plist and plist.problem_slugs:
+                qs = qs.filter(slug__in=plist.problem_slugs)
+        problem = qs.order_by("?").first()
+        if problem is None:
+            return 400, {"detail": "No problem matches those filters."}
+
+    conversation = Conversation.objects.create(
+        user=request.user,
+        title=f"Interview: {problem.title}",
+        conversation_type=ConversationTypeChoices.MOCK_INTERVIEW,
+    )
+    session = MockInterviewSession.objects.create(
+        user=request.user,
+        problem=problem,
+        conversation=conversation,
+        duration_minutes=max(10, min(120, params.duration_minutes or 35)),
+    )
+    return _serialize_mock(session)
+
+
+@get(router, "/mock-interview/{conversation_id}", response={200: MockInterviewResponse, 401: Dict[str, str], 404: Dict[str, str]})
+def get_mock_interview(request: HttpRequest, conversation_id: UUID):
+    session = get_object_or_404(
+        MockInterviewSession.objects.select_related("problem"),
+        conversation_id=conversation_id, user=request.user,
+    )
+    return _serialize_mock(session)
+
+
+@get(router, "/mock-interviews", response={200: List[MockInterviewResponse], 401: Dict[str, str]})
+def list_mock_interviews(request: HttpRequest):
+    sessions = (
+        MockInterviewSession.objects.select_related("problem")
+        .filter(user=request.user).exclude(evaluation=None)[:30]
+    )
+    return [_serialize_mock(s) for s in sessions]

@@ -20,6 +20,22 @@ class CodingProblemDetail(CodingProblemSummary):
     test_cases: List[dict]
 
 
+class CreateMockInterviewSchema(Schema):
+    problem_id: Optional[UUID] = None
+    difficulty: Optional[str] = None  # "easy" | "medium" | "hard" — used when problem_id is absent
+    list_slug: Optional[str] = None
+    duration_minutes: int = 35
+
+
+class MockInterviewResponse(Schema):
+    id: UUID
+    conversation_id: UUID
+    problem: CodingProblemDetail
+    duration_minutes: int
+    evaluation: Optional[dict] = None
+    final_code: str = ""
+
+
 class SubmitParams(Schema):
     code: str
     language: str = "python"

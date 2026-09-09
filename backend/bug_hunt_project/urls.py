@@ -7,6 +7,7 @@ from learning_paths.api import router as learning_paths_router
 from system_design.api import router as system_design_router
 from challenges.api import router as challenges_router
 from revision.api import router as revision_router
+from resume.api import router as resume_router
 from ninja import NinjaAPI
 
 api = NinjaAPI()
@@ -18,6 +19,7 @@ api.add_router("learning-paths/", learning_paths_router)
 api.add_router("system-design/", system_design_router)
 api.add_router("challenges/", challenges_router)
 api.add_router("revision/", revision_router)
+api.add_router("resume/", resume_router)
 
 urlpatterns = [
     path('admin/', admin.site.urls),

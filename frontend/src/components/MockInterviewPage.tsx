@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { Text, Button, Group, Badge, Card, Stack, Box, SegmentedControl, Select, Divider } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { FaStopwatch, FaPlay, FaCheckCircle, FaForward, FaRedo } from "react-icons/fa";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { FaStopwatch, FaPlay, FaCheckCircle, FaForward, FaRedo, FaComments, FaMicrophone } from "react-icons/fa";
 import { getProblems, getProblemLists } from "../api/challenges";
+import { createMockInterview } from "../api/mockInterview";
 import { Page, PageHeader } from "./ui";
 import {
   getMockSession,
@@ -41,6 +42,16 @@ export const MockInterviewPage = () => {
     if (difficulty !== "all") p = p.filter((x) => x.difficulty === difficulty);
     return p;
   }, [problems, lists, listSlug, difficulty]);
+
+  const aiInterview = useMutation({
+    mutationFn: () =>
+      createMockInterview({
+        difficulty: difficulty === "all" ? undefined : difficulty,
+        list_slug: listSlug === "all" ? undefined : listSlug,
+        duration_minutes: Number(duration),
+      }),
+    onSuccess: (s) => navigate(`/mock/interview/${s.conversation_id}`),
+  });
 
   const start = () => {
     const picked = shuffle(pool)
@@ -156,8 +167,34 @@ export const MockInterviewPage = () => {
         icon={<FaStopwatch size={14} />}
         iconColor="violet"
         title="Mock Interview"
-        subtitle="Simulate the real thing: a countdown, a set of random problems, and no hints. Solve or skip; get a summary at the end."
+        subtitle="Pick your settings below, then run a live AI interview or a timed solo drill."
       />
+
+      <Card withBorder p="lg" radius="md" mb="lg" style={{ maxWidth: 560, borderColor: "var(--mantine-primary-color-filled)" }}>
+        <Group justify="space-between" wrap="nowrap" mb="xs">
+          <Group gap="xs">
+            <FaComments size={15} />
+            <Text fw={700}>AI Interview</Text>
+          </Group>
+          <Badge color="violet" variant="light">Recommended</Badge>
+        </Group>
+        <Text size="sm" c="dimmed" mb="md" style={{ lineHeight: 1.55 }}>
+          One problem, one live interviewer. It makes you explain your approach before you code, probes your
+          thinking, nudges you with graded hints when you're stuck, then scores you on correctness, communication,
+          problem-solving, and speed — just like the real thing. Uses the difficulty / list you pick below.
+        </Text>
+        <Group gap="xs">
+          <Button color="violet" leftSection={<FaComments size={13} />} loading={aiInterview.isPending} onClick={() => aiInterview.mutate()}>
+            Start AI interview
+          </Button>
+          <Text size="xs" c="dimmed" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+            <FaMicrophone size={10} /> tip: think out loud in the chat
+          </Text>
+        </Group>
+        {aiInterview.isError && <Text size="xs" c="red" mt="xs">Couldn't start — no problem matched those filters.</Text>}
+      </Card>
+
+      <Text size="sm" fw={600} c="dimmed" mb="xs" style={{ maxWidth: 560 }}>Or: timed solo drill</Text>
       <Card withBorder p="lg" radius="md" style={{ maxWidth: 560 }}>
         <Stack gap="md">
           <Box>

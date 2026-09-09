@@ -44,6 +44,10 @@ class SystemDesignConsumer(AsyncWebsocketConsumer):
             await self.handle_regenerate()
             return
 
+        if action == "delete_message":
+            await self.handle_delete(data.get("message_id"), bool(data.get("cascade", False)))
+            return
+
         if action == "submit_diagram":
             await self.handle_diagram_submission(data.get("diagram"))
             return
@@ -140,6 +144,40 @@ class SystemDesignConsumer(AsyncWebsocketConsumer):
 
         await self.broadcast_event("done")
         await self.broadcast_message(ai_message)
+
+    async def handle_delete(self, message_id, cascade=False):
+        """
+        Delete a message (and, when cascade is set, every message after it — used
+        when editing a user turn so the now-stale replies go too). Broadcasts the
+        removed ids so all clients drop them from the transcript.
+        """
+        if not message_id:
+            return
+        ids = await self._delete_messages(str(message_id), cascade)
+        if ids:
+            await self.broadcast_deleted(ids)
+
+    @database_sync_to_async
+    def _delete_messages(self, message_id, cascade):
+        target = self.conversation.messages.filter(id=message_id).first()
+        if target is None:
+            return []
+        if cascade:
+            qs = self.conversation.messages.filter(created_at__gte=target.created_at)
+        else:
+            qs = self.conversation.messages.filter(id=message_id)
+        ids = [str(m.id) for m in qs]
+        qs.delete()
+        return ids
+
+    async def broadcast_deleted(self, ids):
+        await self.channel_layer.group_send(
+            self.room_group_name,
+            {"type": "messages.deleted", "ids": ids},
+        )
+
+    async def messages_deleted(self, event):
+        await self.send(text_data=json.dumps({"type": "messages_deleted", "ids": event["ids"]}))
 
     async def _build_context(self) -> str:
         messages = await database_sync_to_async(

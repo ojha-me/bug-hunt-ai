@@ -69,6 +69,7 @@ INSTALLED_APPS = [
     'learning_paths',
     'system_design',
     'revision',
+    'resume',
 ]
 
 MIDDLEWARE = [

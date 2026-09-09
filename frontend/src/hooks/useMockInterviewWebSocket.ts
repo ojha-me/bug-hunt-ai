@@ -1,29 +1,28 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getAccessToken } from "../api/apiClient";
+import type { InterviewEvaluation } from "../api/mockInterview";
 
-export interface TutorMessage {
+export interface InterviewMessage {
   id: string;
   sender: "user" | "ai";
   content: string;
   timestamp: string;
 }
 
-const isMessage = (data: any): data is TutorMessage =>
+const isMessage = (data: any): data is InterviewMessage =>
   data && typeof data.id !== "undefined" && typeof data.sender !== "undefined";
 
-const isEvent = (data: any): data is { type: string; content?: string } =>
-  data && typeof data.type !== "undefined";
-
 /**
- * WebSocket hook for the per-component tutor chat. Mirrors the system-design
- * hook but talks to ws/component-tutor/ and carries no diagram payloads.
+ * WebSocket hook for the live mock interview. Talks to ws/mock-interview/, streams
+ * the interviewer <-> candidate turns, and surfaces the final scored evaluation.
  */
-export const useComponentTutorWebSocket = (conversationId: string) => {
+export const useMockInterviewWebSocket = (conversationId: string) => {
   const socketRef = useRef<WebSocket | null>(null);
-  const [messages, setMessages] = useState<TutorMessage[]>([]);
-  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
+  const [messages, setMessages] = useState<InterviewMessage[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [isGrading, setIsGrading] = useState(false);
+  const [evaluation, setEvaluation] = useState<InterviewEvaluation | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const maxReconnectAttempts = 5;
   const token = getAccessToken();
@@ -36,7 +35,7 @@ export const useComponentTutorWebSocket = (conversationId: string) => {
     const apiBase = import.meta.env.VITE_WS_BASE || window.location.origin;
     const wsProtocol = apiBase.startsWith("https") ? "wss://" : "ws://";
     const urlWithoutProtocol = apiBase.replace(/^https?:\/\//, "").replace(/\/$/, "");
-    const wsUrl = `${wsProtocol}${urlWithoutProtocol}/ws/component-tutor/${conversationId}/?token=${token}`;
+    const wsUrl = `${wsProtocol}${urlWithoutProtocol}/ws/mock-interview/${conversationId}/?token=${token}`;
 
     const connect = () => {
       const ws = new WebSocket(wsUrl);
@@ -48,18 +47,19 @@ export const useComponentTutorWebSocket = (conversationId: string) => {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          if (data && data.type === "messages_deleted" && Array.isArray(data.ids)) {
-            const gone: string[] = data.ids;
-            setDeletedIds((prev) => new Set([...prev, ...gone]));
-            setMessages((prev) => prev.filter((m) => !gone.includes(m.id)));
+          if (data && data.type === "interview_result" && data.evaluation) {
+            setIsGrading(false);
+            setIsTyping(false);
+            setEvaluation(data.evaluation as InterviewEvaluation);
           } else if (isMessage(data)) {
             setMessages((prev) => (prev.some((m) => m.id === data.id) ? prev : [...prev, data]));
-          } else if (isEvent(data)) {
+          } else if (data && typeof data.type !== "undefined") {
             if (data.type === "typing_start") setIsTyping(true);
-            else if (data.type === "done") setIsTyping(false);
+            else if (data.type === "grading_start") { setIsGrading(true); setIsTyping(false); }
+            else if (data.type === "done") { setIsTyping(false); setIsGrading(false); }
           }
         } catch (err) {
-          console.error("Failed to parse tutor message:", err);
+          console.error("Failed to parse interview message:", err);
         }
       };
       ws.onclose = (event) => {
@@ -84,29 +84,22 @@ export const useComponentTutorWebSocket = (conversationId: string) => {
     };
   }, [conversationId, token]);
 
-  const sendMessage = useCallback((payload: { message: string }) => {
+  const sendMessage = useCallback((message: string) => {
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify(payload));
+      socketRef.current.send(JSON.stringify({ message }));
     } else {
       console.warn("WebSocket not connected");
     }
   }, []);
 
-  const regenerate = useCallback(() => {
+  const endInterview = useCallback((code: string) => {
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify({ action: "regenerate" }));
+      setIsGrading(true);
+      socketRef.current.send(JSON.stringify({ action: "end_interview", code }));
     } else {
       console.warn("WebSocket not connected");
     }
   }, []);
 
-  const deleteMessage = useCallback((messageId: string, cascade = false) => {
-    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify({ action: "delete_message", message_id: messageId, cascade }));
-    } else {
-      console.warn("WebSocket not connected");
-    }
-  }, []);
-
-  return { messages, deletedIds, sendMessage, regenerate, deleteMessage, isConnected, isTyping };
+  return { messages, isConnected, isTyping, isGrading, evaluation, sendMessage, endInterview };
 };

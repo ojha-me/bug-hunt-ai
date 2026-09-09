@@ -34,6 +34,7 @@ import {
   FaComments,
   FaClock,
   FaFolder,
+  FaFileAlt,
   FaLayerGroup,
 } from "react-icons/fa";
 import { RiStickyNoteLine } from "react-icons/ri";
@@ -71,6 +72,7 @@ function getPageMeta(pathname: string): { label: string; icon: ReactNode } {
   if (pathname.startsWith("/system-design/practice")) return { label: "Design Drills", icon: <FaDumbbell size={14} /> };
   if (pathname.startsWith("/system-design")) return { label: "System Design", icon: <FaProjectDiagram size={14} /> };
   if (pathname.startsWith("/revision")) return { label: "Review Queue", icon: <FaRedoAlt size={14} /> };
+  if (pathname.startsWith("/resume")) return { label: "Resume", icon: <FaFileAlt size={14} /> };
   if (pathname.startsWith("/notes")) return { label: "My Notes", icon: <RiStickyNoteLine size={14} /> };
   if (pathname.startsWith("/profile")) return { label: "Profile", icon: <FaUser size={14} /> };
   if (pathname.startsWith("/conversation")) return { label: "Chat", icon: <FaComments size={14} /> };
@@ -373,7 +375,7 @@ export const Sidebar = () => {
     path.startsWith("/patterns") ||
     path.startsWith("/mock");
   const isSDActive = path.startsWith("/system-design");
-  const isReviewActive = path === "/" || path.startsWith("/behavioral") || path.startsWith("/revision") || path.startsWith("/notes");
+  const isReviewActive = path === "/" || path.startsWith("/behavioral") || path.startsWith("/revision") || path.startsWith("/notes") || path.startsWith("/resume");
 
   const hybridRecent = useMemo(() => {
     const pages = recentPages.filter((p) => p.path !== path).slice(0, 4);
@@ -648,6 +650,13 @@ export const Sidebar = () => {
             active={path.startsWith("/revision")}
             collapsed={isCollapsed}
             onClick={() => navigate("/revision")}
+          />
+          <NavItem
+            icon={<FaFileAlt size={16} />}
+            label="Resume"
+            active={path.startsWith("/resume")}
+            collapsed={isCollapsed}
+            onClick={() => navigate("/resume")}
           />
           <NavItem
             icon={<RiStickyNoteLine size={16} />}

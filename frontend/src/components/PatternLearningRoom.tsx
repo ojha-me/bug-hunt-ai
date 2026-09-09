@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { Box, Text, Button, Stack, Group, Alert, Loader, Textarea, Badge, Anchor, Code } from "@mantine/core";
 import { useState, useMemo, useEffect, useRef } from "react";
-import { FaExclamationCircle, FaArrowLeft, FaPlay, FaPaperPlane, FaRedo, FaArrowRight } from "react-icons/fa";
+import { FaExclamationCircle, FaArrowLeft, FaPlay, FaPaperPlane, FaRedo, FaArrowRight, FaPen, FaTrash } from "react-icons/fa";
 import ReactMarkdown from "react-markdown";
 import Editor from "@monaco-editor/react";
 import { useMantineColorScheme } from "@mantine/core";
@@ -34,9 +34,11 @@ export const PatternLearningRoom = () => {
   const [code, setCode] = useState(STARTER);
   const [output, setOutput] = useState<string>("");
   const [isRunning, setIsRunning] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { messages: liveMessages, sendMessage, regenerate, isConnected, isTyping } =
+  const { messages: liveMessages, deletedIds, sendMessage, regenerate, deleteMessage, isConnected, isTyping } =
     useComponentTutorWebSocket(conversationId!);
 
   const { data: conversation } = useQuery<ConversationResponse>({
@@ -53,9 +55,9 @@ export const PatternLearningRoom = () => {
   const allMessages = useMemo(() => {
     const history = conversation?.messages ?? [];
     const ids = new Set(history.map((m) => m.id));
-    const merged = [...history, ...liveMessages.filter((m) => !ids.has(m.id))];
+    const merged = [...history, ...liveMessages.filter((m) => !ids.has(m.id))].filter((m) => !deletedIds.has(m.id));
     return merged.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-  }, [conversation, liveMessages]);
+  }, [conversation, liveMessages, deletedIds]);
 
   const lastMsg = allMessages[allMessages.length - 1];
   const danglingUserMsg = !!lastMsg && lastMsg.sender === "user" && !isTyping;
@@ -96,6 +98,34 @@ export const PatternLearningRoom = () => {
     sendMessage({ message: body });
   };
 
+  const canMutate = isConnected && !isTyping;
+
+  const handleDelete = (id: string) => {
+    if (!canMutate) return;
+    deleteMessage(id, false);
+  };
+
+  // Regenerate an AI reply: drop it, then ask the tutor to answer the prior turn again.
+  const handleRetry = (id: string) => {
+    if (!canMutate) return;
+    deleteMessage(id, false);
+    regenerate();
+  };
+
+  const startEdit = (id: string, content: string) => {
+    setEditingId(id);
+    setEditValue(content);
+  };
+
+  // Save an edited user turn: remove it and everything after, then resend the new text.
+  const saveEdit = () => {
+    if (!canMutate || !editingId || !editValue.trim()) return;
+    deleteMessage(editingId, true);
+    sendMessage({ message: editValue.trim() });
+    setEditingId(null);
+    setEditValue("");
+  };
+
   return (
     <Box p="md" style={{ height: "100vh", display: "flex", flexDirection: "column", background: "var(--app-bg)" }}>
       {!isConnected && (
@@ -123,34 +153,69 @@ export const PatternLearningRoom = () => {
               <Text c="dimmed" ta="center" pt="xl">Your tutor is warming up...</Text>
             ) : (
               <Stack gap="sm">
-                {allMessages.map((msg) => (
-                  <Box key={msg.id} style={{ display: "flex", flexDirection: "column", alignItems: msg.sender === "user" ? "flex-end" : "flex-start" }}>
-                    <Box p="sm" style={{ backgroundColor: msg.sender === "user" ? "var(--mantine-primary-color-light)" : "var(--app-sunken)", border: "1px solid var(--app-line)", borderRadius: 12, maxWidth: "85%" }}>
-                      {msg.sender === "ai" ? (
-                        <>
-                          <Box className="md-content"><ReactMarkdown>{msg.content}</ReactMarkdown></Box>
-                          {extractCodeBlocks(msg.content).map((block, bi, arr) => (
-                            <Button
-                              key={bi}
-                              size="compact-xs"
-                              variant="light"
-                              color="teal"
-                              mt={6}
-                              mr={6}
-                              leftSection={<FaArrowRight size={10} />}
-                              onClick={() => onCodeChange(block)}
-                            >
-                              {arr.length > 1 ? `Load snippet ${bi + 1}` : "Load into editor"}
-                            </Button>
-                          ))}
-                        </>
-                      ) : (
-                        <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>{msg.content}</Text>
-                      )}
+                {allMessages.map((msg, i) => {
+                  const isLast = i === allMessages.length - 1;
+                  const prev = allMessages[i - 1];
+                  const canRetry = msg.sender === "ai" && isLast && !!prev && prev.sender === "user";
+
+                  if (editingId === msg.id) {
+                    return (
+                      <Box key={msg.id} style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+                        <Box style={{ width: "85%" }}>
+                          <Textarea value={editValue} onChange={(e) => setEditValue(e.currentTarget.value)} autosize minRows={2} maxRows={8}
+                            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveEdit(); } }} autoFocus />
+                          <Group gap="xs" justify="flex-end" mt={6}>
+                            <Button size="compact-xs" variant="subtle" color="gray" onClick={() => setEditingId(null)}>Cancel</Button>
+                            <Button size="compact-xs" color="violet" disabled={!canMutate || !editValue.trim()} onClick={saveEdit}>Save & resend</Button>
+                          </Group>
+                        </Box>
+                      </Box>
+                    );
+                  }
+
+                  return (
+                    <Box key={msg.id} className="msg-row" style={{ display: "flex", flexDirection: "column", alignItems: msg.sender === "user" ? "flex-end" : "flex-start" }}>
+                      <Box p="sm" style={{ backgroundColor: msg.sender === "user" ? "var(--mantine-primary-color-light)" : "var(--app-sunken)", border: "1px solid var(--app-line)", borderRadius: 12, maxWidth: "85%" }}>
+                        {msg.sender === "ai" ? (
+                          <>
+                            <Box className="md-content"><ReactMarkdown>{msg.content}</ReactMarkdown></Box>
+                            {extractCodeBlocks(msg.content).map((block, bi, arr) => (
+                              <Button
+                                key={bi}
+                                size="compact-xs"
+                                variant="light"
+                                color="teal"
+                                mt={6}
+                                mr={6}
+                                leftSection={<FaArrowRight size={10} />}
+                                onClick={() => onCodeChange(block)}
+                              >
+                                {arr.length > 1 ? `Load snippet ${bi + 1}` : "Load into editor"}
+                              </Button>
+                            ))}
+                          </>
+                        ) : (
+                          <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>{msg.content}</Text>
+                        )}
+                      </Box>
+                      <Group gap={4} mt={2} align="center">
+                        <Text size="xs" c="dimmed">{new Date(msg.timestamp).toLocaleTimeString()}</Text>
+                        <Group gap={2} className="msg-actions">
+                          {msg.sender === "user" && (
+                            <Button size="compact-xs" variant="subtle" color="gray" px={6} disabled={!canMutate}
+                              leftSection={<FaPen size={9} />} onClick={() => startEdit(msg.id, msg.content)}>Edit</Button>
+                          )}
+                          {canRetry && (
+                            <Button size="compact-xs" variant="subtle" color="gray" px={6} disabled={!canMutate}
+                              leftSection={<FaRedo size={9} />} onClick={() => handleRetry(msg.id)}>Retry</Button>
+                          )}
+                          <Button size="compact-xs" variant="subtle" color="gray" px={6} disabled={!canMutate}
+                            leftSection={<FaTrash size={9} />} onClick={() => handleDelete(msg.id)}>Delete</Button>
+                        </Group>
+                      </Group>
                     </Box>
-                    <Text size="xs" c="dimmed" mt={2}>{new Date(msg.timestamp).toLocaleTimeString()}</Text>
-                  </Box>
-                ))}
+                  );
+                })}
                 {isTyping && (
                   <Group gap="xs" style={{ alignSelf: "flex-start" }}>
                     <Box p="sm" style={{ backgroundColor: "var(--app-surface-hover)", borderRadius: 12 }}><Loader size="sm" type="dots" /></Box>

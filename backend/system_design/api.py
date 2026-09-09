@@ -288,6 +288,16 @@ def create_component_tutor(request: HttpRequest, params: ComponentTutorCreate):
     if params.kind not in TUTOR_TOPICS:
         return 400, {"detail": f"Unknown tutor topic: {params.kind}"}
 
+    # Resume the existing lesson for this topic instead of starting over, so the
+    # user comes back to the same conversation (and its saved history) each time.
+    existing = (
+        ComponentTutorSession.objects.filter(user=request.user, component_kind=params.kind)
+        .order_by("-created_at")
+        .first()
+    )
+    if existing:
+        return ComponentTutorResponse(conversation_id=existing.conversation_id)
+
     conversation = Conversation.objects.create(
         user=request.user,
         title=f"Tutor: {params.kind.replace('_', ' ').replace('-', ' ').title()}",

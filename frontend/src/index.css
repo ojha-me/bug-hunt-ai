@@ -323,3 +323,15 @@ body {
   text-transform: uppercase;
   color: var(--mantine-color-dimmed);
 }
+/* Chat message hover actions (edit / retry / delete) */
+.msg-actions {
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.msg-row:hover .msg-actions,
+.msg-row:focus-within .msg-actions {
+  opacity: 1;
+}
+@media (hover: none) {
+  .msg-actions { opacity: 1; }
+}
